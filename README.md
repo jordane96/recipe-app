@@ -41,6 +41,14 @@ npm run dev
 
 Routing uses **hash URLs** (e.g. `/#/recipe/chicken-air-fried`) so navigation works on GitHub Pages without extra server config.
 
+## Blank page on GitHub / Intuit Pages
+
+1. **Hard refresh** (Ctrl+F5). Confirm **Settings → Pages** is publishing the branch/folder you think (often **`gh-pages`** root after `npm run deploy:intuit`).
+2. **DevTools → Network**: confirm `index-*.js` and `recipes.json` return **200** (not 404).
+3. **DevTools → Console**: note any red errors.
+4. This app sets **`<base href>`** from `location.pathname` so it should work on any `/pages/USER/REPO/` path. If your host uses a **Content-Security-Policy** that blocks **inline scripts**, ask your admin or switch the inline script to a file in `public/` (no nonce).
+5. **`public/.nojekyll`** is included so GitHub Pages does not run **Jekyll** on the build (which can break static sites).
+
 ## Syncing recipes from PM-Operating-System
 
 If you keep canonical JSON in another repo, copy it in:
