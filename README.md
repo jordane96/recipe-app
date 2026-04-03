@@ -1,6 +1,17 @@
 # Recipe app
 
-Mobile-friendly recipe viewer. Data lives in `public/recipes.json`.
+Mobile-friendly recipe viewer. Data is **structured**:
+
+- `public/ingredients.json` — canonical ingredient IDs, display names, and `kind` (`volume` | `weight` | `count` | `other`) for shopping-list math.
+- `public/recipes.json` — `version: 2` recipes with `ingredientSections` (groups of `{ ingredientId, amount, unit, note? }`).
+
+**Edit flow:** change `scripts/ingredientLibrary.mjs` and/or `scripts/recipeIngredientSections.mjs`, then run:
+
+```bash
+npm run data:publish
+```
+
+That reads `data/legacy-recipes-v1.json` for recipe metadata (title, tags, instructions, URLs) and writes both JSON files under `public/`. To refresh legacy metadata only, update `data/legacy-recipes-v1.json` first (or replace it with a v1 export), then publish again.
 
 ## Local dev
 

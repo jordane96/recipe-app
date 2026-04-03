@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "data:publish": "node scripts/publish-recipes.mjs",
+    "data:apply-qualitative": "node scripts/apply-qualitative-overrides-to-sections.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "deploy": "npm run build && gh-pages -d dist",

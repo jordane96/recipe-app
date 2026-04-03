@@ -1,9 +1,21 @@
+import * as React from "react";
 import { Link, useParams } from "react-router-dom";
-import type { Recipe } from "./types";
+import type { IngredientDef, Recipe } from "./types";
+import { formatIngredientLine, ingredientMap } from "./ingredientDisplay";
+import { recipeSegment } from "./recipeCourse";
+import { useShoppingList } from "./ShoppingListContext";
 
-export function RecipeDetail({ recipes }: { recipes: Recipe[] }) {
+export function RecipeDetail({
+  recipes,
+  ingredients,
+}: {
+  recipes: Recipe[];
+  ingredients: IngredientDef[];
+}) {
   const { id } = useParams();
   const recipe = recipes.find((r) => r.id === id);
+  const { isSelected, addToList, removeFromList, count } = useShoppingList();
+  const byId = React.useMemo(() => ingredientMap(ingredients), [ingredients]);
 
   if (!recipe) {
     return (
@@ -18,6 +30,8 @@ export function RecipeDetail({ recipes }: { recipes: Recipe[] }) {
     );
   }
 
+  const onList = isSelected(recipe.id);
+
   return (
     <>
       <div className="top-bar">
@@ -29,6 +43,9 @@ export function RecipeDetail({ recipes }: { recipes: Recipe[] }) {
           {recipe.type === "reference" ? (
             <span className="badge">Reference</span>
           ) : null}
+          {recipeSegment(recipe) === "side" ? (
+            <span className="badge badge-side">Side</span>
+          ) : null}
         </h1>
       </div>
       {recipe.tags && recipe.tags.length > 0 ? (
@@ -37,14 +54,20 @@ export function RecipeDetail({ recipes }: { recipes: Recipe[] }) {
         </p>
       ) : null}
 
-      {recipe.sections?.map((sec) => (
+      {recipe.ingredientSections?.map((sec) => (
         <section key={sec.name} className="detail-section">
           <h2>{sec.name}</h2>
-          <ul>
-            {sec.items.map((line, i) => (
-              <li key={i}>{line}</li>
-            ))}
-          </ul>
+          {sec.lines.length === 0 ? (
+            <p className="muted">No structured ingredients (see instructions).</p>
+          ) : (
+            <ul>
+              {sec.lines.map((line, i) => (
+                <li key={`${line.ingredientId}-${i}`}>
+                  {formatIngredientLine(line, byId)}
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       ))}
 
@@ -75,6 +98,19 @@ export function RecipeDetail({ recipes }: { recipes: Recipe[] }) {
       {recipe.notes ? (
         <p className="muted detail-section">{recipe.notes}</p>
       ) : null}
+
+      <div className="cta-panel cta-panel-bottom">
+        <button
+          type="button"
+          className={onList ? "btn-secondary btn-cta-wide" : "btn-primary btn-cta-wide"}
+          onClick={() => (onList ? removeFromList(recipe.id) : addToList(recipe.id))}
+        >
+          {onList ? "Remove from shopping list" : "Add to shopping list"}
+        </button>
+        <Link to="/shopping" className="cta-sub-link">
+          View shopping list{count > 0 ? ` (${count})` : ""}
+        </Link>
+      </div>
     </>
   );
 }

@@ -1,0 +1,852 @@
+{
+  "version": 1,
+  "recipes": [
+    {
+      "id": "chicken-air-fried",
+      "title": "Chicken (air fried)",
+      "type": "recipe",
+      "sections": [
+        {
+          "name": "Main",
+          "items": [
+            "Chicken breast, olive oil, cajun rub (or other spice mix)"
+          ]
+        },
+        {
+          "name": "Optional spice mix",
+          "items": [
+            "Italian seasoning (1 tbsp)",
+            "Garlic powder (1 tsp)",
+            "Paprika (½ tsp)",
+            "Salt and pepper"
+          ]
+        }
+      ],
+      "instructions": [
+        "Butterfly, pound (optional), coat in olive oil and rub/spices, cook 10-13 minutes at 350"
+      ],
+      "sourceUrl": "https://therecipecritic.com/air-fryer-chicken-breast/"
+    },
+    {
+      "id": "grilled-tri-tip",
+      "title": "Grilled tri tip",
+      "type": "recipe",
+      "tags": ["grill"],
+      "sections": [
+        { "name": "Main", "items": ["Tri tip", "Stubbs rub"] }
+      ],
+      "instructions": ["Grill meat, add vegetable"]
+    },
+    {
+      "id": "grilled-burger",
+      "title": "Grilled burger",
+      "type": "recipe",
+      "tags": ["grill"],
+      "sections": [
+        { "name": "Main", "items": ["Burger", "any seasoning"] }
+      ],
+      "instructions": ["Grill meat, add vegetable"]
+    },
+    {
+      "id": "grilled-hot-link",
+      "title": "Grilled hot link",
+      "type": "recipe",
+      "tags": ["grill"],
+      "sections": [{ "name": "Main", "items": ["Hot link"] }],
+      "instructions": ["Grill meat, add vegetable"]
+    },
+    {
+      "id": "grilled-wings",
+      "title": "Grilled wings",
+      "type": "recipe",
+      "tags": ["grill"],
+      "sections": [
+        {
+          "name": "Main",
+          "items": ["Wings", "~0.5 Franks per pound of wings"]
+        }
+      ],
+      "instructions": ["Grill meat, add vegetable"]
+    },
+    {
+      "id": "grilled-carne-asada",
+      "title": "Grilled carne asada",
+      "type": "recipe",
+      "tags": ["grill"],
+      "sections": [{ "name": "Main", "items": ["Carne asada"] }],
+      "instructions": ["Grill meat, add vegetable"]
+    },
+    {
+      "id": "grilled-chicken",
+      "title": "Grilled chicken",
+      "type": "recipe",
+      "tags": ["grill"],
+      "sections": [
+        {
+          "name": "Main",
+          "items": ["Grilled chicken", "Grill Mates spices"]
+        }
+      ],
+      "instructions": ["Grill meat, add vegetable"]
+    },
+    {
+      "id": "pot-roast-keto",
+      "title": "Pot roast (Keto)",
+      "type": "recipe",
+      "tags": ["keto", "slow-cooker"],
+      "sections": [
+        {
+          "name": "Main",
+          "items": [
+            "Chuck roast (2-4 lbs)",
+            "Salt and pepper",
+            "Onion",
+            "Mushrooms",
+            "½ cup beef broth per pound of roast",
+            "Parsley (optional)"
+          ]
+        }
+      ],
+      "instructions": [
+        "Coat roast in salt and pepper, add ingredients, cook 6hrs (or until shredable), shred, cook 1 hr"
+      ],
+      "sourceUrl": "https://www.wholesomeyum.com/keto-low-carb-pot-roast-slow-cooker-recipe/"
+    },
+    {
+      "id": "taco-chicken-crock-pot",
+      "title": "Taco chicken (crock pot)",
+      "type": "recipe",
+      "tags": ["crock-pot"],
+      "sections": [
+        {
+          "name": "Main",
+          "items": [
+            "Chicken breast (4-7 lbs)",
+            "2 containers Pace hot salsa (largest size available)",
+            "Taco seasoning (2 packets / servings)",
+            "2 bell peppers",
+            "2 onions",
+            "Avocado (optional)",
+            "Blue corn tortilla chips (optional)",
+            "Rice (optional)",
+            "Quesadilla (optional)"
+          ]
+        }
+      ],
+      "instructions": [
+        "Cut up vegetables, mix chicken, vegetables, salsa in crock pot",
+        "Cook 6 hours, shred",
+        "Add seasoning, cook 1-2 hours",
+        "Plate with rice, avocado, chips, etc. as needed"
+      ]
+    },
+    {
+      "id": "meatballs-keto",
+      "title": "Meatballs (Keto)",
+      "type": "recipe",
+      "tags": ["keto"],
+      "sections": [
+        {
+          "name": "Main",
+          "items": [
+            "2 lb ground beef",
+            "1 lb ground pork",
+            "1 ½ cup grated parmesan",
+            "1 cup breadcrumbs or pork rinds (Keto)",
+            "4 eggs",
+            "2 tsp salt",
+            "½ tsp black pepper",
+            "½ tsp garlic powder",
+            "2 tsp onion powder",
+            "½ tsp oregano",
+            "1 cup warm water"
+          ]
+        },
+        {
+          "name": "Topping",
+          "items": ["Mozzarella", "Tomato sauce"]
+        }
+      ],
+      "instructions": [
+        "Mix main items together in large bowl, form into meatballs",
+        "Cook in skillet 15 min or air fry ~ 10 min (or combo - brown in skillet and then air fry)"
+      ],
+      "sourceUrl": "https://www.ibreatheimhungry.com/keto-meatballs-low-carb-gluten-free/"
+    },
+    {
+      "id": "sausage-pasta",
+      "title": "Sausage pasta",
+      "type": "recipe",
+      "sections": [
+        {
+          "name": "Main",
+          "items": [
+            "Italian sausage (1 lb)",
+            "Tricolor pasta (1 box)"
+          ]
+        },
+        {
+          "name": "Topping",
+          "items": [
+            "Tomato sauce",
+            "4 cheese Mexican",
+            "Red pepper"
+          ]
+        }
+      ],
+      "instructions": [
+        "Cook sausage in air fryer ~10 minutes at 400",
+        "Boil pasta",
+        "Slice sausage, combine and eat",
+        "Microwave if needed to melt cheese and warm sauce"
+      ]
+    },
+    {
+      "id": "mozzarella-crusted-chicken",
+      "title": "Mozzarella crusted chicken",
+      "type": "recipe",
+      "sections": [
+        {
+          "name": "Main",
+          "items": [
+            "Chicken - 10 oz",
+            "Panko breadcrumbs - ¼ cup",
+            "Shredded mozzarella - ½ cup",
+            "Italian seasoning - 1 tbsp",
+            "Sour cream - 1.5 tbsp",
+            "Olive oil, salt, pepper"
+          ]
+        },
+        {
+          "name": "Sides",
+          "items": ["Couscous / pasta", "Carrots"]
+        }
+      ],
+      "instructions": [
+        "Preheat oven to 425",
+        "Combine panko, mozzarella, italian seasoning, salt, pepper, 1 tbsp olive oil",
+        "Coat top of chicken with sour cream",
+        "Mound and press panko mixture to top of chicken (not bottom)",
+        "Bake 17 minutes"
+      ]
+    },
+    {
+      "id": "dijon-onion-chicken",
+      "title": "Dijon onion chicken",
+      "type": "recipe",
+      "sections": [
+        {
+          "name": "Main",
+          "items": [
+            "Chicken - 10 oz",
+            "Honey dijon dressing - 1 tbsp",
+            "Fried onion crisps - 1.5 handfuls",
+            "Monterey Jack cheese - ¼ cup"
+          ]
+        },
+        {
+          "name": "Sides",
+          "items": ["Garlic bread", "Green beans"]
+        }
+      ],
+      "instructions": [
+        "Preheat oven to 425",
+        "Season chicken with salt and pepper all over",
+        "Spread ½ tbsp dressing per chicken breast",
+        "Top chicken with cheese",
+        "Crush up onion, add onion on top of chicken",
+        "Press chicken to adhere onion and cheese",
+        "Bake 5 min, add green beans (toss in olive oil, salt, pepper), then bake 15 min"
+      ]
+    },
+    {
+      "id": "cayenne-breaded-chicken",
+      "title": "Cayenne breaded chicken",
+      "type": "recipe",
+      "sections": [
+        {
+          "name": "Main",
+          "items": [
+            "Chicken - 10 oz",
+            "Panko - ¼ cup",
+            "Shredded Monterey Jack - ¼ cup",
+            "Frank's seasoning blend - ¼ oz",
+            "Sour cream - 1.5 tbsp",
+            "Honey (optional) - 2 tsp"
+          ]
+        }
+      ],
+      "instructions": [
+        "Heat oven to 425",
+        "Melt 1 tbsp butter in microwave (30 sec)",
+        "Add panko, monterey jack, Frank's seasoning (but leave ½ tsp for sauce), and salt and pepper",
+        "Pat dry chicken, add salt and pepper",
+        "Mound top of chicken with panko mix, press firm to adhere",
+        "Bake chicken 15-18 minutes",
+        "Mix sour cream with ½ tsp Frank's blend, add a bit of water to get it to drizzling consistency"
+      ]
+    },
+    {
+      "id": "lemon-italian-chicken-spaghetti",
+      "title": "Lemon italian chicken w/ spaghetti",
+      "type": "recipe",
+      "sections": [
+        {
+          "name": "Main",
+          "items": [
+            "Chicken - 10 oz",
+            "Italian seasoning - 1 tbsp"
+          ]
+        },
+        {
+          "name": "Side",
+          "items": [
+            "Zucchini - 1",
+            "Lemon - 1",
+            "Chili flakes - 1 tsp",
+            "Sour cream - 1.5 tsp",
+            "Chicken stock concentrate - 1 pouch",
+            "Parmesan cheese - 3 tbsp",
+            "Spaghetti - 6 oz",
+            "Garlic - 1 clove",
+            "Butter - 1 tbsp"
+          ]
+        }
+      ],
+      "instructions": [
+        "Boil water, wash zucchini and lemon",
+        "Trim and quarter zucchini, cut into ½ inch slices, toss in olive oil, salt, pepper, a bit of parmesan",
+        "Peel and mince garlic",
+        "Zest and quarter lemon",
+        "Cover chicken in italian seasoning, salt, and pepper, olive oil.",
+        "Air fry chicken and zucchini: Air fry chicken for 13 min (add zucchini after 5 min; zucchini should cook for 7-9 min)",
+        "Cook spaghetti while air frying",
+        "Cook spaghetti 11 minutes; keep 1 cup pasta water",
+        "Make sauce while cooking others (start 5 min into spaghetti)",
+        "Saute garlic, lemon zest, pinch of chili flakes for 30 seconds",
+        "Add ½ cup pasta water, stock concentrate, and juice from 2 lemon wedges",
+        "Simmer 1-2 min",
+        "Add spaghetti, sour cream, 1 tbsp butter to saucepan. Plus 1.5 tbsp parmesan",
+        "Serve with chicken"
+      ]
+    },
+    {
+      "id": "chicken-pita-pockets",
+      "title": "Chicken pita pockets",
+      "type": "recipe",
+      "sections": [
+        {
+          "name": "Main",
+          "items": [
+            "Chicken - 10 oz",
+            "Mini cucumber",
+            "Garlic powder - 1 tsp",
+            "Greek vinaigrette dressing (splash)",
+            "Pita bread - 2 pieces",
+            "Hummus"
+          ]
+        }
+      ],
+      "instructions": [
+        "Slice cucumber into ¼ inch thick quarter moon slices",
+        "Chop chicken into small pieces",
+        "Pan fry chicken for 4-6 minutes, adding garlic powder, salt, and pepper",
+        "Mix cucumbers and dressing",
+        "Cut pitas in half, line with hummus",
+        "Mix in chicken and cucumber salad"
+      ]
+    },
+    {
+      "id": "miso-salmon",
+      "title": "Miso Salmon",
+      "type": "recipe",
+      "sections": [
+        {
+          "name": "Main",
+          "items": ["Salmon filet - 10 oz"]
+        },
+        {
+          "name": "Sauce",
+          "items": [
+            "Miso paste - 1 tbsp",
+            "Honey - 2 tsps",
+            "Hot water - 2 tbsp"
+          ]
+        },
+        {
+          "name": "Sides",
+          "items": ["Fried rice (optional)"]
+        }
+      ],
+      "instructions": [
+        "Mix glaze",
+        "Sautee salmon skin-side up 3-5 min (cover pan with foil)",
+        "Flip, cook 2 min",
+        "Add glaze, cook 1-2 min"
+      ]
+    },
+    {
+      "id": "curry-peanut-chicken",
+      "title": "Curry peanut chicken",
+      "type": "recipe",
+      "sections": [
+        {
+          "name": "Main",
+          "items": [
+            "Chicken - 10 oz",
+            "Cornstarch - ¼ cup"
+          ]
+        },
+        {
+          "name": "Peanut Sauce",
+          "items": [
+            "Roasted peanuts - 3 tbsp (topping after food done)",
+            "Peanut butter - 1 tbsp",
+            "Yellow curry paste - 1 tbsp",
+            "Mayonnaise - 2 tbsp",
+            "Mirin - 1 tbsp",
+            "Warm Water - 2 tbsp"
+          ]
+        },
+        {
+          "name": "Sides",
+          "items": [
+            "Rice - ½ cup",
+            "Carrots, cucumber, scallions, apple cider vinegar (1 tbsp); (optional)"
+          ]
+        }
+      ],
+      "instructions": [
+        "Slice up chicken",
+        "Coat chicken in cornstarch",
+        "Mix sauce; add to chicken after completed",
+        "Heat thin layer of olive oil in pan",
+        "Sautee Chicken - cook without stirring for 3-4 min",
+        "Cook with stirring 3-4 min"
+      ]
+    },
+    {
+      "id": "soy-glazed-meatloaf",
+      "title": "Soy glazed meatloaf",
+      "type": "recipe",
+      "sections": [
+        {
+          "name": "Main",
+          "items": [
+            "Ground beef - 16 oz (85-90% lean)",
+            "Egg - 2",
+            "Panko breadcrumbs - ½ cup",
+            "Garlic - 3 cloves (zested into a paste)",
+            "McCormick meatloaf seasoning - ⅓ pack"
+          ]
+        },
+        {
+          "name": "Sauce",
+          "items": [
+            "Soy glaze (2 tbsp)",
+            "Cumin-sichuan peppercorn sauce (3 tbsp)",
+            "Rice Vinegar (1/2 tbsp)",
+            "OR kinders glaze - ¼ cup before cooking and ¼ cup after"
+          ]
+        },
+        {
+          "name": "Alternate sauce (mushroom sauce)",
+          "items": [
+            "Button mushrooms - 4 oz (cook 2-4 min)",
+            "Beef stock concentrate - 1 pouch",
+            "¼ cup water",
+            "Boil, then simmer. Cook 2-3 min",
+            "Sour cream - 1.5 tbsp"
+          ]
+        },
+        {
+          "name": "Side",
+          "items": ["Potatoes - 3/4 lb"]
+        }
+      ],
+      "instructions": [
+        "Mix glaze",
+        "Zest garlic",
+        "Dice potatoes & mix with olive oil, salt, and pepper",
+        "Mix meatloaf together, shape into loaf (7 inches x 3 inches), add salt and pepper",
+        "Put loaf on pan, top with half the glaze",
+        "Add diced potatoes",
+        "Cook for 22 min at 450",
+        "Let sit for 2 minutes",
+        "Add other half of glaze",
+        "Alternate mushroom sauce: Roast meatloaf (no glaze or sauce).",
+        "Trim and thinly slice mushroom; saute with salt and pepper 2-4 minutes (until soft).",
+        "Add stock concentrate and ¼ cup water; boil, then reduce to low simmer for 2-3 minutes.",
+        "Turn off heat, add 1.5 tbsp sour cream and 1 tbsp butter; add to meatloaf once ready."
+      ]
+    },
+    {
+      "id": "steak-spicy-soy-sauce",
+      "title": "Steak and spicy soy sauce",
+      "type": "recipe",
+      "sections": [
+        {
+          "name": "Main",
+          "items": [
+            "Top sirloin steaks (two five ounce steaks)"
+          ]
+        },
+        {
+          "name": "Sauce",
+          "items": [
+            "Soy glaze - 2 tbsp",
+            "Rice Vinegar - 1 tbsp",
+            "Water 2 tbsp",
+            "Sambal Oelek - 1 tbsp",
+            "Butter - 1 oz (added later)"
+          ]
+        },
+        {
+          "name": "Sides",
+          "items": [
+            "Rice (½ cup), Bok Choy (3; optional), Carrots (optional)"
+          ]
+        }
+      ],
+      "instructions": [
+        "Mix glaze",
+        "Cook steaks in pan 10 minutes, then let rest 5 min",
+        "Slice steak",
+        "Add sauce to pan",
+        "Cook for 30 seconds to 1 minute, stirring",
+        "Turn off heat, add butter",
+        "Cook steaks in sauce if more time is needed, otherwise top steak with sauce"
+      ]
+    },
+    {
+      "id": "steak-jam-honey-mustard-sauce",
+      "title": "Steak and jam/honey mustard sauce",
+      "type": "recipe",
+      "sections": [
+        {
+          "name": "Main",
+          "items": [
+            "Bavette steak (Sirloin flap steak) - two 5oz steaks"
+          ]
+        },
+        {
+          "name": "Sauce",
+          "items": [
+            "Jam - 2-3 tbsp (not sure the exact quantity, check to taste)",
+            "Creme fraiche - 2 tbsp",
+            "Garlic - 1 clove (half the garlic)",
+            "Chili flakes - 1 tsp (or as needed)",
+            "Rice wine vinegar - 5 tsp",
+            "Dijon Mustard - 2 tsp",
+            "Lemon juice - 1 squeeze"
+          ]
+        },
+        {
+          "name": "Side",
+          "items": ["Lemon panko burrata salad"]
+        }
+      ],
+      "instructions": [
+        "Mince garlic",
+        "Pat dry steak and season with salt and pepper (a lot)",
+        "Cook steak w/ drizzle olive oil on medium heat for 3-7 minutes per side (~5 min for medium); let rest for 3 min",
+        "Make sauce: Heat olive oil with garlic and chili flakes for 1-2 min",
+        "Add jam, vinegar, 1 tsp dijon, ¼ cup water. Cook 2-3 min (until sauce thickens)",
+        "Remove from heat, add creme fraiche and squeeze of lemon; salt and pepper to taste",
+        "Thinly slice steak, top with sauce"
+      ]
+    },
+    {
+      "id": "chicken-katsu-curry",
+      "title": "Chicken katsu curry",
+      "type": "recipe",
+      "sections": [
+        {
+          "name": "Main",
+          "items": [
+            "Chicken breast - butterflied and pounded",
+            "1 egg (scrambled)",
+            "½ cup flour",
+            "1 cup panko (or enough to coat chicken)"
+          ]
+        },
+        {
+          "name": "Sauce",
+          "items": ["Curry cubes"]
+        },
+        {
+          "name": "Sides",
+          "items": ["Rice"]
+        }
+      ],
+      "instructions": [
+        "Coat chicken in flour, dip in egg, cover with panko, spray with pam",
+        "Air fry 10 minutes at 350, flip and cook for 4-6 more minutes",
+        "Prepare curry per instructions on box"
+      ],
+      "sourceUrl": "https://cjeatsrecipes.com/air-fryer-chicken-katsu/#wprm-recipe-container-952"
+    },
+    {
+      "id": "beef-tortilla-melts",
+      "title": "Beef tortilla melts",
+      "type": "recipe",
+      "sections": [
+        {
+          "name": "Main",
+          "items": [
+            "Ground beef - 10 oz",
+            "Flour tortilla - 2",
+            "Beef stock concentrate - 1 pouch (10g)",
+            "Poblano pepper (or any medium sized spicy pepper) - 1",
+            "Cheddar - ½ cup",
+            "Cream cheese - 4 tbsp",
+            "Sour cream - 3 tbsp",
+            "Cholula - 2 tsp",
+            "Butter - 1 tbsp"
+          ]
+        }
+      ],
+      "instructions": [
+        "Slice pepper in small strips",
+        "Microwave sour cream and cream cheese plus Cholula and 1 tsp water for 30 sec, then stir to combine",
+        "Saute pepper for 2-3 minutes (med heat)",
+        "Add beef to pepper and cook for 4-6 min (until browned), drain grease",
+        "Add stock concentrate",
+        "Spread tortillas and add half the cream sauce across one side of each tortilla",
+        "Add beef filling and cheddar cheese",
+        "Melt 1 tbsp of butter to pan, cook tortillas 3 min per side",
+        "Remove, cut, serve"
+      ]
+    },
+    {
+      "id": "chili",
+      "title": "Chili",
+      "type": "recipe",
+      "sections": [
+        {
+          "name": "Ingredients",
+          "items": [
+            "Ground turkey 93% fat - 20 oz",
+            "Scallions - 1 bunch",
+            "Chili seasoning mix - 4 tbsp (or whatever pouch recommends)",
+            "Tomato paste - 4 tbsp",
+            "Black beans - 2 boxes (maybe same as 2 cans? 30 oz?)",
+            "Jalapeno - 2 peppers",
+            "Chicken stock concentrate - 4 pouches",
+            "Sour cream - 6 tbsp",
+            "Lime"
+          ]
+        },
+        {
+          "name": "Side",
+          "items": ["Garlic bread"]
+        }
+      ],
+      "instructions": [
+        "Wash and dry produce",
+        "Quarter lime",
+        "Trim and slice scallions; separate whites from greens",
+        "Thinly slice one jalapeno into circular slices",
+        "Mince/chop other jalapeno (remove insides for less spice)",
+        "Heat olive oil in big pot (5-6 quart)",
+        "Add scallion whites and minced jalapeno, cook 5-7 min",
+        "Add turkey and spices, cook 4-6 min",
+        "Add in tomato paste, cook 1-2 minutes",
+        "Add beans (plus liquid from can), stock concentrate, and ½ cup of water. Stir. Bring to simmer and cook until thickened (8-10 min)",
+        "Serve with sour cream, scallion greens, and sliced jalapeno"
+      ]
+    },
+    {
+      "id": "tortellini-tomato-soup",
+      "title": "Tortellini",
+      "type": "recipe",
+      "sections": [
+        {
+          "name": "Main",
+          "items": ["Prepackaged tortellini"]
+        },
+        {
+          "name": "Sauce",
+          "items": ["Safeway tomato soup"]
+        }
+      ],
+      "instructions": ["Cook tortellini, add sauce"]
+    },
+    {
+      "id": "quesadilla-leftovers",
+      "title": "Quesadilla (with leftovers)",
+      "type": "recipe",
+      "sections": [
+        {
+          "name": "Main",
+          "items": ["Tortilla (2)", "Cheese", "Leftover eat"]
+        },
+        {
+          "name": "Sauce / toppings",
+          "items": ["Cholula, hot sauce, red pepper, cayenne"]
+        }
+      ],
+      "instructions": ["Cook quesadilla, add meat (reheated)"]
+    },
+    {
+      "id": "veggie-air-fry-grill-times",
+      "title": "Air fryer / grilled / sauteed veggies",
+      "type": "reference",
+      "tags": ["vegetables", "air-fryer"],
+      "sections": [
+        {
+          "name": "General",
+          "items": [
+            "All veggies - olive oil, salt, pepper; toss halfway through",
+            "Asparagus - 400, 6-8 minutes",
+            "Brussel sprouts - 375, 10 minutes",
+            "Broccoli - 400, 6 minutes",
+            "Squash - 400, 8 minutes",
+            "Potatoes - 400, 18-20 minutes; optional italian seasoning",
+            "Spinach - sautee",
+            "Zucchini chips (keto): Slice into thin chips; olive oil; salt and pepper; Parmesan; air fry; optional (non keto): Panko crumbs"
+          ]
+        }
+      ],
+      "instructions": []
+    },
+    {
+      "id": "regular-rice",
+      "title": "Regular rice",
+      "type": "recipe",
+      "course": "side",
+      "sections": [],
+      "instructions": [
+        "Wash rice",
+        "1.5 cup of water for 1 cup of brown rice",
+        "15 min on cook",
+        "5 min natural release"
+      ]
+    },
+    {
+      "id": "fried-rice",
+      "title": "Fried rice",
+      "type": "recipe",
+      "course": "side",
+      "sections": [
+        {
+          "name": "Main",
+          "items": [
+            "Rice - ½ cup",
+            "Carrots",
+            "Poblano pepper - 1 (optional)",
+            "Egg - 1",
+            "Scallions - 2",
+            "Soy sauce (1 tbsp)"
+          ]
+        }
+      ],
+      "instructions": [
+        "Make rice then put in pan w/ olive oil",
+        "Let rice sit for 3-4 minutes (don't stir)",
+        "Add soy sauce (1 tbsp), cook 1 min",
+        "Cook vegetables / egg separately and combine rice and vegetables"
+      ]
+    },
+    {
+      "id": "garlic-bread",
+      "title": "Garlic bread",
+      "type": "recipe",
+      "course": "side",
+      "sections": [
+        {
+          "name": "Main",
+          "items": ["Bread roll", "Garlic butter", "Parmesan"]
+        }
+      ],
+      "instructions": [
+        "Cut bread in half, add butter and parmesan, cook for 5 min"
+      ]
+    },
+    {
+      "id": "mashed-potatoes",
+      "title": "Mashed potatoes",
+      "type": "recipe",
+      "course": "side",
+      "sections": [
+        {
+          "name": "Main",
+          "items": [
+            "Potatoes - 12oz",
+            "Sour cream - 1.5 tbsp",
+            "Butter - 2 tbsp"
+          ]
+        }
+      ],
+      "instructions": [
+        "Boil potatoes for 15 minutes",
+        "Drain water (keep some in a cup)",
+        "Mash",
+        "Add sour cream and water as necessary, add salt and pepper and butter"
+      ]
+    },
+    {
+      "id": "lemon-panko-burrata-salad",
+      "title": "Lemon panko burrata salad",
+      "type": "recipe",
+      "course": "side",
+      "sections": [
+        {
+          "name": "Ingredients",
+          "items": [
+            "Arugula - 4 oz",
+            "Panko - ¼ cup",
+            "Garlic - 1 clove",
+            "Burrata - 4 oz",
+            "Lemon - 1",
+            "Olive oil - drizzle"
+          ]
+        }
+      ],
+      "instructions": [
+        "Mince garlic",
+        "Cook panko and garlic for 3-5 min on medium heat (with drizzle of olive oil)",
+        "Stir in lemon zest, add salt and pepper",
+        "Mix arugula with 2 sqz lemon juice and 2 tbsp olive oil, salt and pepper",
+        "Serve with arugula and burrata"
+      ]
+    },
+    {
+      "id": "lemon-spaghetti",
+      "title": "Lemon spaghetti",
+      "type": "recipe",
+      "course": "side",
+      "sections": [
+        {
+          "name": "Side",
+          "items": [
+            "Zucchini - 1",
+            "Lemon - 1",
+            "Chili flakes - 1 tsp",
+            "Sour cream - 1.5 tsp",
+            "Chicken stock concentrate - 1 pouch",
+            "Parmesan cheese - 3 tbsp",
+            "Spaghetti - 6 oz",
+            "Garlic - 1 clove",
+            "Butter - 1 tbsp"
+          ]
+        }
+      ],
+      "instructions": [
+        "Boil water, wash zucchini and lemon",
+        "Trim and quarter zucchini, cut into ½ inch slices, toss in olive oil, salt, pepper, a bit of parmesan",
+        "Peel and mince garlic",
+        "Zest and quarter lemon",
+        "Cook zucchini: Air fry zucchini 7-9 min; combine with any main going into air fryer",
+        "Cook spaghetti while air frying",
+        "Cook spaghetti 11 minutes; keep 1 cup pasta water",
+        "Make sauce while cooking others (start 5 min into spaghetti)",
+        "Saute garlic, lemon zest, pinch of chili flakes for 30 seconds",
+        "Add ½ cup pasta water, stock concentrate, and juice from 2 lemon wedges",
+        "Simmer 1-2 min",
+        "Add spaghetti, sour cream, 1 tbsp butter to saucepan. Plus 1.5 tbsp parmesan",
+        "Serve with main"
+      ]
+    }
+  ]
+}
