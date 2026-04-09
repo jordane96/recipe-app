@@ -1,7 +1,14 @@
 import * as React from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import type { IngredientDef, Recipe } from "./types";
 import { formatIngredientLine, ingredientMap } from "./ingredientDisplay";
+import {
+  LIST_TAB_QUERY,
+  LIST_TAB_SIDE_VALUE,
+  readSidesListTab,
+  recipeDetailPath,
+  shoppingListPath,
+} from "./listTabSearch";
 import { recipeSegment, SEGMENT_LABEL, type RecipeSegment } from "./recipeCourse";
 import { useShoppingList } from "./ShoppingListContext";
 
@@ -71,11 +78,23 @@ export function RecipeList({
   recipes: Recipe[];
   ingredients: IngredientDef[];
 }) {
-  const { toggleList, isSelected, count } = useShoppingList();
+  const { addToList, removeFromList, listQuantity, count } = useShoppingList();
+  const [searchParams, setSearchParams] = useSearchParams();
   const byId = React.useMemo(() => ingredientMap(ingredients), [ingredients]);
   const [q, setQ] = React.useState("");
   const [tag, setTag] = React.useState<string | null>(null);
-  const [courseTab, setCourseTab] = React.useState<CourseTab>("main");
+
+  const courseTab: CourseTab = readSidesListTab(searchParams) ? "side" : "main";
+  const setCourseTab = React.useCallback(
+    (tab: CourseTab) => {
+      if (tab === "side") {
+        setSearchParams({ [LIST_TAB_QUERY]: LIST_TAB_SIDE_VALUE }, { replace: true });
+      } else {
+        setSearchParams({}, { replace: true });
+      }
+    },
+    [setSearchParams],
+  );
 
   React.useEffect(() => {
     setTag(null);
@@ -102,10 +121,13 @@ export function RecipeList({
   const listForSideTab = courseTab === "side" ? filtered : [];
 
   const renderRecipeRow = (r: Recipe) => {
-    const sel = isSelected(r.id);
+    const qty = listQuantity(r.id);
     return (
       <li key={r.id} className="recipe-row">
-        <Link className="recipe-link" to={`/recipe/${r.id}`}>
+        <Link
+          className="recipe-link"
+          to={recipeDetailPath(r.id, courseTab === "side")}
+        >
           <span className="recipe-title-row">
             <span>{r.title}</span>
             {r.type === "reference" ? <span className="badge">Reference</span> : null}
@@ -114,17 +136,31 @@ export function RecipeList({
             <span className="meta">{r.tags.join(" · ")}</span>
           ) : null}
         </Link>
-        <button
-          type="button"
-          className="recipe-list-toggle"
-          aria-pressed={sel}
-          aria-label={
-            sel ? `Remove ${r.title} from shopping list` : `Add ${r.title} to shopping list`
-          }
-          onClick={() => toggleList(r.id)}
-        >
-          {sel ? "✓" : "+"}
-        </button>
+        <div className="recipe-list-qty" role="group" aria-label={`Shopping list quantity for ${r.title}`}>
+          {qty > 0 ? (
+            <button
+              type="button"
+              className="recipe-list-qty-btn"
+              aria-label={`Remove one ${r.title} from shopping list`}
+              onClick={() => removeFromList(r.id)}
+            >
+              −
+            </button>
+          ) : null}
+          {qty > 0 ? <span className="recipe-list-qty-n">{qty}×</span> : null}
+          <button
+            type="button"
+            className={qty > 0 ? "recipe-list-toggle recipe-list-toggle--add" : "recipe-list-toggle"}
+            aria-label={
+              qty > 0
+                ? `Add another ${r.title} to shopping list`
+                : `Add ${r.title} to shopping list`
+            }
+            onClick={() => addToList(r.id)}
+          >
+            +
+          </button>
+        </div>
       </li>
     );
   };
@@ -140,10 +176,10 @@ export function RecipeList({
       <div className="list-header">
         <h1 className="page-title list-title">Recipes</h1>
         <div className="list-header-actions">
-          <Link to="/qualitative" className="list-header-link">
-            Quantities
+          <Link to="/" className="list-header-link">
+            Plan
           </Link>
-          <Link to="/shopping" className="shopping-pill">
+          <Link to={shoppingListPath(courseTab === "side")} className="shopping-pill">
             List{count > 0 ? ` (${count})` : ""}
           </Link>
         </div>

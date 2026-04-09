@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Meal planner — UI demo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Source+Sans+3:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #f6f3ee;
+        --surface: #fffcf8;
+        --text: #1c1917;
+        --muted: #57534e;
+        --accent: #2d4a3e;
+        --accent-soft: #e8f0ec;
+        --border: #e7e2dc;
+        --side: #1d6b5a;
+        --radius: 12px;
+        --shadow: 0 1px 3px rgba(28, 25, 23, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Source Sans 3", system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.45;
+        min-height: 100dvh;
+        padding: 1rem 1rem 2.5rem;
+      }
+
+      .shell {
+        max-width: 52rem;
+        margin: 0 auto;
+      }
+
+      h1,
+      h2,
+      h3 {
+        font-family: Fraunces, Georgia, serif;
+        font-weight: 600;
+        line-height: 1.2;
+      }
+
+      .banner {
+        background: linear-gradient(135deg, var(--accent-soft), #fff);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 0.85rem 1rem;
+        margin-bottom: 1.25rem;
+        font-size: 0.9rem;
+        color: var(--muted);
+      }
+
+      .banner strong {
+        color: var(--accent);
+      }
+
+      .page-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1rem;
+      }
+
+      .page-head h1 {
+        margin: 0;
+        font-size: 1.5rem;
+        color: var(--accent);
+      }
+
+      .week-nav {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .week-nav button {
+        font: inherit;
+        font-weight: 700;
+        padding: 0.45rem 0.75rem;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--accent);
+        cursor: pointer;
+      }
+
+      .week-nav button:hover {
+        background: var(--accent-soft);
+      }
+
+      .week-label {
+        font-weight: 700;
+        min-width: 10rem;
+        text-align: center;
+        color: var(--text);
+      }
+
+      .week-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 0.5rem;
+        margin-bottom: 1.75rem;
+      }
+
+      @media (max-width: 720px) {
+        .week-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .day-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 0.65rem 0.7rem;
+        min-height: 7.5rem;
+        box-shadow: var(--shadow);
+        display: flex;
+        flex-direction: column;
+      }
+
+      .day-card.is-today {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 1px var(--accent);
+      }
+
+      .day-head {
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+        margin-bottom: 0.15rem;
+      }
+
+      .day-date {
+        font-family: Fraunces, Georgia, serif;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--accent);
+        margin-bottom: 0.5rem;
+      }
+
+      .meal-chips {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+      }
+
+      .meal-chip {
+        font-size: 0.82rem;
+        padding: 0.25rem 0.35rem 0.25rem 0.25rem;
+        border-radius: 8px;
+        background: var(--accent-soft);
+        color: var(--text);
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 0.25rem;
+      }
+
+      .meal-chip.side {
+        background: #e6f5f1;
+        color: #0f3d34;
+      }
+
+      .meal-chip-title {
+        flex: 1;
+        min-width: 0;
+        text-align: left;
+        font: inherit;
+        font-weight: 600;
+        color: inherit;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        padding: 0.2rem 0.35rem;
+        border-radius: 6px;
+        line-height: 1.3;
+      }
+
+      .meal-chip-title:hover {
+        text-decoration: underline;
+        background: rgba(255, 255, 255, 0.35);
+      }
+
+      .meal-chip.side .meal-chip-title:hover {
+        background: rgba(255, 255, 255, 0.5);
+      }
+
+      .meal-chip button.x {
+        border: none;
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+        font-size: 1rem;
+        line-height: 1;
+        padding: 0 0.15rem;
+        flex-shrink: 0;
+      }
+
+      .meal-chip button.x:hover {
+        color: #b91c1c;
+      }
+
+      .add-meal {
+        margin-top: auto;
+        padding-top: 0.5rem;
+      }
+
+      .add-meal button {
+        width: 100%;
+        font: inherit;
+        font-weight: 700;
+        font-size: 0.85rem;
+        padding: 0.4rem;
+        border-radius: 8px;
+        border: 1px dashed var(--border);
+        background: transparent;
+        color: var(--accent);
+        cursor: pointer;
+      }
+
+      .add-meal button:hover {
+        border-style: solid;
+        background: var(--accent-soft);
+      }
+
+      .section {
+        margin-top: 1.5rem;
+      }
+
+      .section h2 {
+        margin: 0 0 0.65rem;
+        font-size: 1.15rem;
+        color: var(--accent);
+      }
+
+      .shop-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+      }
+
+      .shop-toolbar button {
+        font: inherit;
+        font-weight: 600;
+        padding: 0.5rem 0.85rem;
+        border-radius: 10px;
+        border: none;
+        cursor: pointer;
+      }
+
+      .shop-toolbar .primary {
+        background: var(--accent);
+        color: #fff;
+      }
+
+      .shop-toolbar .ghost {
+        background: transparent;
+        color: var(--muted);
+        text-decoration: underline;
+      }
+
+      .shop-preview {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 1rem 1.1rem;
+        box-shadow: var(--shadow);
+      }
+
+      .shop-preview.empty {
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      .shop-group {
+        margin-bottom: 1rem;
+      }
+
+      .shop-group:last-child {
+        margin-bottom: 0;
+      }
+
+      .shop-group h3 {
+        margin: 0 0 0.4rem;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+        font-family: "Source Sans 3", sans-serif;
+        font-weight: 700;
+      }
+
+      .shop-group ul {
+        margin: 0;
+        padding-left: 1.1rem;
+      }
+
+      .shop-group li {
+        margin-bottom: 0.25rem;
+      }
+
+      .hint {
+        font-size: 0.85rem;
+        color: var(--muted);
+        margin-top: 0.75rem;
+      }
+
+      /* Modal */
+      .overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(28, 25, 23, 0.45);
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        padding: 1rem;
+        z-index: 50;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s;
+      }
+
+      .overlay.open {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .overlay--recipe {
+        z-index: 60;
+      }
+
+      .recipe-read-sheet {
+        max-width: 32rem;
+        max-height: 88vh;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+
+      .recipe-read-sheet .sheet-head {
+        flex-shrink: 0;
+      }
+
+      .recipe-read-body {
+        overflow-y: auto;
+        padding: 0 1rem 1rem;
+        flex: 1;
+        min-height: 0;
+      }
+
+      .recipe-read-sheet .sheet-foot {
+        flex-shrink: 0;
+      }
+
+      .recipe-read-body h3 {
+        font-family: Fraunces, Georgia, serif;
+        font-size: 1rem;
+        margin: 1rem 0 0.4rem;
+        color: var(--accent);
+      }
+
+      .recipe-read-body h3:first-child {
+        margin-top: 0;
+      }
+
+      .recipe-read-body ul,
+      .recipe-read-body ol {
+        margin: 0;
+        padding-left: 1.2rem;
+      }
+
+      .recipe-read-body li {
+        margin-bottom: 0.35rem;
+      }
+
+      .recipe-read-badge {
+        display: inline-block;
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        padding: 0.2rem 0.4rem;
+        border-radius: 4px;
+        margin-bottom: 0.5rem;
+        background: var(--accent-soft);
+        color: var(--accent);
+      }
+
+      .recipe-read-badge.side {
+        background: #e6f5f1;
+        color: var(--side);
+      }
+
+      @media (min-width: 540px) {
+        .overlay {
+          align-items: center;
+        }
+      }
+
+      .sheet {
+        background: var(--surface);
+        border-radius: var(--radius) var(--radius) 0 0;
+        width: 100%;
+        max-width: 28rem;
+        max-height: 85vh;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.12);
+      }
+
+      @media (min-width: 540px) {
+        .sheet {
+          border-radius: var(--radius);
+        }
+      }
+
+      .sheet-head {
+        padding: 1rem 1rem 0.5rem;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .sheet-head h2 {
+        margin: 0 0 0.5rem;
+        font-size: 1.1rem;
+      }
+
+      .sheet-head input {
+        width: 100%;
+        font: inherit;
+        padding: 0.55rem 0.65rem;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        margin-bottom: 0.65rem;
+      }
+
+      .picker-kind-tabs {
+        display: flex;
+        gap: 0.35rem;
+        margin-bottom: 0.25rem;
+      }
+
+      .picker-kind-tabs button {
+        flex: 1;
+        font: inherit;
+        font-weight: 700;
+        font-size: 0.82rem;
+        padding: 0.45rem 0.5rem;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--bg);
+        color: var(--muted);
+        cursor: pointer;
+      }
+
+      .picker-kind-tabs button[data-on="true"] {
+        background: var(--accent-soft);
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      .picker-kind-tabs button:hover {
+        border-color: var(--accent);
+      }
+
+      .sheet-body {
+        overflow-y: auto;
+        padding: 0.5rem;
+        flex: 1;
+      }
+
+      .pick-row {
+        width: 100%;
+        text-align: left;
+        font: inherit;
+        padding: 0.65rem 0.75rem;
+        border: none;
+        border-radius: 10px;
+        background: transparent;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+      }
+
+      .pick-row:hover {
+        background: var(--accent-soft);
+      }
+
+      .pick-row .meta {
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+
+      .badge {
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        padding: 0.15rem 0.35rem;
+        border-radius: 4px;
+        background: var(--accent-soft);
+        color: var(--accent);
+      }
+
+      .badge.side {
+        background: #e6f5f1;
+        color: var(--side);
+      }
+
+      .sheet-foot {
+        padding: 0.75rem 1rem 1rem;
+        border-top: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      .sheet-foot button {
+        font: inherit;
+        font-weight: 700;
+        padding: 0.6rem;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        cursor: pointer;
+      }
+
+      .sheet-foot button.sheet-foot-full {
+        width: 100%;
+      }
+
+      .sheet-foot-row {
+        display: flex;
+        gap: 0.5rem;
+      }
+
+      .sheet-foot-row button {
+        flex: 1;
+      }
+
+      .sheet-foot .btn-skip-side {
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+      }
+
+      .sheet-foot .btn-skip-side:hover {
+        filter: brightness(0.95);
+      }
+
+      .picker-subtitle {
+        margin: 0 0 0.65rem;
+        font-size: 0.88rem;
+        color: var(--muted);
+        line-height: 1.35;
+      }
+
+      .picker-subtitle strong {
+        color: var(--text);
+      }
+
+      [hidden] {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <div class="banner">
+        <strong>Demo only</strong> — mock recipes and a fake merged list. In the real app this would
+        use your <code>recipes.json</code>, recommended sides, and the same merge rules as the
+        shopping list.
+      </div>
+
+      <header class="page-head">
+        <h1>Meal planner</h1>
+        <div class="week-nav">
+          <button type="button" id="prevWeek" aria-label="Previous week">‹</button>
+          <span class="week-label" id="weekLabel"></span>
+          <button type="button" id="nextWeek" aria-label="Next week">›</button>
+        </div>
+      </header>
+
+      <div class="week-grid" id="weekGrid"></div>
+
+      <section class="section" aria-labelledby="shop-heading">
+        <h2 id="shop-heading">Shopping for this week</h2>
+        <div class="shop-toolbar">
+          <button type="button" class="primary" id="btnBuild">Build preview from plan</button>
+          <button type="button" class="ghost" id="btnClearPlan">Clear week plan</button>
+        </div>
+        <div class="shop-preview empty" id="shopPreview">
+          Add meals to the week, then tap <strong>Build preview from plan</strong> to see a merged
+          ingredient list (demo uses simplified grouping).
+        </div>
+        <p class="hint">
+          Product idea: <strong>Merge into my list</strong> would append these recipes to your
+          existing shopping selection; <strong>Replace list</strong> would swap to plan-only.
+        </p>
+      </section>
+    </div>
+
+    <div class="overlay" id="overlay" aria-hidden="true">
+      <div class="sheet" role="dialog" aria-labelledby="sheetTitle">
+        <div class="sheet-head">
+          <h2 id="sheetTitle">Add meal</h2>
+          <p class="picker-subtitle" id="pickerSubtitle" hidden></p>
+          <input type="search" id="recipeSearch" placeholder="Filter recipes…" autocomplete="off" />
+          <div
+            class="picker-kind-tabs"
+            id="pickerKindTabs"
+            role="tablist"
+            aria-label="Mains or sides"
+            hidden
+          >
+            <button type="button" role="tab" id="pickerTabMain" data-kind="main" data-on="true">
+              Mains
+            </button>
+            <button type="button" role="tab" id="pickerTabSide" data-kind="side" data-on="false">
+              Sides
+            </button>
+          </div>
+        </div>
+        <div class="sheet-body" id="pickerList"></div>
+        <div class="sheet-foot" id="sheetFoot">
+          <button type="button" class="btn-skip-side sheet-foot-full" id="btnSkipSide" hidden>
+            Skip — no side
+          </button>
+          <div class="sheet-foot-row" id="sheetFootRow">
+            <button type="button" id="btnBackMain" hidden>← Change main</button>
+            <button type="button" id="closeSheet">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="overlay overlay--recipe" id="recipeReadOverlay" aria-hidden="true">
+      <div class="sheet recipe-read-sheet" role="dialog" aria-labelledby="recipeReadTitle" aria-modal="true">
+        <div class="sheet-head">
+          <h2 id="recipeReadTitle">Recipe</h2>
+          <span id="recipeReadKindBadge" class="recipe-read-badge"></span>
+        </div>
+        <div class="recipe-read-body" id="recipeReadBody"></div>
+        <div class="sheet-foot">
+          <button type="button" class="sheet-foot-full" id="closeRecipeRead">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        const MOCK_RECIPES = [
+          { id: "r1", title: "Soy glazed meatloaf", kind: "main" },
+          { id: "r2", title: "Lemon italian chicken w/ spaghetti", kind: "main" },
+          { id: "r3", title: "Steak and spicy soy sauce", kind: "main" },
+          { id: "r4", title: "Chili", kind: "main" },
+          { id: "r5", title: "Curry peanut chicken", kind: "main" },
+          { id: "s1", title: "Regular rice", kind: "side" },
+          { id: "s2", title: "Sliced potatoes", kind: "side" },
+          { id: "s3", title: "Air fryer broccoli", kind: "side" },
+          { id: "s4", title: "Garlic bread", kind: "side" },
+          { id: "s5", title: "Sautéed spinach", kind: "side" },
+          { id: "s6", title: "Lemon spaghetti", kind: "side" },
+        ];
+
+        /** @type {Record<string, { id: string, title: string, kind: string }[]>} */
+        let plan = {};
+        let weekStart = startOfWeekMonday(new Date());
+        let pickerDate = null;
+        /** @type {'pick-main' | 'pick-side'} */
+        let pickerStep = "pick-main";
+        /** @type {{ id: string, title: string, kind: string } | null} */
+        let pendingMain = null;
+        /** Step 1 only: which list to show in the toggle */
+        /** @type {'main' | 'side'} */
+        let step1ListKind = "main";
+
+        const MOCK_INGREDIENTS_BY_RECIPE = {
+          r1: ["Ground beef - 16 oz", "Panko - ½ cup", "Soy glaze - 2 tbsp"],
+          r2: ["Chicken breast - 8 oz", "Spaghetti - 6 oz", "Lemon - 1", "Butter - 1 tbsp"],
+          r3: ["Sirloin steak - 10 oz", "Soy glaze - 2 tbsp", "Sambal - 1 tbsp"],
+          r4: ["Ground beef - 16 oz", "Tomato sauce", "Kidney beans - 15 oz"],
+          r5: ["Chicken thighs - 1.5 lb", "Yellow curry paste - 2 tbsp", "Coconut milk - 1 can"],
+          s1: ["Rice (dry) - 1 cup", "Water - 1.5 cup"],
+          s2: ["Potatoes - 12 oz", "Olive oil", "Salt and pepper"],
+          s3: ["Broccoli - 1 head", "Olive oil", "Salt and pepper"],
+          s4: ["Bread roll - 2", "Garlic butter", "Parmesan"],
+          s5: ["Spinach - 5 oz", "Olive oil", "Salt and pepper"],
+          s6: ["Spaghetti - 6 oz", "Zucchini - 1", "Parmesan - 3 tbsp", "Butter - 1 tbsp"],
+        };
+
+        const MOCK_INSTRUCTIONS_BY_RECIPE = {
+          r1: [
+            "Heat oven to 450°F. Mix glaze ingredients.",
+            "Combine meatloaf ingredients; shape into a loaf on a sheet pan.",
+            "Brush with half the glaze; add potatoes to the pan if using.",
+            "Bake ~22 minutes; rest, then glaze again before serving.",
+          ],
+          r2: [
+            "Cook chicken in a hot pan until golden and cooked through.",
+            "Boil spaghetti; reserve pasta water.",
+            "Sauté garlic, lemon zest, and finish sauce with butter and parmesan.",
+            "Toss with pasta and serve with chicken.",
+          ],
+          r3: [
+            "Pat steaks dry; season. Sear in a hot pan to desired doneness; rest.",
+            "Whisk sauce ingredients in the pan; simmer briefly.",
+            "Off heat, swirl in butter; slice steak and serve with sauce.",
+          ],
+          r4: [
+            "Brown beef with aromatics; drain if needed.",
+            "Add tomato sauce, beans, and seasonings; simmer 20–30 minutes.",
+            "Adjust salt and serve with toppings.",
+          ],
+          r5: [
+            "Sear chicken; set aside.",
+            "Simmer curry paste with coconut milk; return chicken to cook through.",
+            "Serve with rice and fresh toppings.",
+          ],
+          s1: [
+            "Rinse rice. Use 1½ cups water per 1 cup rice (adjust for variety).",
+            "Pressure cook ~15 min; natural release ~5 min, then fluff.",
+          ],
+          s2: [
+            "Preheat air fryer or oven to 450°F.",
+            "Toss potato pieces with oil, salt, and pepper.",
+            "Roast 18–20 minutes, tossing halfway, until tender and crisp.",
+          ],
+          s3: [
+            "Cut broccoli into florets; toss with oil, salt, and pepper.",
+            "Air fry at 400°F for ~6 minutes, tossing halfway.",
+          ],
+          s4: [
+            "Split rolls; spread garlic butter and parmesan.",
+            "Bake or air fry ~5 minutes until golden.",
+          ],
+          s5: [
+            "Heat oil in a pan; add spinach in batches.",
+            "Sauté until wilted; season with salt and pepper.",
+          ],
+          s6: [
+            "Boil spaghetti; reserve pasta water.",
+            "Air fry or sauté zucchini with oil and parmesan.",
+            "Make lemon–garlic sauce; toss with pasta and zucchini.",
+          ],
+        };
+
+        function startOfWeekMonday(d) {
+          const x = new Date(d);
+          const day = x.getDay();
+          const diff = day === 0 ? -6 : 1 - day;
+          x.setDate(x.getDate() + diff);
+          x.setHours(0, 0, 0, 0);
+          return x;
+        }
+
+        function addDays(d, n) {
+          const x = new Date(d);
+          x.setDate(x.getDate() + n);
+          return x;
+        }
+
+        function iso(d) {
+          return d.toISOString().slice(0, 10);
+        }
+
+        function fmtShort(d) {
+          return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+        }
+
+        function weekRangeLabel(start) {
+          const end = addDays(start, 6);
+          const a = start.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+          const b = end.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+          return a + " – " + b;
+        }
+
+        function renderWeek() {
+          const grid = document.getElementById("weekGrid");
+          const label = document.getElementById("weekLabel");
+          label.textContent = weekRangeLabel(weekStart);
+          grid.innerHTML = "";
+          const todayIso = iso(new Date());
+
+          for (let i = 0; i < 7; i++) {
+            const d = addDays(weekStart, i);
+            const key = iso(d);
+            const meals = plan[key] || [];
+            const isToday = key === todayIso;
+
+            const card = document.createElement("div");
+            card.className = "day-card" + (isToday ? " is-today" : "");
+            card.innerHTML =
+              '<div class="day-head">' +
+              d.toLocaleDateString(undefined, { weekday: "long" }) +
+              "</div>" +
+              '<div class="day-date">' +
+              d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
+              "</div>" +
+              '<ul class="meal-chips" data-date="' +
+              key +
+              '"></ul>' +
+              '<div class="add-meal"><button type="button" data-open="' +
+              key +
+              '">+ Add meal</button></div>';
+
+            const ul = card.querySelector(".meal-chips");
+            meals.forEach((m, idx) => {
+              const li = document.createElement("li");
+              li.className = "meal-chip" + (m.kind === "side" ? " side" : "");
+              const openBtn = document.createElement("button");
+              openBtn.type = "button";
+              openBtn.className = "meal-chip-title";
+              openBtn.textContent = m.title;
+              openBtn.setAttribute(
+                "aria-label",
+                "Open recipe: " + m.title,
+              );
+              openBtn.addEventListener("click", function () {
+                openRecipeRead(m);
+              });
+              const rm = document.createElement("button");
+              rm.type = "button";
+              rm.className = "x";
+              rm.setAttribute("aria-label", "Remove " + m.title);
+              rm.textContent = "×";
+              rm.addEventListener("click", function (e) {
+                e.stopPropagation();
+                plan[key].splice(idx, 1);
+                if (plan[key].length === 0) delete plan[key];
+                renderWeek();
+              });
+              li.appendChild(openBtn);
+              li.appendChild(rm);
+              ul.appendChild(li);
+            });
+
+            card.querySelector("[data-open]").addEventListener("click", function () {
+              openPicker(key);
+            });
+            grid.appendChild(card);
+          }
+
+          document.getElementById("prevWeek").onclick = function () {
+            weekStart = addDays(weekStart, -7);
+            renderWeek();
+          };
+          document.getElementById("nextWeek").onclick = function () {
+            weekStart = addDays(weekStart, 7);
+            renderWeek();
+          };
+        }
+
+        function escapeHtml(s) {
+          const d = document.createElement("div");
+          d.textContent = s;
+          return d.innerHTML;
+        }
+
+        function openRecipeRead(m) {
+          document.getElementById("recipeReadTitle").textContent = m.title;
+          const badge = document.getElementById("recipeReadKindBadge");
+          badge.textContent = m.kind === "side" ? "Side" : "Main";
+          badge.className =
+            "recipe-read-badge" + (m.kind === "side" ? " side" : "");
+          const ing = MOCK_INGREDIENTS_BY_RECIPE[m.id] || [];
+          const steps = MOCK_INSTRUCTIONS_BY_RECIPE[m.id] || [
+            "No demo instructions for this recipe.",
+          ];
+          let html = "<h3>Ingredients</h3><ul>";
+          ing.forEach(function (line) {
+            html += "<li>" + escapeHtml(line) + "</li>";
+          });
+          html += "</ul><h3>Instructions</h3><ol>";
+          steps.forEach(function (step) {
+            html += "<li>" + escapeHtml(step) + "</li>";
+          });
+          html += "</ol>";
+          document.getElementById("recipeReadBody").innerHTML = html;
+          document.getElementById("recipeReadOverlay").classList.add("open");
+          document.getElementById("recipeReadOverlay").setAttribute("aria-hidden", "false");
+        }
+
+        function closeRecipeRead() {
+          document.getElementById("recipeReadOverlay").classList.remove("open");
+          document.getElementById("recipeReadOverlay").setAttribute("aria-hidden", "true");
+        }
+
+        document.getElementById("closeRecipeRead").addEventListener("click", closeRecipeRead);
+        document.getElementById("recipeReadOverlay").addEventListener("click", function (e) {
+          if (e.target.id === "recipeReadOverlay") closeRecipeRead();
+        });
+
+        function setStep1TabUI() {
+          document.querySelectorAll("#pickerKindTabs button").forEach(function (btn) {
+            const on = btn.getAttribute("data-kind") === step1ListKind;
+            btn.setAttribute("data-on", on ? "true" : "false");
+            btn.setAttribute("aria-selected", on ? "true" : "false");
+          });
+        }
+
+        function setStep1ListKind(kind) {
+          step1ListKind = kind;
+          setStep1TabUI();
+          document.getElementById("recipeSearch").placeholder =
+            kind === "main" ? "Filter mains…" : "Filter sides…";
+          filterPicker(document.getElementById("recipeSearch").value);
+        }
+
+        function syncPickerChrome() {
+          const dateLine =
+            pickerDate &&
+            new Date(pickerDate + "T12:00:00").toLocaleDateString(undefined, {
+              weekday: "short",
+              month: "short",
+              day: "numeric",
+            });
+          const sub = document.getElementById("pickerSubtitle");
+          const skipBtn = document.getElementById("btnSkipSide");
+          const backBtn = document.getElementById("btnBackMain");
+          const closeBtn = document.getElementById("closeSheet");
+          const kindTabs = document.getElementById("pickerKindTabs");
+
+          if (pickerStep === "pick-main") {
+            document.getElementById("sheetTitle").textContent = "Add meal · " + dateLine;
+            kindTabs.hidden = false;
+            setStep1TabUI();
+            sub.hidden = true;
+            sub.textContent = "";
+            skipBtn.hidden = true;
+            backBtn.hidden = true;
+            closeBtn.textContent = "Cancel";
+          } else {
+            kindTabs.hidden = true;
+            document.getElementById("sheetTitle").textContent = "Optional side · " + dateLine;
+            sub.hidden = false;
+            sub.innerHTML =
+              "With <strong>" +
+              escapeHtml(pendingMain ? pendingMain.title : "") +
+              "</strong>. Pick a side or skip.";
+            skipBtn.hidden = false;
+            backBtn.hidden = false;
+            closeBtn.textContent = "Cancel";
+          }
+        }
+
+        function openPicker(dateKey) {
+          pickerDate = dateKey;
+          pickerStep = "pick-main";
+          pendingMain = null;
+          step1ListKind = "main";
+          syncPickerChrome();
+          document.getElementById("recipeSearch").value = "";
+          document.getElementById("recipeSearch").placeholder = "Filter mains…";
+          document.getElementById("overlay").classList.add("open");
+          document.getElementById("overlay").setAttribute("aria-hidden", "false");
+          filterPicker("");
+          document.getElementById("recipeSearch").focus();
+        }
+
+        function finishPickerAddMeals(entries) {
+          if (!pickerDate) return;
+          if (!plan[pickerDate]) plan[pickerDate] = [];
+          entries.forEach(function (m) {
+            plan[pickerDate].push(m);
+          });
+          closePicker();
+          renderWeek();
+        }
+
+        function closePicker() {
+          document.getElementById("overlay").classList.remove("open");
+          document.getElementById("overlay").setAttribute("aria-hidden", "true");
+          pickerDate = null;
+          pickerStep = "pick-main";
+          pendingMain = null;
+          step1ListKind = "main";
+          document.getElementById("recipeSearch").placeholder = "Filter recipes…";
+        }
+
+        function filterPicker(q) {
+          const list = document.getElementById("pickerList");
+          list.innerHTML = "";
+          const needle = q.trim().toLowerCase();
+          const wantKind =
+            pickerStep === "pick-main" ? step1ListKind : "side";
+          MOCK_RECIPES.filter(function (r) {
+            if (r.kind !== wantKind) return false;
+            return !needle || r.title.toLowerCase().includes(needle);
+          }).forEach(function (r) {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "pick-row";
+            btn.innerHTML =
+              "<span>" +
+              escapeHtml(r.title) +
+              "</span>" +
+              '<span class="meta"><span class="badge ' +
+              (r.kind === "side" ? "side" : "") +
+              '">' +
+              (r.kind === "side" ? "Side" : "Main") +
+              "</span></span>";
+            btn.addEventListener("click", function () {
+              if (!pickerDate) return;
+              if (pickerStep === "pick-main") {
+                if (r.kind === "side") {
+                  finishPickerAddMeals([{ id: r.id, title: r.title, kind: r.kind }]);
+                  return;
+                }
+                pendingMain = { id: r.id, title: r.title, kind: r.kind };
+                pickerStep = "pick-side";
+                document.getElementById("recipeSearch").value = "";
+                document.getElementById("recipeSearch").placeholder = "Filter sides…";
+                syncPickerChrome();
+                filterPicker("");
+                document.getElementById("recipeSearch").focus();
+              } else {
+                if (pendingMain) {
+                  finishPickerAddMeals([pendingMain, { id: r.id, title: r.title, kind: r.kind }]);
+                }
+              }
+            });
+            list.appendChild(btn);
+          });
+        }
+
+        document.getElementById("closeSheet").addEventListener("click", closePicker);
+        document.getElementById("btnSkipSide").addEventListener("click", function () {
+          if (!pickerDate || !pendingMain) return;
+          finishPickerAddMeals([pendingMain]);
+        });
+        document.getElementById("btnBackMain").addEventListener("click", function () {
+          if (pickerStep !== "pick-side") return;
+          pendingMain = null;
+          pickerStep = "pick-main";
+          document.getElementById("recipeSearch").value = "";
+          syncPickerChrome();
+          document.getElementById("recipeSearch").placeholder =
+            step1ListKind === "main" ? "Filter mains…" : "Filter sides…";
+          filterPicker("");
+          document.getElementById("recipeSearch").focus();
+        });
+
+        document.querySelectorAll("#pickerKindTabs button").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            if (pickerStep !== "pick-main") return;
+            const kind = btn.getAttribute("data-kind");
+            if (kind === "main" || kind === "side") {
+              setStep1ListKind(kind);
+            }
+          });
+        });
+        document.getElementById("overlay").addEventListener("click", function (e) {
+          if (e.target.id === "overlay") closePicker();
+        });
+        document.getElementById("recipeSearch").addEventListener("input", function () {
+          filterPicker(this.value);
+        });
+
+        function collectRecipeIds() {
+          const ids = new Set();
+          const start = iso(weekStart);
+          const end = iso(addDays(weekStart, 6));
+          Object.keys(plan).forEach(function (key) {
+            if (key >= start && key <= end) {
+              plan[key].forEach(function (m) {
+                ids.add(m.id);
+              });
+            }
+          });
+          return [...ids];
+        }
+
+        function buildShoppingPreview() {
+          const ids = collectRecipeIds();
+          const el = document.getElementById("shopPreview");
+          if (ids.length === 0) {
+            el.className = "shop-preview empty";
+            el.innerHTML =
+              "No meals in this week yet. Add meals above, then build the preview again.";
+            return;
+          }
+
+          const byCat = { produce: [], pantry: [], protein: [], other: [] };
+          const seen = new Set();
+
+          ids.forEach(function (rid) {
+            const lines = MOCK_INGREDIENTS_BY_RECIPE[rid] || [];
+            lines.forEach(function (line) {
+              if (seen.has(line)) return;
+              seen.add(line);
+              const l = line.toLowerCase();
+              if (/beef|chicken|steak|pork|fish|thigh/.test(l)) byCat.protein.push(line);
+              else if (/broccoli|spinach|zucchini|lemon|potato|garlic/.test(l)) byCat.produce.push(line);
+              else if (/rice|panko|oil|sauce|paste|milk|beans|water|butter|parmesan|roll/.test(l))
+                byCat.pantry.push(line);
+              else byCat.other.push(line);
+            });
+          });
+
+          el.className = "shop-preview";
+          let html = "";
+          const labels = { produce: "Produce", protein: "Protein", pantry: "Pantry & dry", other: "Other" };
+          Object.keys(labels).forEach(function (k) {
+            const arr = byCat[k];
+            if (arr.length === 0) return;
+            html += '<div class="shop-group"><h3>' + labels[k] + "</h3><ul>";
+            arr.sort().forEach(function (line) {
+              html += "<li>" + escapeHtml(line) + "</li>";
+            });
+            html += "</ul></div>";
+          });
+          el.innerHTML =
+            html +
+            '<p class="hint" style="margin-bottom:0">Demo merge is <strong>deduped by line text</strong>. Real app would use your ingredient IDs + units (like the live shopping list).</p>';
+        }
+
+        document.getElementById("btnBuild").addEventListener("click", buildShoppingPreview);
+
+        document.getElementById("btnClearPlan").addEventListener("click", function () {
+          if (!confirm("Clear all meals from this week?")) return;
+          const start = iso(weekStart);
+          const end = iso(addDays(weekStart, 6));
+          Object.keys(plan).forEach(function (k) {
+            if (k >= start && k <= end) delete plan[k];
+          });
+          renderWeek();
+          document.getElementById("shopPreview").className = "shop-preview empty";
+          document.getElementById("shopPreview").innerHTML =
+            "Plan cleared. Add meals and tap <strong>Build preview from plan</strong>.";
+        });
+
+        renderWeek();
+      })();
+    </script>
+  </body>
+</html>

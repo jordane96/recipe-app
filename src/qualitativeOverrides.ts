@@ -1,20 +1,10 @@
-import type { Recipe, RecipeIngredientLine } from "./types";
+import type { Recipe } from "./types";
 
 export const QUALITATIVE_OVERRIDES_KEY = "recipe-app-qualitative-overrides-v1";
 
-export const QUALITATIVE_OVERRIDES_CHANGED = "recipe-app-qual-overrides-changed";
-
-function notifyQualitativeOverridesChanged() {
-  if (typeof window === "undefined") {
-    return;
-  }
-  window.dispatchEvent(new CustomEvent(QUALITATIVE_OVERRIDES_CHANGED));
-}
-
 export type LineOverride = { amount: number; unit: string };
 
-/** Stable key for a line in published data (survives if line order changes within same section? No - same ingredient+note in same section could collide). */
-export function stableLineKey(
+function stableLineKey(
   recipeId: string,
   sectionName: string,
   ingredientId: string,
@@ -38,50 +28,6 @@ export function loadQualitativeOverrides(): Record<string, LineOverride> {
   } catch {
     return {};
   }
-}
-
-export function saveQualitativeOverrides(m: Record<string, LineOverride>) {
-  localStorage.setItem(QUALITATIVE_OVERRIDES_KEY, JSON.stringify(m));
-  notifyQualitativeOverridesChanged();
-}
-
-export function collectQualitativeLines(recipes: Recipe[]): Array<{
-  recipeId: string;
-  recipeTitle: string;
-  sectionName: string;
-  line: RecipeIngredientLine;
-  key: string;
-}> {
-  const out: Array<{
-    recipeId: string;
-    recipeTitle: string;
-    sectionName: string;
-    line: RecipeIngredientLine;
-    key: string;
-  }> = [];
-  for (const r of recipes) {
-    for (const sec of r.ingredientSections ?? []) {
-      for (const line of sec.lines) {
-        if (line.amount == null || line.unit == null) {
-          out.push({
-            recipeId: r.id,
-            recipeTitle: r.title,
-            sectionName: sec.name,
-            line,
-            key: stableLineKey(r.id, sec.name, line.ingredientId, line.note),
-          });
-        }
-      }
-    }
-  }
-  out.sort((a, b) => {
-    const t = a.recipeTitle.localeCompare(b.recipeTitle);
-    if (t !== 0) {
-      return t;
-    }
-    return a.key.localeCompare(b.key);
-  });
-  return out;
 }
 
 export function applyQualitativeOverrides(

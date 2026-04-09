@@ -1,13 +1,9 @@
 import * as React from "react";
-import { HashRouter, Navigate, Route, Routes } from "react-router-dom";
-import {
-  applyQualitativeOverrides,
-  loadQualitativeOverrides,
-  QUALITATIVE_OVERRIDES_CHANGED,
-} from "./qualitativeOverrides";
+import { HashRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { applyQualitativeOverrides, loadQualitativeOverrides } from "./qualitativeOverrides";
 import { loadRecipeBundle } from "./loadRecipes";
+import { MealPlannerPage } from "./MealPlannerPage";
 import type { IngredientsFile, Recipe } from "./types";
-import { QualitativeReviewPage } from "./QualitativeReviewPage";
 import { RecipeDetail } from "./RecipeDetail";
 import { RecipeList } from "./RecipeList";
 import { ShoppingListProvider } from "./ShoppingListContext";
@@ -19,13 +15,6 @@ export default function App() {
     null,
   );
   const [err, setErr] = React.useState<string | null>(null);
-  const [overrideRev, setOverrideRev] = React.useState(0);
-
-  React.useEffect(() => {
-    const onChanged = () => setOverrideRev((n) => n + 1);
-    window.addEventListener(QUALITATIVE_OVERRIDES_CHANGED, onChanged);
-    return () => window.removeEventListener(QUALITATIVE_OVERRIDES_CHANGED, onChanged);
-  }, []);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -51,14 +40,14 @@ export default function App() {
       return null;
     }
     return applyQualitativeOverrides(rawRecipes, loadQualitativeOverrides());
-  }, [rawRecipes, overrideRev]);
+  }, [rawRecipes]);
 
   const ingredients = ingredientsFile?.ingredients ?? [];
   const ready = recipes && ingredientsFile;
 
   return (
     <HashRouter>
-      <div className="app-shell">
+      <AppShell>
         {err ? <p className="err">{err}</p> : null}
         {!ready && !err ? <p className="muted">Loading…</p> : null}
         {ready ? (
@@ -66,6 +55,12 @@ export default function App() {
             <Routes>
               <Route
                 path="/"
+                element={
+                  <MealPlannerPage recipes={recipes} ingredients={ingredients} />
+                }
+              />
+              <Route
+                path="/recipes"
                 element={
                   <RecipeList recipes={recipes} ingredients={ingredients} />
                 }
@@ -82,21 +77,21 @@ export default function App() {
                   <ShoppingListPage recipes={recipes} ingredients={ingredients} />
                 }
               />
-              <Route
-                path="/qualitative"
-                element={
-                  <QualitativeReviewPage
-                    recipes={rawRecipes!}
-                    ingredients={ingredients}
-                    units={ingredientsFile.units}
-                  />
-                }
-              />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </ShoppingListProvider>
         ) : null}
-      </div>
+      </AppShell>
     </HashRouter>
+  );
+}
+
+function AppShell({ children }: { children: React.ReactNode }) {
+  const { pathname } = useLocation();
+  const wide = pathname === "/" || pathname === "";
+  return (
+    <div className={wide ? "app-shell app-shell--wide" : "app-shell"}>
+      {children}
+    </div>
   );
 }

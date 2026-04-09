@@ -30,6 +30,13 @@ export interface IngredientsFile {
   ingredients: IngredientDef[];
 }
 
+/** Library side recipe linked from a main (full instructions); optional shopping add. */
+export interface RecommendedSideRef {
+  recipeId: string;
+  /** Short hint, e.g. why this maps from the written recipe */
+  label?: string;
+}
+
 export interface Recipe {
   id: string;
   title: string;
@@ -39,6 +46,8 @@ export interface Recipe {
   tags?: string[];
   /** Structured shopping + display */
   ingredientSections: IngredientSection[];
+  /** Curated links to course:side recipes (from recommendedSides.mjs). */
+  recommendedSides?: RecommendedSideRef[];
   instructions?: string[];
   sourceUrl?: string;
   notes?: string;

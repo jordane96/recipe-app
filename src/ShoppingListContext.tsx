@@ -45,12 +45,18 @@ function writePurchased(keys: string[]) {
 }
 
 type Ctx = {
+  /** Recipe ids in list order; duplicates = multiple portions / schedule slots. */
   selectedIds: string[];
   count: number;
+  listQuantity: (id: string) => number;
   isSelected: (id: string) => boolean;
   addToList: (id: string) => void;
+  /** Removes one occurrence of id (first in list). */
   removeFromList: (id: string) => void;
-  toggleList: (id: string) => void;
+  /** Removes every slot for this recipe id. */
+  removeAllSlotsForRecipe: (id: string) => void;
+  /** If the list is empty, set to these ids (hydrate from saved meal plan). */
+  hydrateShoppingIfEmpty: (ids: string[]) => void;
   clearList: () => void;
   /** Normalized combined-line keys marked as purchased */
   purchasedKeys: ReadonlySet<string>;
@@ -81,23 +87,36 @@ export function ShoppingListProvider({ children }: { children: React.ReactNode }
 
   const purchasedSet = React.useMemo(() => new Set(purchased), [purchased]);
 
+  const listQuantity = React.useCallback(
+    (id: string) => selectedIds.filter((x) => x === id).length,
+    [selectedIds],
+  );
+
   const isSelected = React.useCallback(
     (id: string) => selectedIds.includes(id),
     [selectedIds],
   );
 
   const addToList = React.useCallback((id: string) => {
-    setSelectedIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+    setSelectedIds((prev) => [...prev, id]);
   }, []);
 
   const removeFromList = React.useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const i = prev.indexOf(id);
+      if (i === -1) {
+        return prev;
+      }
+      return [...prev.slice(0, i), ...prev.slice(i + 1)];
+    });
+  }, []);
+
+  const removeAllSlotsForRecipe = React.useCallback((id: string) => {
     setSelectedIds((prev) => prev.filter((x) => x !== id));
   }, []);
 
-  const toggleList = React.useCallback((id: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
+  const hydrateShoppingIfEmpty = React.useCallback((ids: string[]) => {
+    setSelectedIds((prev) => (prev.length > 0 ? prev : [...ids]));
   }, []);
 
   const clearList = React.useCallback(() => {
@@ -139,10 +158,12 @@ export function ShoppingListProvider({ children }: { children: React.ReactNode }
     return {
       selectedIds,
       count: selectedIds.length,
+      listQuantity,
       isSelected,
       addToList,
       removeFromList,
-      toggleList,
+      removeAllSlotsForRecipe,
+      hydrateShoppingIfEmpty,
       clearList,
       purchasedKeys: purchasedSet,
       isPurchased,
@@ -152,10 +173,12 @@ export function ShoppingListProvider({ children }: { children: React.ReactNode }
     };
   }, [
     selectedIds,
+    listQuantity,
     isSelected,
     addToList,
     removeFromList,
-    toggleList,
+    removeAllSlotsForRecipe,
+    hydrateShoppingIfEmpty,
     clearList,
     purchasedSet,
     isPurchased,

@@ -786,16 +786,6 @@ export const SECTIONS = {
           "note": "finish sauce"
         }
       ]
-    },
-    {
-      "name": "Side",
-      "lines": [
-        {
-          "ingredientId": "potato",
-          "amount": 0.75,
-          "unit": "lb"
-        }
-      ]
     }
   ],
   "steak-spicy-soy-sauce": [
@@ -1143,54 +1133,184 @@ export const SECTIONS = {
       ]
     }
   ],
-  "veggie-air-fry-grill-times": [
+  "air-fry-asparagus": [
     {
-      "name": "General",
+      "name": "Main",
       "lines": [
         {
-          "ingredientId": "air-fry-veggie-note",
-          "amount": null,
-          "unit": null,
-          "note": "olive oil, salt, pepper; toss halfway"
+          "ingredientId": "asparagus",
+          "amount": 1,
+          "unit": "bunch"
         },
         {
-          "ingredientId": "asparagus",
+          "ingredientId": "olive-oil",
           "amount": null,
           "unit": null,
-          "note": "400°F 6–8 min"
+          "note": "to toss"
         },
+        {
+          "ingredientId": "salt-and-pepper",
+          "amount": null,
+          "unit": null
+        }
+      ]
+    }
+  ],
+  "air-fry-brussels-sprouts": [
+    {
+      "name": "Main",
+      "lines": [
         {
           "ingredientId": "brussels-sprouts",
+          "amount": 12,
+          "unit": "oz",
+          "note": "trimmed, halved"
+        },
+        {
+          "ingredientId": "olive-oil",
           "amount": null,
           "unit": null,
-          "note": "375°F 10 min"
+          "note": "to toss"
         },
+        {
+          "ingredientId": "salt-and-pepper",
+          "amount": null,
+          "unit": null
+        }
+      ]
+    }
+  ],
+  "air-fry-broccoli": [
+    {
+      "name": "Main",
+      "lines": [
         {
           "ingredientId": "broccoli",
+          "amount": 1,
+          "unit": "each",
+          "note": "head, florets"
+        },
+        {
+          "ingredientId": "olive-oil",
           "amount": null,
           "unit": null,
-          "note": "400°F 6 min"
+          "note": "to toss"
         },
+        {
+          "ingredientId": "salt-and-pepper",
+          "amount": null,
+          "unit": null
+        }
+      ]
+    }
+  ],
+  "air-fry-squash": [
+    {
+      "name": "Main",
+      "lines": [
         {
           "ingredientId": "squash",
+          "amount": 1,
+          "unit": "each",
+          "note": "medium, cut up"
+        },
+        {
+          "ingredientId": "olive-oil",
           "amount": null,
           "unit": null,
-          "note": "400°F 8 min"
+          "note": "to toss"
         },
+        {
+          "ingredientId": "salt-and-pepper",
+          "amount": null,
+          "unit": null
+        }
+      ]
+    }
+  ],
+  "air-fry-potatoes": [
+    {
+      "name": "Main",
+      "lines": [
         {
           "ingredientId": "potato",
+          "amount": 12,
+          "unit": "oz",
+          "note": "bite-size pieces"
+        },
+        {
+          "ingredientId": "olive-oil",
           "amount": null,
           "unit": null,
-          "note": "400°F 18–20 min"
+          "note": "to toss"
         },
+        {
+          "ingredientId": "salt-and-pepper",
+          "amount": null,
+          "unit": null
+        },
+        {
+          "ingredientId": "italian-seasoning",
+          "amount": null,
+          "unit": null,
+          "note": "optional"
+        }
+      ]
+    }
+  ],
+  "air-fry-zucchini-chips": [
+    {
+      "name": "Main",
+      "lines": [
+        {
+          "ingredientId": "zucchini",
+          "amount": 1,
+          "unit": "each",
+          "note": "thin chips"
+        },
+        {
+          "ingredientId": "olive-oil",
+          "amount": null,
+          "unit": null,
+          "note": "to toss"
+        },
+        {
+          "ingredientId": "salt-and-pepper",
+          "amount": null,
+          "unit": null
+        },
+        {
+          "ingredientId": "parmesan-cheese",
+          "amount": 2,
+          "unit": "tbsp",
+          "note": "grated"
+        },
+        {
+          "ingredientId": "panko",
+          "amount": null,
+          "unit": null,
+          "note": "optional, non-keto"
+        }
+      ]
+    }
+  ],
+  "saute-spinach": [
+    {
+      "name": "Main",
+      "lines": [
         {
           "ingredientId": "spinach",
-          "amount": null,
-          "unit": null,
-          "note": "sauté"
+          "amount": 5,
+          "unit": "oz"
         },
         {
-          "ingredientId": "zucchini-chips-note",
+          "ingredientId": "olive-oil",
+          "amount": null,
+          "unit": null,
+          "note": "for pan"
+        },
+        {
+          "ingredientId": "salt-and-pepper",
           "amount": null,
           "unit": null
         }
@@ -1277,6 +1397,30 @@ export const SECTIONS = {
           "ingredientId": "butter",
           "amount": 2,
           "unit": "tbsp"
+        }
+      ]
+    }
+  ],
+  "sliced-potatoes": [
+    {
+      "name": "Main",
+      "lines": [
+        {
+          "ingredientId": "potato",
+          "amount": 0.75,
+          "unit": "lb",
+          "note": "slice or dice"
+        },
+        {
+          "ingredientId": "olive-oil",
+          "amount": null,
+          "unit": null,
+          "note": "to coat"
+        },
+        {
+          "ingredientId": "salt-and-pepper",
+          "amount": null,
+          "unit": null
         }
       ]
     }

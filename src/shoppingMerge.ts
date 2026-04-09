@@ -162,6 +162,8 @@ function formatCount(amount: number, unit: string): string {
 }
 
 export interface IngredientBreakdown {
+  /** Stable key for this list slot (same recipeId may appear multiple times). */
+  instanceKey: string;
   recipeId: string;
   title: string;
   items: string[];
@@ -391,7 +393,8 @@ export function buildShoppingListData(
     ...rawOrder.map((line) => ({ kind: "raw" as const, line })),
   ];
 
-  const byRecipe: IngredientBreakdown[] = recipesInOrder.map((r) => ({
+  const byRecipe: IngredientBreakdown[] = recipesInOrder.map((r, instanceIndex) => ({
+    instanceKey: `${r.id}@${instanceIndex}`,
     recipeId: r.id,
     title: r.title,
     items: collectLines(r, byId),

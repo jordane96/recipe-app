@@ -50,7 +50,7 @@ npm run dev
 
 5. After a minute or two, open **https://jordane96.github.io/recipe-app/** (hard refresh if needed).
 
-Routing uses **hash URLs** (e.g. `/#/recipe/chicken-air-fried`) so navigation works on GitHub Pages without extra server config.
+Routing uses **hash URLs** (e.g. `/#/` meal planner, `/#/recipes` library, `/#/recipe/chicken-air-fried`) so navigation works on GitHub Pages without extra server config.
 
 ## Blank page on GitHub / Intuit Pages
 

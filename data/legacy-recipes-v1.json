@@ -91,9 +91,9 @@
     },
     {
       "id": "pot-roast-keto",
-      "title": "Pot roast (Keto)",
+      "title": "Pot roast (Keto, crock pot)",
       "type": "recipe",
-      "tags": ["keto", "slow-cooker"],
+      "tags": ["keto", "crock-pot"],
       "sections": [
         {
           "name": "Main",
@@ -108,7 +108,7 @@
         }
       ],
       "instructions": [
-        "Coat roast in salt and pepper, add ingredients, cook 6hrs (or until shredable), shred, cook 1 hr"
+        "Coat roast in salt and pepper, add ingredients to crock pot, cook 6 hrs (or until shredable), shred, cook 1 hr"
       ],
       "sourceUrl": "https://www.wholesomeyum.com/keto-low-carb-pot-roast-slow-cooker-recipe/"
     },
@@ -458,19 +458,15 @@
             "Boil, then simmer. Cook 2-3 min",
             "Sour cream - 1.5 tbsp"
           ]
-        },
-        {
-          "name": "Side",
-          "items": ["Potatoes - 3/4 lb"]
         }
       ],
       "instructions": [
         "Mix glaze",
         "Zest garlic",
-        "Dice potatoes & mix with olive oil, salt, and pepper",
+        "Prep potatoes per **Sliced potatoes** side (slice or dice, toss with olive oil, salt, and pepper)",
         "Mix meatloaf together, shape into loaf (7 inches x 3 inches), add salt and pepper",
         "Put loaf on pan, top with half the glaze",
-        "Add diced potatoes",
+        "Add potatoes to the pan with the loaf",
         "Cook for 22 min at 450",
         "Let sit for 2 minutes",
         "Add other half of glaze",
@@ -689,26 +685,161 @@
       "instructions": ["Cook quesadilla, add meat (reheated)"]
     },
     {
-      "id": "veggie-air-fry-grill-times",
-      "title": "Air fryer / grilled / sauteed veggies",
-      "type": "reference",
+      "id": "air-fry-asparagus",
+      "title": "Air fryer asparagus",
+      "type": "recipe",
+      "course": "side",
       "tags": ["vegetables", "air-fryer"],
       "sections": [
         {
-          "name": "General",
+          "name": "Main",
           "items": [
-            "All veggies - olive oil, salt, pepper; toss halfway through",
-            "Asparagus - 400, 6-8 minutes",
-            "Brussel sprouts - 375, 10 minutes",
-            "Broccoli - 400, 6 minutes",
-            "Squash - 400, 8 minutes",
-            "Potatoes - 400, 18-20 minutes; optional italian seasoning",
-            "Spinach - sautee",
-            "Zucchini chips (keto): Slice into thin chips; olive oil; salt and pepper; Parmesan; air fry; optional (non keto): Panko crumbs"
+            "Asparagus - 1 bunch",
+            "Olive oil",
+            "Salt and pepper"
           ]
         }
       ],
-      "instructions": []
+      "instructions": [
+        "Trim woody ends.",
+        "Toss with olive oil, salt, and pepper.",
+        "Air fry at 400°F for 6–8 minutes, tossing halfway through."
+      ]
+    },
+    {
+      "id": "air-fry-brussels-sprouts",
+      "title": "Air fryer Brussels sprouts",
+      "type": "recipe",
+      "course": "side",
+      "tags": ["vegetables", "air-fryer"],
+      "sections": [
+        {
+          "name": "Main",
+          "items": [
+            "Brussels sprouts - ~12 oz, trimmed and halved",
+            "Olive oil",
+            "Salt and pepper"
+          ]
+        }
+      ],
+      "instructions": [
+        "Halve or quarter any very large sprouts.",
+        "Toss with olive oil, salt, and pepper.",
+        "Air fry at 375°F for 10 minutes, shaking or tossing halfway through."
+      ]
+    },
+    {
+      "id": "air-fry-broccoli",
+      "title": "Air fryer broccoli",
+      "type": "recipe",
+      "course": "side",
+      "tags": ["vegetables", "air-fryer"],
+      "sections": [
+        {
+          "name": "Main",
+          "items": [
+            "Broccoli - 1 head (florets)",
+            "Olive oil",
+            "Salt and pepper"
+          ]
+        }
+      ],
+      "instructions": [
+        "Cut into medium florets.",
+        "Toss with olive oil, salt, and pepper.",
+        "Air fry at 400°F for 6 minutes, tossing halfway through."
+      ]
+    },
+    {
+      "id": "air-fry-squash",
+      "title": "Air fryer squash",
+      "type": "recipe",
+      "course": "side",
+      "tags": ["vegetables", "air-fryer"],
+      "sections": [
+        {
+          "name": "Main",
+          "items": [
+            "Squash - 1 medium, cut into pieces",
+            "Olive oil",
+            "Salt and pepper"
+          ]
+        }
+      ],
+      "instructions": [
+        "Cut into uniform pieces (similar size for even cooking).",
+        "Toss with olive oil, salt, and pepper.",
+        "Air fry at 400°F for 8 minutes, tossing halfway through."
+      ]
+    },
+    {
+      "id": "air-fry-potatoes",
+      "title": "Air fryer potatoes",
+      "type": "recipe",
+      "course": "side",
+      "tags": ["vegetables", "air-fryer"],
+      "sections": [
+        {
+          "name": "Main",
+          "items": [
+            "Potatoes - ~12 oz, bite-size pieces",
+            "Olive oil",
+            "Salt and pepper",
+            "Italian seasoning - optional"
+          ]
+        }
+      ],
+      "instructions": [
+        "Cut into bite-size pieces.",
+        "Toss with olive oil, salt, and pepper; add Italian seasoning if you like.",
+        "Air fry at 400°F for 18–20 minutes, tossing halfway through, until tender inside and crisp outside."
+      ]
+    },
+    {
+      "id": "air-fry-zucchini-chips",
+      "title": "Air fryer zucchini chips",
+      "type": "recipe",
+      "course": "side",
+      "tags": ["vegetables", "air-fryer"],
+      "sections": [
+        {
+          "name": "Main",
+          "items": [
+            "Zucchini - 1, sliced into thin chips",
+            "Olive oil",
+            "Salt and pepper",
+            "Parmesan cheese",
+            "Panko - optional (non-keto)"
+          ]
+        }
+      ],
+      "instructions": [
+        "Slice zucchini into thin chips; pat dry if very wet.",
+        "Toss with olive oil, salt, pepper, and Parmesan; add panko if using.",
+        "Air fry in a single layer until crisp, checking often so they don’t burn."
+      ]
+    },
+    {
+      "id": "saute-spinach",
+      "title": "Sautéed spinach",
+      "type": "recipe",
+      "course": "side",
+      "tags": ["vegetables", "stovetop"],
+      "sections": [
+        {
+          "name": "Main",
+          "items": [
+            "Spinach - ~5 oz (or one bag)",
+            "Olive oil",
+            "Salt and pepper"
+          ]
+        }
+      ],
+      "instructions": [
+        "Heat a little olive oil in a large pan over medium-high heat.",
+        "Add spinach in batches if needed; sauté until wilted.",
+        "Season with salt and pepper."
+      ]
     },
     {
       "id": "regular-rice",
@@ -783,6 +914,29 @@
         "Drain water (keep some in a cup)",
         "Mash",
         "Add sour cream and water as necessary, add salt and pepper and butter"
+      ]
+    },
+    {
+      "id": "sliced-potatoes",
+      "title": "Sliced potatoes",
+      "type": "recipe",
+      "course": "side",
+      "sections": [
+        {
+          "name": "Main",
+          "items": [
+            "Potatoes - 3/4 lb (slice or dice)",
+            "Olive oil",
+            "Salt and pepper"
+          ]
+        }
+      ],
+      "instructions": [
+        "Preheat oven to 450°F (or match the main if roasting together).",
+        "Slice or dice potatoes; toss with olive oil, salt, and pepper.",
+        "Spread on a sheet pan in one layer.",
+        "Roast 20–25 minutes at 450°F, flipping once, until tender and browned.",
+        "With soy glazed meatloaf: add potatoes to the pan with the loaf and roast about 22 minutes as in that recipe."
       ]
     },
     {

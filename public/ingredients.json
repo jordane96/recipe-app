@@ -29,11 +29,6 @@
   },
   "ingredients": [
     {
-      "id": "air-fry-veggie-note",
-      "name": "Air fry / grill veggie prep",
-      "kind": "other"
-    },
-    {
       "id": "all-purpose-seasoning",
       "name": "Any seasoning",
       "kind": "other"
@@ -682,11 +677,6 @@
       "id": "zucchini",
       "name": "Zucchini",
       "kind": "count"
-    },
-    {
-      "id": "zucchini-chips-note",
-      "name": "Zucchini chips (keto prep)",
-      "kind": "other"
     },
     {
       "id": "oregano-dried",

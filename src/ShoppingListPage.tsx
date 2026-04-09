@@ -5,8 +5,10 @@ import {
   formatVolumeConversions,
   formatWeightConversions,
   type CombinedShoppingItem,
+  type IngredientBreakdown,
 } from "./shoppingMerge";
 import type { IngredientDef, Recipe } from "./types";
+import { recipeDetailPath } from "./listTabSearch";
 import {
   recipeSegment,
   SEGMENT_LABEL,
@@ -28,6 +30,36 @@ function altConversionsForItem(item: CombinedShoppingItem): string | null {
   return null;
 }
 
+function groupSlotsByRecipeId(
+  list: Array<{ recipe: Recipe }>,
+): Array<{ recipe: Recipe; count: number }> {
+  const order: string[] = [];
+  const map = new Map<string, { recipe: Recipe; count: number }>();
+  for (const { recipe } of list) {
+    if (!map.has(recipe.id)) {
+      order.push(recipe.id);
+      map.set(recipe.id, { recipe, count: 0 });
+    }
+    map.get(recipe.id)!.count += 1;
+  }
+  return order.map((id) => map.get(id)!);
+}
+
+function mergeBreakdownsByRecipeId(
+  blocks: IngredientBreakdown[],
+): Array<IngredientBreakdown & { portionCount: number }> {
+  const order: string[] = [];
+  const map = new Map<string, IngredientBreakdown & { portionCount: number }>();
+  for (const b of blocks) {
+    if (!map.has(b.recipeId)) {
+      order.push(b.recipeId);
+      map.set(b.recipeId, { ...b, portionCount: 0 });
+    }
+    map.get(b.recipeId)!.portionCount += 1;
+  }
+  return order.map((id) => map.get(id)!);
+}
+
 export function ShoppingListPage({
   recipes,
   ingredients,
@@ -38,6 +70,7 @@ export function ShoppingListPage({
   const {
     selectedIds,
     removeFromList,
+    removeAllSlotsForRecipe,
     clearList,
     isPurchased,
     togglePurchased,
@@ -45,9 +78,19 @@ export function ShoppingListPage({
     prunePurchasedToValidLines,
   } = useShoppingList();
 
-  const selectedRecipes = selectedIds
-    .map((id) => recipes.find((r) => r.id === id))
-    .filter((r): r is Recipe => Boolean(r));
+  const selectedSlots = React.useMemo(() => {
+    return selectedIds
+      .map((id, slotIndex) => {
+        const r = recipes.find((x) => x.id === id);
+        return r ? { recipe: r, slotIndex, id } : null;
+      })
+      .filter((x): x is { recipe: Recipe; slotIndex: number; id: string } => x !== null);
+  }, [selectedIds, recipes]);
+
+  const selectedRecipes = React.useMemo(
+    () => selectedSlots.map((s) => s.recipe),
+    [selectedSlots],
+  );
 
   const recipeById = React.useMemo(
     () => new Map(recipes.map((r) => [r.id, r])),
@@ -55,12 +98,23 @@ export function ShoppingListPage({
   );
 
   const selectedBySegment = React.useMemo(() => {
-    const out: Record<RecipeSegment, Recipe[]> = { main: [], side: [], other: [] };
-    for (const r of selectedRecipes) {
-      out[recipeSegment(r)].push(r);
+    const slots: Record<
+      RecipeSegment,
+      Array<{ recipe: Recipe; slotIndex: number }>
+    > = { main: [], side: [], other: [] };
+    for (const s of selectedSlots) {
+      slots[recipeSegment(s.recipe)].push({ recipe: s.recipe, slotIndex: s.slotIndex });
     }
-    return out;
-  }, [selectedRecipes]);
+    const grouped: Record<RecipeSegment, Array<{ recipe: Recipe; count: number }>> = {
+      main: [],
+      side: [],
+      other: [],
+    };
+    for (const seg of SEGMENT_ORDER) {
+      grouped[seg] = groupSlotsByRecipeId(slots[seg]);
+    }
+    return grouped;
+  }, [selectedSlots]);
 
   const { combinedItems, byRecipe } = buildShoppingListData(
     selectedRecipes,
@@ -116,7 +170,7 @@ export function ShoppingListPage({
     <>
       <div className="top-bar">
         <Link to="/" className="back-btn">
-          ← Recipes
+          ← Plan
         </Link>
         <h1 className="page-title" style={{ fontSize: "1.25rem" }}>
           Shopping list
@@ -154,19 +208,48 @@ export function ShoppingListPage({
                 <div key={seg} className="shopping-segment">
                   <h3 className="shopping-segment-heading">{SEGMENT_LABEL[seg]}</h3>
                   <ul className="selected-recipes">
-                    {list.map((r) => (
+                    {list.map(({ recipe: r, count }) => (
                       <li key={r.id} className="selected-recipe-row">
-                        <Link to={`/recipe/${r.id}`} className="selected-recipe-link">
-                          {r.title}
-                        </Link>
-                        <button
-                          type="button"
-                          className="btn-remove"
-                          aria-label={`Remove ${r.title} from list`}
-                          onClick={() => removeFromList(r.id)}
+                        <Link
+                          to={recipeDetailPath(r.id, recipeSegment(r) === "side")}
+                          className="selected-recipe-link"
                         >
-                          Remove
-                        </button>
+                          {r.title}
+                          {count > 1 ? (
+                            <span className="selected-recipe-count"> × {count}</span>
+                          ) : null}
+                        </Link>
+                        <div className="selected-recipe-actions">
+                          {count > 1 ? (
+                            <button
+                              type="button"
+                              className="selected-recipe-qty-btn"
+                              aria-label={`Remove one ${r.title} from list`}
+                              onClick={() => removeFromList(r.id)}
+                            >
+                              −
+                            </button>
+                          ) : null}
+                          {count > 1 ? (
+                            <button
+                              type="button"
+                              className="btn-remove"
+                              aria-label={`Remove all ${count} ${r.title} from list`}
+                              onClick={() => removeAllSlotsForRecipe(r.id)}
+                            >
+                              Remove all
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn-remove"
+                              aria-label={`Remove ${r.title} from list`}
+                              onClick={() => removeFromList(r.id)}
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -222,15 +305,19 @@ export function ShoppingListPage({
                 const r = recipeById.get(b.recipeId);
                 return (r ? recipeSegment(r) : "main") === seg;
               });
-              if (blocks.length === 0) {
+              const mergedBlocks = mergeBreakdownsByRecipeId(blocks);
+              if (mergedBlocks.length === 0) {
                 return null;
               }
               return (
                 <div key={seg} className="shopping-segment">
                   <h3 className="shopping-segment-heading">{SEGMENT_LABEL[seg]}</h3>
-                  {blocks.map((block) => (
+                  {mergedBlocks.map((block) => (
                     <div key={block.recipeId} className="by-recipe-block">
-                      <h4 className="by-recipe-title">{block.title}</h4>
+                      <h4 className="by-recipe-title">
+                        {block.title}
+                        {block.portionCount > 1 ? ` × ${block.portionCount}` : ""}
+                      </h4>
                       {block.items.length === 0 ? (
                         <p className="muted">No ingredient lines in data.</p>
                       ) : (

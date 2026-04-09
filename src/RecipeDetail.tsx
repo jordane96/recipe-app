@@ -1,7 +1,13 @@
 import * as React from "react";
-import { Link, useParams } from "react-router-dom";
-import type { IngredientDef, Recipe } from "./types";
+import { Link, useParams, useSearchParams } from "react-router-dom";
+import type { IngredientDef, Recipe, RecommendedSideRef } from "./types";
 import { formatIngredientLine, ingredientMap } from "./ingredientDisplay";
+import {
+  homeListPath,
+  readSidesListTab,
+  recipeDetailPath,
+  shoppingListPath,
+} from "./listTabSearch";
 import { recipeSegment } from "./recipeCourse";
 import { useShoppingList } from "./ShoppingListContext";
 
@@ -13,15 +19,17 @@ export function RecipeDetail({
   ingredients: IngredientDef[];
 }) {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const fromSidesList = readSidesListTab(searchParams);
   const recipe = recipes.find((r) => r.id === id);
-  const { isSelected, addToList, removeFromList, count } = useShoppingList();
+  const { listQuantity, addToList, removeFromList, count } = useShoppingList();
   const byId = React.useMemo(() => ingredientMap(ingredients), [ingredients]);
 
   if (!recipe) {
     return (
       <>
         <div className="top-bar">
-          <Link to="/" className="back-btn">
+          <Link to={homeListPath(fromSidesList)} className="back-btn">
             ← Back
           </Link>
         </div>
@@ -30,12 +38,27 @@ export function RecipeDetail({
     );
   }
 
-  const onList = isSelected(recipe.id);
+  const onListQty = listQuantity(recipe.id);
+
+  const recommended = recipe.recommendedSides ?? [];
+  const sideRefs = React.useMemo(() => {
+    const map = new Map<string, RecommendedSideRef>();
+    for (const ref of recommended) {
+      if (!map.has(ref.recipeId)) {
+        map.set(ref.recipeId, ref);
+      }
+    }
+    return [...map.entries()].map(([recipeId, ref]) => ({
+      recipeId,
+      label: ref.label,
+      recipe: recipes.find((r) => r.id === recipeId),
+    }));
+  }, [recommended, recipes]);
 
   return (
     <>
       <div className="top-bar">
-        <Link to="/" className="back-btn">
+        <Link to={homeListPath(fromSidesList)} className="back-btn">
           ← Back
         </Link>
         <h1 className="page-title" style={{ fontSize: "1.25rem" }}>
@@ -71,6 +94,68 @@ export function RecipeDetail({
         </section>
       ))}
 
+      {sideRefs.length > 0 ? (
+        <section className="detail-section recommended-sides-section">
+          <h2>Recommended sides</h2>
+          <p className="muted recommended-sides-intro">
+            Open a side for full prep instructions. Add to your shopping list only if you want
+            those ingredients merged in.
+          </p>
+          <ul className="recommended-sides-list">
+            {sideRefs.map(({ recipeId, label, recipe: sideRecipe }) => {
+              const sideQty = listQuantity(recipeId);
+              return (
+                <li key={recipeId} className="recommended-side-card">
+                  <div className="recommended-side-head">
+                    {sideRecipe ? (
+                      <Link
+                        to={recipeDetailPath(recipeId, fromSidesList)}
+                        className="recommended-side-title"
+                      >
+                        {sideRecipe.title}
+                      </Link>
+                    ) : (
+                      <span className="recommended-side-title missing-side">
+                        Missing recipe: {recipeId}
+                      </span>
+                    )}
+                    {sideRecipe ? (
+                      sideQty > 0 ? (
+                        <div className="recommended-side-qty-btns">
+                          <button
+                            type="button"
+                            className="btn-primary btn-compact"
+                            onClick={() => addToList(recipeId)}
+                          >
+                            + Add
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-secondary btn-compact"
+                            onClick={() => removeFromList(recipeId)}
+                          >
+                            − One ({sideQty})
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          className="btn-primary btn-compact"
+                          onClick={() => addToList(recipeId)}
+                        >
+                          Add to list
+                        </button>
+                      )
+                    ) : null}
+                  </div>
+                  {label ? <p className="muted recommended-side-label">{label}</p> : null}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : null}
+
       {recipe.instructions && recipe.instructions.length > 0 ? (
         <section className="detail-section">
           <h2>Instructions</h2>
@@ -100,14 +185,33 @@ export function RecipeDetail({
       ) : null}
 
       <div className="cta-panel cta-panel-bottom">
-        <button
-          type="button"
-          className={onList ? "btn-secondary btn-cta-wide" : "btn-primary btn-cta-wide"}
-          onClick={() => (onList ? removeFromList(recipe.id) : addToList(recipe.id))}
-        >
-          {onList ? "Remove from shopping list" : "Add to shopping list"}
-        </button>
-        <Link to="/shopping" className="cta-sub-link">
+        {onListQty > 0 ? (
+          <div className="cta-panel-actions">
+            <button
+              type="button"
+              className="btn-primary btn-cta-wide"
+              onClick={() => addToList(recipe.id)}
+            >
+              Add another to shopping list
+            </button>
+            <button
+              type="button"
+              className="btn-secondary btn-cta-wide"
+              onClick={() => removeFromList(recipe.id)}
+            >
+              Remove one ({onListQty} on list)
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="btn-primary btn-cta-wide"
+            onClick={() => addToList(recipe.id)}
+          >
+            Add to shopping list
+          </button>
+        )}
+        <Link to={shoppingListPath(fromSidesList)} className="cta-sub-link">
           View shopping list{count > 0 ? ` (${count})` : ""}
         </Link>
       </div>

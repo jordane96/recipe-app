@@ -12,9 +12,9 @@ The shopping list merge (`src/shoppingMerge.ts`, `lineToBucket`) only sums **vol
 
 **Example:** `chicken-breast` at `10 oz` merges with other oz lines; `chicken-breast` with no amount (e.g. katsu “butterflied & pounded”) appears as a **separate** combined-list row.
 
-### In-app UI
+### Browser overrides (optional)
 
-Open **`#/qualitative`** (link **Quantities** on the recipe list). There you can enter amount + unit for each qualitative line; overrides are stored in the browser (`localStorage` key `recipe-app-qualitative-overrides-v1`) and apply to recipe pages and the combined shopping list until cleared.
+Overrides can still live in the browser (`localStorage` key `recipe-app-qualitative-overrides-v1`) if you set them manually or from an older build; they apply to recipe views and the combined shopping list until cleared. For durable fixes, edit source sections and run `npm run data:apply-qualitative` / `npm run data:publish` as needed.
 
 ### Audit action (source files)
 

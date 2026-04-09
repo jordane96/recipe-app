@@ -27,7 +27,6 @@ export const UNITS = {
 };
 
 export const INGREDIENTS = [
-  { id: "air-fry-veggie-note", name: "Air fry / grill veggie prep", kind: "other" },
   { id: "all-purpose-seasoning", name: "Any seasoning", kind: "other" },
   { id: "apple-cider-vinegar", name: "Apple cider vinegar", kind: "volume" },
   { id: "arugula", name: "Arugula", kind: "weight" },
@@ -158,7 +157,6 @@ export const INGREDIENTS = [
   { id: "white-rice-water", name: "Water (for rice)", kind: "volume" },
   { id: "wings", name: "Chicken wings", kind: "weight" },
   { id: "zucchini", name: "Zucchini", kind: "count" },
-  { id: "zucchini-chips-note", name: "Zucchini chips (keto prep)", kind: "other" },
   { id: "oregano-dried", name: "Oregano (dried)", kind: "volume" },
   { id: "onion-powder", name: "Onion powder", kind: "volume" },
   { id: "parmesan-rind-note", name: "Parmesan (extra for toss)", kind: "other" },
