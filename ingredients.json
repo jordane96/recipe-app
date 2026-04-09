@@ -1,0 +1,732 @@
+{
+  "version": 1,
+  "units": {
+    "volume": [
+      "tsp",
+      "tbsp",
+      "cup"
+    ],
+    "weight": [
+      "oz",
+      "lb"
+    ],
+    "count": [
+      "each",
+      "clove",
+      "pouch",
+      "pack",
+      "bunch",
+      "box",
+      "container",
+      "bottle",
+      "steak",
+      "piece",
+      "slice",
+      "peppers",
+      "handful",
+      "sqz"
+    ]
+  },
+  "ingredients": [
+    {
+      "id": "all-purpose-seasoning",
+      "name": "Any seasoning",
+      "kind": "other"
+    },
+    {
+      "id": "apple-cider-vinegar",
+      "name": "Apple cider vinegar",
+      "kind": "volume"
+    },
+    {
+      "id": "arugula",
+      "name": "Arugula",
+      "kind": "weight"
+    },
+    {
+      "id": "asparagus",
+      "name": "Asparagus",
+      "kind": "other"
+    },
+    {
+      "id": "avocado",
+      "name": "Avocado",
+      "kind": "count"
+    },
+    {
+      "id": "bavette-steak",
+      "name": "Bavette (sirloin flap) steak",
+      "kind": "weight"
+    },
+    {
+      "id": "beef-broth",
+      "name": "Beef broth",
+      "kind": "volume"
+    },
+    {
+      "id": "beef-stock-concentrate",
+      "name": "Beef stock concentrate",
+      "kind": "count"
+    },
+    {
+      "id": "bell-pepper",
+      "name": "Bell pepper",
+      "kind": "count"
+    },
+    {
+      "id": "black-beans",
+      "name": "Black beans",
+      "kind": "count"
+    },
+    {
+      "id": "black-pepper",
+      "name": "Black pepper",
+      "kind": "other"
+    },
+    {
+      "id": "blue-corn-tortilla-chips",
+      "name": "Blue corn tortilla chips",
+      "kind": "other"
+    },
+    {
+      "id": "bok-choy",
+      "name": "Bok choy",
+      "kind": "count"
+    },
+    {
+      "id": "bread-roll",
+      "name": "Bread roll",
+      "kind": "count"
+    },
+    {
+      "id": "broccoli",
+      "name": "Broccoli",
+      "kind": "other"
+    },
+    {
+      "id": "brown-rice-dry",
+      "name": "Brown rice (dry)",
+      "kind": "volume"
+    },
+    {
+      "id": "brussels-sprouts",
+      "name": "Brussels sprouts",
+      "kind": "other"
+    },
+    {
+      "id": "breadcrumbs",
+      "name": "Breadcrumbs",
+      "kind": "volume"
+    },
+    {
+      "id": "breadcrumbs-or-pork-rinds",
+      "name": "Breadcrumbs or pork rinds",
+      "kind": "volume"
+    },
+    {
+      "id": "burger-patty",
+      "name": "Burger patty",
+      "kind": "count"
+    },
+    {
+      "id": "burrata",
+      "name": "Burrata",
+      "kind": "weight"
+    },
+    {
+      "id": "butter",
+      "name": "Butter",
+      "kind": "weight"
+    },
+    {
+      "id": "cajun-rub",
+      "name": "Cajun rub (or spice mix)",
+      "kind": "other"
+    },
+    {
+      "id": "carne-asada",
+      "name": "Carne asada",
+      "kind": "other"
+    },
+    {
+      "id": "carrots",
+      "name": "Carrots",
+      "kind": "other"
+    },
+    {
+      "id": "cayenne",
+      "name": "Cayenne",
+      "kind": "other"
+    },
+    {
+      "id": "cheddar-cheese",
+      "name": "Cheddar cheese",
+      "kind": "volume"
+    },
+    {
+      "id": "cheese-mexican-blend",
+      "name": "4-cheese Mexican blend",
+      "kind": "other"
+    },
+    {
+      "id": "cheese-generic",
+      "name": "Cheese",
+      "kind": "other"
+    },
+    {
+      "id": "chicken-breast",
+      "name": "Chicken breast",
+      "kind": "weight"
+    },
+    {
+      "id": "chicken-stock-concentrate",
+      "name": "Chicken stock concentrate",
+      "kind": "count"
+    },
+    {
+      "id": "chili-flakes",
+      "name": "Chili flakes",
+      "kind": "volume"
+    },
+    {
+      "id": "chili-seasoning",
+      "name": "Chili seasoning mix",
+      "kind": "volume"
+    },
+    {
+      "id": "cholula",
+      "name": "Cholula hot sauce",
+      "kind": "volume"
+    },
+    {
+      "id": "chuck-roast",
+      "name": "Chuck roast",
+      "kind": "weight"
+    },
+    {
+      "id": "cornstarch",
+      "name": "Cornstarch",
+      "kind": "volume"
+    },
+    {
+      "id": "couscous-or-pasta",
+      "name": "Couscous / pasta",
+      "kind": "other"
+    },
+    {
+      "id": "cream-cheese",
+      "name": "Cream cheese",
+      "kind": "volume"
+    },
+    {
+      "id": "creme-fraiche",
+      "name": "Crème fraîche",
+      "kind": "volume"
+    },
+    {
+      "id": "cucumber-mini",
+      "name": "Mini cucumber",
+      "kind": "count"
+    },
+    {
+      "id": "cumin-sichuan-sauce",
+      "name": "Cumin–Sichuan peppercorn sauce",
+      "kind": "volume"
+    },
+    {
+      "id": "curry-cubes",
+      "name": "Curry cubes",
+      "kind": "other"
+    },
+    {
+      "id": "curry-paste-yellow",
+      "name": "Yellow curry paste",
+      "kind": "volume"
+    },
+    {
+      "id": "dijon-mustard",
+      "name": "Dijon mustard",
+      "kind": "volume"
+    },
+    {
+      "id": "dressing-greek-vinaigrette",
+      "name": "Greek vinaigrette dressing",
+      "kind": "other"
+    },
+    {
+      "id": "dressing-honey-dijon",
+      "name": "Honey Dijon dressing",
+      "kind": "volume"
+    },
+    {
+      "id": "egg",
+      "name": "Egg",
+      "kind": "count"
+    },
+    {
+      "id": "flour-all-purpose",
+      "name": "All-purpose flour",
+      "kind": "volume"
+    },
+    {
+      "id": "flour-tortilla",
+      "name": "Flour tortilla",
+      "kind": "count"
+    },
+    {
+      "id": "franks-hot-sauce",
+      "name": "Frank's hot sauce",
+      "kind": "other"
+    },
+    {
+      "id": "franks-seasoning-blend",
+      "name": "Frank's seasoning blend",
+      "kind": "weight"
+    },
+    {
+      "id": "fried-onion-crisps",
+      "name": "Fried onion crisps",
+      "kind": "other"
+    },
+    {
+      "id": "fried-rice-optional",
+      "name": "Fried rice",
+      "kind": "other"
+    },
+    {
+      "id": "garlic",
+      "name": "Garlic",
+      "kind": "count"
+    },
+    {
+      "id": "garlic-bread",
+      "name": "Garlic bread",
+      "kind": "other"
+    },
+    {
+      "id": "garlic-butter",
+      "name": "Garlic butter",
+      "kind": "other"
+    },
+    {
+      "id": "garlic-powder",
+      "name": "Garlic powder",
+      "kind": "volume"
+    },
+    {
+      "id": "green-beans",
+      "name": "Green beans",
+      "kind": "other"
+    },
+    {
+      "id": "grill-mates-spice",
+      "name": "Grill Mates spices",
+      "kind": "other"
+    },
+    {
+      "id": "ground-beef",
+      "name": "Ground beef",
+      "kind": "weight"
+    },
+    {
+      "id": "ground-pork",
+      "name": "Ground pork",
+      "kind": "weight"
+    },
+    {
+      "id": "ground-turkey-93",
+      "name": "Ground turkey (93% lean)",
+      "kind": "weight"
+    },
+    {
+      "id": "honey",
+      "name": "Honey",
+      "kind": "volume"
+    },
+    {
+      "id": "hot-link",
+      "name": "Hot link",
+      "kind": "count"
+    },
+    {
+      "id": "hot-water",
+      "name": "Hot water",
+      "kind": "volume"
+    },
+    {
+      "id": "hummus",
+      "name": "Hummus",
+      "kind": "other"
+    },
+    {
+      "id": "italian-seasoning",
+      "name": "Italian seasoning",
+      "kind": "volume"
+    },
+    {
+      "id": "italian-sausage",
+      "name": "Italian sausage",
+      "kind": "weight"
+    },
+    {
+      "id": "jalapeno",
+      "name": "Jalapeño",
+      "kind": "count"
+    },
+    {
+      "id": "jam",
+      "name": "Jam",
+      "kind": "volume"
+    },
+    {
+      "id": "kinders-glaze",
+      "name": "Kinder's glaze",
+      "kind": "volume"
+    },
+    {
+      "id": "lemon",
+      "name": "Lemon",
+      "kind": "count"
+    },
+    {
+      "id": "lemon-juice",
+      "name": "Lemon juice",
+      "kind": "other"
+    },
+    {
+      "id": "leftovers-meat",
+      "name": "Leftover meat / filling",
+      "kind": "other"
+    },
+    {
+      "id": "lime",
+      "name": "Lime",
+      "kind": "count"
+    },
+    {
+      "id": "mayonnaise",
+      "name": "Mayonnaise",
+      "kind": "volume"
+    },
+    {
+      "id": "mccormick-meatloaf-seasoning",
+      "name": "McCormick meatloaf seasoning",
+      "kind": "count"
+    },
+    {
+      "id": "mirin",
+      "name": "Mirin",
+      "kind": "volume"
+    },
+    {
+      "id": "miso-paste",
+      "name": "Miso paste",
+      "kind": "volume"
+    },
+    {
+      "id": "monterey-jack-cheese",
+      "name": "Monterey Jack cheese",
+      "kind": "volume"
+    },
+    {
+      "id": "mozzarella-cheese",
+      "name": "Mozzarella cheese (shredded)",
+      "kind": "volume"
+    },
+    {
+      "id": "mozzarella-topping",
+      "name": "Mozzarella (topping)",
+      "kind": "other"
+    },
+    {
+      "id": "mushroom-button",
+      "name": "Button mushrooms",
+      "kind": "weight"
+    },
+    {
+      "id": "mushrooms",
+      "name": "Mushrooms",
+      "kind": "other"
+    },
+    {
+      "id": "olive-oil",
+      "name": "Olive oil",
+      "kind": "other"
+    },
+    {
+      "id": "onion",
+      "name": "Onion",
+      "kind": "count"
+    },
+    {
+      "id": "pace-hot-salsa",
+      "name": "Pace hot salsa (large)",
+      "kind": "count"
+    },
+    {
+      "id": "pam-spray",
+      "name": "Cooking spray (Pam)",
+      "kind": "other"
+    },
+    {
+      "id": "panko",
+      "name": "Panko breadcrumbs",
+      "kind": "volume"
+    },
+    {
+      "id": "paprika",
+      "name": "Paprika",
+      "kind": "volume"
+    },
+    {
+      "id": "parmesan-cheese",
+      "name": "Parmesan cheese",
+      "kind": "volume"
+    },
+    {
+      "id": "parsley",
+      "name": "Parsley",
+      "kind": "other"
+    },
+    {
+      "id": "pasta-tricolor",
+      "name": "Tricolor pasta",
+      "kind": "count"
+    },
+    {
+      "id": "peanut-butter",
+      "name": "Peanut butter",
+      "kind": "volume"
+    },
+    {
+      "id": "peanuts-roasted",
+      "name": "Roasted peanuts",
+      "kind": "volume"
+    },
+    {
+      "id": "pita-bread",
+      "name": "Pita bread",
+      "kind": "piece"
+    },
+    {
+      "id": "poblano-pepper",
+      "name": "Poblano pepper",
+      "kind": "count"
+    },
+    {
+      "id": "pork-rinds",
+      "name": "Pork rinds",
+      "kind": "other"
+    },
+    {
+      "id": "potato",
+      "name": "Potatoes",
+      "kind": "weight"
+    },
+    {
+      "id": "prepackaged-tortellini",
+      "name": "Prepackaged tortellini",
+      "kind": "other"
+    },
+    {
+      "id": "red-pepper",
+      "name": "Red pepper (spice or veg)",
+      "kind": "other"
+    },
+    {
+      "id": "rice-cooked",
+      "name": "Rice (cooked)",
+      "kind": "volume"
+    },
+    {
+      "id": "rice-dry",
+      "name": "Rice (dry)",
+      "kind": "volume"
+    },
+    {
+      "id": "rice-vinegar",
+      "name": "Rice vinegar",
+      "kind": "volume"
+    },
+    {
+      "id": "saffeway-tomato-soup",
+      "name": "Safeway tomato soup",
+      "kind": "other"
+    },
+    {
+      "id": "salmon-fillet",
+      "name": "Salmon fillet",
+      "kind": "weight"
+    },
+    {
+      "id": "salt",
+      "name": "Salt",
+      "kind": "other"
+    },
+    {
+      "id": "salt-and-pepper",
+      "name": "Salt and pepper",
+      "kind": "other"
+    },
+    {
+      "id": "sambal-oelek",
+      "name": "Sambal Oelek",
+      "kind": "volume"
+    },
+    {
+      "id": "scallions",
+      "name": "Scallions",
+      "kind": "count"
+    },
+    {
+      "id": "scallion",
+      "name": "Scallion (stalk)",
+      "kind": "count"
+    },
+    {
+      "id": "soy-glaze",
+      "name": "Soy glaze",
+      "kind": "volume"
+    },
+    {
+      "id": "soy-sauce",
+      "name": "Soy sauce",
+      "kind": "volume"
+    },
+    {
+      "id": "sour-cream",
+      "name": "Sour cream",
+      "kind": "volume"
+    },
+    {
+      "id": "spaghetti",
+      "name": "Spaghetti",
+      "kind": "weight"
+    },
+    {
+      "id": "spinach",
+      "name": "Spinach",
+      "kind": "other"
+    },
+    {
+      "id": "squash",
+      "name": "Squash",
+      "kind": "other"
+    },
+    {
+      "id": "sirloin-steak",
+      "name": "Top sirloin steak",
+      "kind": "weight"
+    },
+    {
+      "id": "steak-bavette-raw",
+      "name": "Bavette steak (5 oz each)",
+      "kind": "other"
+    },
+    {
+      "id": "stubbs-rub",
+      "name": "Stubb's rub",
+      "kind": "other"
+    },
+    {
+      "id": "taco-seasoning",
+      "name": "Taco seasoning",
+      "kind": "count"
+    },
+    {
+      "id": "tomato-paste",
+      "name": "Tomato paste",
+      "kind": "volume"
+    },
+    {
+      "id": "tomato-sauce",
+      "name": "Tomato sauce",
+      "kind": "other"
+    },
+    {
+      "id": "tortilla-flour-small",
+      "name": "Tortilla",
+      "kind": "count"
+    },
+    {
+      "id": "tri-tip",
+      "name": "Tri tip",
+      "kind": "other"
+    },
+    {
+      "id": "warm-water",
+      "name": "Warm water",
+      "kind": "volume"
+    },
+    {
+      "id": "water",
+      "name": "Water",
+      "kind": "volume"
+    },
+    {
+      "id": "white-rice-water",
+      "name": "Water (for rice)",
+      "kind": "volume"
+    },
+    {
+      "id": "wings",
+      "name": "Chicken wings",
+      "kind": "weight"
+    },
+    {
+      "id": "zucchini",
+      "name": "Zucchini",
+      "kind": "count"
+    },
+    {
+      "id": "oregano-dried",
+      "name": "Oregano (dried)",
+      "kind": "volume"
+    },
+    {
+      "id": "onion-powder",
+      "name": "Onion powder",
+      "kind": "volume"
+    },
+    {
+      "id": "parmesan-rind-note",
+      "name": "Parmesan (extra for toss)",
+      "kind": "other"
+    },
+    {
+      "id": "quesadilla-shell",
+      "name": "Quesadilla (optional)",
+      "kind": "other"
+    },
+    {
+      "id": "rice-optional-side",
+      "name": "Rice (optional side)",
+      "kind": "other"
+    },
+    {
+      "id": "salad-lemon-panko-burrata",
+      "name": "Lemon panko burrata salad",
+      "kind": "other"
+    },
+    {
+      "id": "salt-kosher",
+      "name": "Salt (kosher)",
+      "kind": "volume"
+    },
+    {
+      "id": "side-vegetable-generic",
+      "name": "Vegetable (side for grill)",
+      "kind": "other"
+    },
+    {
+      "id": "sirloin-steak-two",
+      "name": "Sirloin steaks (5 oz each)",
+      "kind": "other"
+    },
+    {
+      "id": "spice-mix-optional",
+      "name": "Optional spice mix ingredients",
+      "kind": "other"
+    }
+  ]
+}
