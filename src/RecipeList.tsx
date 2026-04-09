@@ -9,6 +9,7 @@ import {
   PLAN_PHASE_MAIN,
   PLAN_PHASE_QUERY,
   PLAN_PHASE_SIDE,
+  PLAN_WEEK_START_QUERY,
   readPlanPhaseSide,
   readSidesListTab,
   recipeDetailPath,
@@ -16,16 +17,21 @@ import {
   urlParamToPlanKey,
 } from "./listTabSearch";
 import { AddToPlanSheet } from "./AddToPlanSheet";
+import { weekRangeLabel } from "./mealPlanDates";
 import { recipeSegment, SEGMENT_LABEL, type RecipeSegment } from "./recipeCourse";
-import { MEAL_PLAN_UNASSIGNED_KEY } from "./mealPlanStorage";
+import { isMealPlanDateKey, MEAL_PLAN_UNASSIGNED_KEY } from "./mealPlanStorage";
 import { useMealPlan } from "./MealPlanContext";
 import { useShoppingList } from "./ShoppingListContext";
 
 /** Which top-level tab is active on the recipe list (reference items show under Mains). */
 type CourseTab = "main" | "side";
 
-function planTargetLabel(planKey: string): string {
+function planTargetLabel(planKey: string, searchParams: URLSearchParams): string {
   if (planKey === MEAL_PLAN_UNASSIGNED_KEY) {
+    const ws = searchParams.get(PLAN_WEEK_START_QUERY);
+    if (ws && isMealPlanDateKey(ws)) {
+      return weekRangeLabel(new Date(`${ws}T12:00:00`));
+    }
     return "Unassigned";
   }
   return new Date(`${planKey}T12:00:00`).toLocaleDateString(undefined, {
@@ -152,6 +158,7 @@ export function RecipeList({
           const p = new URLSearchParams(prev);
           p.delete(ADD_TO_PLAN_QUERY);
           p.delete(PLAN_PHASE_QUERY);
+          p.delete(PLAN_WEEK_START_QUERY);
           return p;
         },
         { replace: true },
@@ -251,7 +258,7 @@ export function RecipeList({
         <div className="recipe-add-to-plan-flow-banner" role="region" aria-label="Adding to meal plan">
           <div className="recipe-add-to-plan-flow-banner-top">
             <div className="recipe-add-to-plan-flow-banner-text">
-              <strong>Adding for {planTargetLabel(planKey)}</strong>
+              <strong>Adding for {planTargetLabel(planKey, searchParams)}</strong>
               {phaseHint ? <span className="muted recipe-add-to-plan-flow-phase">{phaseHint}</span> : null}
             </div>
             <div className="recipe-add-to-plan-flow-banner-actions">
@@ -266,7 +273,7 @@ export function RecipeList({
           {plannedForTarget.length > 0 ? (
             <ul
               className="recipe-add-to-plan-flow-planned-list"
-              aria-label={`Meals added for ${planTargetLabel(planKey)}`}
+              aria-label={`Meals added for ${planTargetLabel(planKey, searchParams)}`}
             >
               {plannedForTarget.map((meal, index) => (
                 <li key={`${planKey}-${index}-${meal.id}`} className="recipe-add-to-plan-flow-planned-item">

@@ -1148,6 +1148,27 @@ a.recipe-add-to-plan-flow-planned-title:hover {
   width: 100%;
 }
 
+/* Compact unassigned row when the pool is empty (in document flow, not fixed) */
+.planner-unassigned-inline {
+  margin-bottom: 1.25rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: 0 1px 3px rgba(28, 25, 23, 0.06);
+}
+
+.planner-unassigned-inline--drop-target {
+  outline: 2px dashed var(--accent);
+  outline-offset: 2px;
+  background: rgba(232, 240, 236, 0.55);
+}
+
+.planner-unassigned-inline-btn {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
 .planner-overlay {
   position: fixed;
   inset: 0;

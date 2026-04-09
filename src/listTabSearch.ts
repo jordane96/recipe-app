@@ -16,6 +16,9 @@ export const PLAN_PHASE_MAIN = "main";
 export const PLAN_PHASE_SIDE = "side";
 export const ADD_TO_PLAN_URL_UNASSIGNED = "unassigned";
 
+/** Monday of the visible planner week (YYYY-MM-DD), only with `addToPlan=unassigned`. */
+export const PLAN_WEEK_START_QUERY = "weekStart";
+
 export function readSidesListTab(searchParams: URLSearchParams): boolean {
   return searchParams.get(LIST_TAB_QUERY) === LIST_TAB_SIDE_VALUE;
 }
@@ -45,9 +48,19 @@ export function planKeyToUrlParam(storageKey: string): string {
 }
 
 /** `/recipes?addToPlan=…` from a plan storage key (date or unassigned). */
-export function recipesAddToPlanPath(planStorageKey: string): string {
+export function recipesAddToPlanPath(
+  planStorageKey: string,
+  plannerWeekStartIso?: string,
+): string {
   const q = new URLSearchParams();
   q.set(ADD_TO_PLAN_QUERY, planKeyToUrlParam(planStorageKey));
+  if (
+    planStorageKey === MEAL_PLAN_UNASSIGNED_KEY &&
+    plannerWeekStartIso &&
+    isMealPlanDateKey(plannerWeekStartIso)
+  ) {
+    q.set(PLAN_WEEK_START_QUERY, plannerWeekStartIso);
+  }
   return `/recipes?${q.toString()}`;
 }
 
@@ -60,6 +73,10 @@ function copyAddToPlanParams(from: URLSearchParams, to: URLSearchParams): void {
   const ph = from.get(PLAN_PHASE_QUERY);
   if (ph === PLAN_PHASE_SIDE || ph === PLAN_PHASE_MAIN) {
     to.set(PLAN_PHASE_QUERY, ph);
+  }
+  const ws = from.get(PLAN_WEEK_START_QUERY);
+  if (ws && isMealPlanDateKey(ws)) {
+    to.set(PLAN_WEEK_START_QUERY, ws);
   }
 }
 
