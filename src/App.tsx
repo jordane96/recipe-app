@@ -6,6 +6,7 @@ import { MealPlannerPage } from "./MealPlannerPage";
 import type { IngredientsFile, Recipe } from "./types";
 import { RecipeDetail } from "./RecipeDetail";
 import { RecipeList } from "./RecipeList";
+import { MealPlanProvider } from "./MealPlanContext";
 import { ShoppingListProvider } from "./ShoppingListContext";
 import { ShoppingListPage } from "./ShoppingListPage";
 
@@ -21,8 +22,18 @@ export default function App() {
     loadRecipeBundle()
       .then((bundle) => {
         if (!cancelled) {
-          setRawRecipes(bundle.recipes.recipes);
-          setIngredientsFile(bundle.ingredients);
+          const list = bundle.recipes?.recipes;
+          const ing = bundle.ingredients;
+          if (!Array.isArray(list)) {
+            setErr("Invalid recipes.json (missing recipes array).");
+            return;
+          }
+          if (!ing || !Array.isArray(ing.ingredients)) {
+            setErr("Invalid ingredients.json (missing ingredients list).");
+            return;
+          }
+          setRawRecipes(list);
+          setIngredientsFile(ing);
         }
       })
       .catch((e: unknown) => {
@@ -52,33 +63,35 @@ export default function App() {
         {!ready && !err ? <p className="muted">Loading…</p> : null}
         {ready ? (
           <ShoppingListProvider>
-            <Routes>
-              <Route
-                path="/"
-                element={
-                  <MealPlannerPage recipes={recipes} ingredients={ingredients} />
-                }
-              />
-              <Route
-                path="/recipes"
-                element={
-                  <RecipeList recipes={recipes} ingredients={ingredients} />
-                }
-              />
-              <Route
-                path="/recipe/:id"
-                element={
-                  <RecipeDetail recipes={recipes} ingredients={ingredients} />
-                }
-              />
-              <Route
-                path="/shopping"
-                element={
-                  <ShoppingListPage recipes={recipes} ingredients={ingredients} />
-                }
-              />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
+            <MealPlanProvider>
+              <Routes>
+                <Route
+                  path="/"
+                  element={
+                    <MealPlannerPage recipes={recipes} ingredients={ingredients} />
+                  }
+                />
+                <Route
+                  path="/recipes"
+                  element={
+                    <RecipeList recipes={recipes} ingredients={ingredients} />
+                  }
+                />
+                <Route
+                  path="/recipe/:id"
+                  element={
+                    <RecipeDetail recipes={recipes} ingredients={ingredients} />
+                  }
+                />
+                <Route
+                  path="/shopping"
+                  element={
+                    <ShoppingListPage recipes={recipes} ingredients={ingredients} />
+                  }
+                />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </MealPlanProvider>
           </ShoppingListProvider>
         ) : null}
       </AppShell>

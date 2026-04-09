@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   buildShoppingListData,
   formatVolumeConversions,
@@ -8,7 +8,7 @@ import {
   type IngredientBreakdown,
 } from "./shoppingMerge";
 import type { IngredientDef, Recipe } from "./types";
-import { recipeDetailPath } from "./listTabSearch";
+import { ADD_TO_PLAN_QUERY, recipeDetailPath, urlParamToPlanKey } from "./listTabSearch";
 import {
   recipeSegment,
   SEGMENT_LABEL,
@@ -67,6 +67,10 @@ export function ShoppingListPage({
   recipes: Recipe[];
   ingredients: IngredientDef[];
 }) {
+  const [searchParams] = useSearchParams();
+  const planPreserve =
+    urlParamToPlanKey(searchParams.get(ADD_TO_PLAN_QUERY)) != null ? searchParams : undefined;
+
   const {
     selectedIds,
     removeFromList,
@@ -211,7 +215,7 @@ export function ShoppingListPage({
                     {list.map(({ recipe: r, count }) => (
                       <li key={r.id} className="selected-recipe-row">
                         <Link
-                          to={recipeDetailPath(r.id, recipeSegment(r) === "side")}
+                          to={recipeDetailPath(r.id, recipeSegment(r) === "side", planPreserve)}
                           className="selected-recipe-link"
                         >
                           {r.title}

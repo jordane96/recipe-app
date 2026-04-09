@@ -3,12 +3,21 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import type { IngredientDef, Recipe, RecommendedSideRef } from "./types";
 import { formatIngredientLine, ingredientMap } from "./ingredientDisplay";
 import {
+  ADD_TO_PLAN_QUERY,
+  LIST_TAB_QUERY,
+  PLAN_PHASE_MAIN,
+  PLAN_PHASE_QUERY,
+  PLAN_PHASE_SIDE,
   homeListPath,
+  readPlanPhaseSide,
   readSidesListTab,
   recipeDetailPath,
   shoppingListPath,
+  urlParamToPlanKey,
 } from "./listTabSearch";
+import { AddToPlanSheet } from "./AddToPlanSheet";
 import { recipeSegment } from "./recipeCourse";
+import { useMealPlan } from "./MealPlanContext";
 import { useShoppingList } from "./ShoppingListContext";
 
 export function RecipeDetail({
@@ -19,17 +28,50 @@ export function RecipeDetail({
   ingredients: IngredientDef[];
 }) {
   const { id } = useParams();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const fromSidesList = readSidesListTab(searchParams);
+  const planKey = urlParamToPlanKey(searchParams.get(ADD_TO_PLAN_QUERY));
+  const inPlanFlow = planKey != null;
+  const listSidesTab = inPlanFlow ? readPlanPhaseSide(searchParams) : fromSidesList;
+
   const recipe = recipes.find((r) => r.id === id);
-  const { listQuantity, addToList, removeFromList, count } = useShoppingList();
+  const { count } = useShoppingList();
+  const { addRecipeToPlanKey } = useMealPlan();
+  const [planSheetRecipe, setPlanSheetRecipe] = React.useState<Recipe | null>(null);
   const byId = React.useMemo(() => ingredientMap(ingredients), [ingredients]);
+
+  const addTargetToPlan = React.useCallback(
+    (r: Recipe) => {
+      if (!planKey) {
+        setPlanSheetRecipe(r);
+        return;
+      }
+      addRecipeToPlanKey(planKey, r);
+      if (
+        recipeSegment(r) !== "side" &&
+        searchParams.get(PLAN_PHASE_QUERY) !== PLAN_PHASE_MAIN
+      ) {
+        setSearchParams(
+          (prev) => {
+            const p = new URLSearchParams(prev);
+            p.set(PLAN_PHASE_QUERY, PLAN_PHASE_SIDE);
+            p.delete(LIST_TAB_QUERY);
+            return p;
+          },
+          { replace: true },
+        );
+      }
+    },
+    [planKey, addRecipeToPlanKey, searchParams, setSearchParams],
+  );
+
+  const preserve = inPlanFlow ? searchParams : undefined;
 
   if (!recipe) {
     return (
       <>
         <div className="top-bar">
-          <Link to={homeListPath(fromSidesList)} className="back-btn">
+          <Link to={homeListPath(listSidesTab, preserve)} className="back-btn">
             ← Back
           </Link>
         </div>
@@ -37,8 +79,6 @@ export function RecipeDetail({
       </>
     );
   }
-
-  const onListQty = listQuantity(recipe.id);
 
   const recommended = recipe.recommendedSides ?? [];
   const sideRefs = React.useMemo(() => {
@@ -58,7 +98,7 @@ export function RecipeDetail({
   return (
     <>
       <div className="top-bar">
-        <Link to={homeListPath(fromSidesList)} className="back-btn">
+        <Link to={homeListPath(listSidesTab, preserve)} className="back-btn">
           ← Back
         </Link>
         <h1 className="page-title" style={{ fontSize: "1.25rem" }}>
@@ -98,18 +138,17 @@ export function RecipeDetail({
         <section className="detail-section recommended-sides-section">
           <h2>Recommended sides</h2>
           <p className="muted recommended-sides-intro">
-            Open a side for full prep instructions. Add to your shopping list only if you want
-            those ingredients merged in.
+            Open a side for full prep instructions. Use <strong>Add to plan</strong> to add to this meal
+            {inPlanFlow ? "" : " (pick a day or leave unassigned)"}.
           </p>
           <ul className="recommended-sides-list">
             {sideRefs.map(({ recipeId, label, recipe: sideRecipe }) => {
-              const sideQty = listQuantity(recipeId);
               return (
                 <li key={recipeId} className="recommended-side-card">
                   <div className="recommended-side-head">
                     {sideRecipe ? (
                       <Link
-                        to={recipeDetailPath(recipeId, fromSidesList)}
+                        to={recipeDetailPath(recipeId, listSidesTab, preserve)}
                         className="recommended-side-title"
                       >
                         {sideRecipe.title}
@@ -120,32 +159,13 @@ export function RecipeDetail({
                       </span>
                     )}
                     {sideRecipe ? (
-                      sideQty > 0 ? (
-                        <div className="recommended-side-qty-btns">
-                          <button
-                            type="button"
-                            className="btn-primary btn-compact"
-                            onClick={() => addToList(recipeId)}
-                          >
-                            + Add
-                          </button>
-                          <button
-                            type="button"
-                            className="btn-secondary btn-compact"
-                            onClick={() => removeFromList(recipeId)}
-                          >
-                            − One ({sideQty})
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          className="btn-primary btn-compact"
-                          onClick={() => addToList(recipeId)}
-                        >
-                          Add to list
-                        </button>
-                      )
+                      <button
+                        type="button"
+                        className="btn-primary btn-compact"
+                        onClick={() => addTargetToPlan(sideRecipe)}
+                      >
+                        Add to plan
+                      </button>
                     ) : null}
                   </div>
                   {label ? <p className="muted recommended-side-label">{label}</p> : null}
@@ -185,36 +205,23 @@ export function RecipeDetail({
       ) : null}
 
       <div className="cta-panel cta-panel-bottom">
-        {onListQty > 0 ? (
-          <div className="cta-panel-actions">
-            <button
-              type="button"
-              className="btn-primary btn-cta-wide"
-              onClick={() => addToList(recipe.id)}
-            >
-              Add another to shopping list
-            </button>
-            <button
-              type="button"
-              className="btn-secondary btn-cta-wide"
-              onClick={() => removeFromList(recipe.id)}
-            >
-              Remove one ({onListQty} on list)
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            className="btn-primary btn-cta-wide"
-            onClick={() => addToList(recipe.id)}
-          >
-            Add to shopping list
-          </button>
-        )}
-        <Link to={shoppingListPath(fromSidesList)} className="cta-sub-link">
+        <button
+          type="button"
+          className="btn-primary btn-cta-wide"
+          onClick={() => addTargetToPlan(recipe)}
+        >
+          Add to plan
+        </button>
+        <Link to={shoppingListPath(listSidesTab, preserve)} className="cta-sub-link">
           View shopping list{count > 0 ? ` (${count})` : ""}
         </Link>
       </div>
+
+      <AddToPlanSheet
+        recipe={planSheetRecipe}
+        open={planSheetRecipe !== null}
+        onClose={() => setPlanSheetRecipe(null)}
+      />
     </>
   );
 }

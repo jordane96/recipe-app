@@ -34,27 +34,31 @@ export function applyQualitativeOverrides(
   recipes: Recipe[],
   overrides: Record<string, LineOverride>,
 ): Recipe[] {
-  return recipes.map((r) => {
-    const copy = JSON.parse(JSON.stringify(r)) as Recipe;
-    for (const sec of copy.ingredientSections ?? []) {
-      for (const line of sec.lines) {
-        if (line.amount != null && line.unit != null) {
-          continue;
-        }
-        const k = stableLineKey(r.id, sec.name, line.ingredientId, line.note);
-        const o = overrides[k];
-        if (
-          o &&
-          typeof o.amount === "number" &&
-          Number.isFinite(o.amount) &&
-          typeof o.unit === "string" &&
-          o.unit.trim()
-        ) {
-          line.amount = o.amount;
-          line.unit = o.unit.trim();
+  try {
+    return recipes.map((r) => {
+      const copy = JSON.parse(JSON.stringify(r)) as Recipe;
+      for (const sec of copy.ingredientSections ?? []) {
+        for (const line of sec.lines ?? []) {
+          if (line.amount != null && line.unit != null) {
+            continue;
+          }
+          const k = stableLineKey(r.id, sec.name, line.ingredientId, line.note);
+          const o = overrides[k];
+          if (
+            o &&
+            typeof o.amount === "number" &&
+            Number.isFinite(o.amount) &&
+            typeof o.unit === "string" &&
+            o.unit.trim()
+          ) {
+            line.amount = o.amount;
+            line.unit = o.unit.trim();
+          }
         }
       }
-    }
-    return copy;
-  });
+      return copy;
+    });
+  } catch {
+    return recipes;
+  }
 }

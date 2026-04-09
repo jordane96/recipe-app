@@ -10,6 +10,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "deploy": "npm run build && gh-pages -d dist",
+    "deploy:github": "npm run build && gh-pages -d dist -r https://github.com/jordane96/recipe-app.git",
     "deploy:intuit": "npm run build && gh-pages -d dist -r https://github.intuit.com/jepstein/recipe-app-test.git"
   },
   "dependencies": {

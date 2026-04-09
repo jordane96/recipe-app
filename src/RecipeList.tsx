@@ -1,19 +1,39 @@
 import * as React from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import type { IngredientDef, Recipe } from "./types";
 import { formatIngredientLine, ingredientMap } from "./ingredientDisplay";
 import {
+  ADD_TO_PLAN_QUERY,
   LIST_TAB_QUERY,
   LIST_TAB_SIDE_VALUE,
+  PLAN_PHASE_MAIN,
+  PLAN_PHASE_QUERY,
+  PLAN_PHASE_SIDE,
+  readPlanPhaseSide,
   readSidesListTab,
   recipeDetailPath,
   shoppingListPath,
+  urlParamToPlanKey,
 } from "./listTabSearch";
+import { AddToPlanSheet } from "./AddToPlanSheet";
 import { recipeSegment, SEGMENT_LABEL, type RecipeSegment } from "./recipeCourse";
+import { MEAL_PLAN_UNASSIGNED_KEY } from "./mealPlanStorage";
+import { useMealPlan } from "./MealPlanContext";
 import { useShoppingList } from "./ShoppingListContext";
 
 /** Which top-level tab is active on the recipe list (reference items show under Mains). */
 type CourseTab = "main" | "side";
+
+function planTargetLabel(planKey: string): string {
+  if (planKey === MEAL_PLAN_UNASSIGNED_KEY) {
+    return "Unassigned";
+  }
+  return new Date(`${planKey}T12:00:00`).toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+}
 
 function inCourseTab(r: Recipe, tab: CourseTab): boolean {
   const seg = recipeSegment(r);
@@ -78,20 +98,44 @@ export function RecipeList({
   recipes: Recipe[];
   ingredients: IngredientDef[];
 }) {
-  const { addToList, removeFromList, listQuantity, count } = useShoppingList();
+  const { count } = useShoppingList();
+  const { addRecipeToPlanKey, plan, removeMealAt } = useMealPlan();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [addToPlanRecipe, setAddToPlanRecipe] = React.useState<Recipe | null>(null);
   const byId = React.useMemo(() => ingredientMap(ingredients), [ingredients]);
   const [q, setQ] = React.useState("");
   const [tag, setTag] = React.useState<string | null>(null);
 
-  const courseTab: CourseTab = readSidesListTab(searchParams) ? "side" : "main";
+  const planKey = urlParamToPlanKey(searchParams.get(ADD_TO_PLAN_QUERY));
+  const inPlanFlow = planKey != null;
+
+  const courseTab: CourseTab =
+    inPlanFlow ? (readPlanPhaseSide(searchParams) ? "side" : "main") : readSidesListTab(searchParams)
+      ? "side"
+      : "main";
+
   const setCourseTab = React.useCallback(
     (tab: CourseTab) => {
-      if (tab === "side") {
-        setSearchParams({ [LIST_TAB_QUERY]: LIST_TAB_SIDE_VALUE }, { replace: true });
-      } else {
-        setSearchParams({}, { replace: true });
-      }
+      setSearchParams(
+        (prev) => {
+          const p = new URLSearchParams(prev);
+          const pk = urlParamToPlanKey(p.get(ADD_TO_PLAN_QUERY));
+          if (pk != null) {
+            p.set(PLAN_PHASE_QUERY, tab === "side" ? PLAN_PHASE_SIDE : PLAN_PHASE_MAIN);
+            p.delete(LIST_TAB_QUERY);
+          } else {
+            if (tab === "side") {
+              p.set(LIST_TAB_QUERY, LIST_TAB_SIDE_VALUE);
+            } else {
+              p.delete(LIST_TAB_QUERY);
+            }
+            p.delete(PLAN_PHASE_QUERY);
+          }
+          return p;
+        },
+        { replace: true },
+      );
     },
     [setSearchParams],
   );
@@ -99,6 +143,21 @@ export function RecipeList({
   React.useEffect(() => {
     setTag(null);
   }, [courseTab]);
+
+  React.useEffect(() => {
+    const raw = searchParams.get(ADD_TO_PLAN_QUERY);
+    if (raw && urlParamToPlanKey(raw) == null) {
+      setSearchParams(
+        (prev) => {
+          const p = new URLSearchParams(prev);
+          p.delete(ADD_TO_PLAN_QUERY);
+          p.delete(PLAN_PHASE_QUERY);
+          return p;
+        },
+        { replace: true },
+      );
+    }
+  }, [searchParams, setSearchParams]);
 
   const tabPool = React.useMemo(
     () => recipes.filter((r) => inCourseTab(r, courseTab)),
@@ -120,13 +179,37 @@ export function RecipeList({
 
   const listForSideTab = courseTab === "side" ? filtered : [];
 
+  const handleAddToPlan = React.useCallback(
+    (r: Recipe) => {
+      if (!planKey) {
+        setAddToPlanRecipe(r);
+        return;
+      }
+      addRecipeToPlanKey(planKey, r);
+      const seg: RecipeSegment = recipeSegment(r);
+      // After the first main we switch to Sides; if the user tapped Mains again
+      // (planPhase=main), keep them there so they can add another main.
+      if (seg !== "side" && searchParams.get(PLAN_PHASE_QUERY) !== PLAN_PHASE_MAIN) {
+        setSearchParams(
+          (prev) => {
+            const p = new URLSearchParams(prev);
+            p.set(PLAN_PHASE_QUERY, PLAN_PHASE_SIDE);
+            p.delete(LIST_TAB_QUERY);
+            return p;
+          },
+          { replace: true },
+        );
+      }
+    },
+    [planKey, addRecipeToPlanKey, searchParams, setSearchParams],
+  );
+
   const renderRecipeRow = (r: Recipe) => {
-    const qty = listQuantity(r.id);
     return (
       <li key={r.id} className="recipe-row">
         <Link
           className="recipe-link"
-          to={recipeDetailPath(r.id, courseTab === "side")}
+          to={recipeDetailPath(r.id, courseTab === "side", inPlanFlow ? searchParams : undefined)}
         >
           <span className="recipe-title-row">
             <span>{r.title}</span>
@@ -136,31 +219,14 @@ export function RecipeList({
             <span className="meta">{r.tags.join(" · ")}</span>
           ) : null}
         </Link>
-        <div className="recipe-list-qty" role="group" aria-label={`Shopping list quantity for ${r.title}`}>
-          {qty > 0 ? (
-            <button
-              type="button"
-              className="recipe-list-qty-btn"
-              aria-label={`Remove one ${r.title} from shopping list`}
-              onClick={() => removeFromList(r.id)}
-            >
-              −
-            </button>
-          ) : null}
-          {qty > 0 ? <span className="recipe-list-qty-n">{qty}×</span> : null}
-          <button
-            type="button"
-            className={qty > 0 ? "recipe-list-toggle recipe-list-toggle--add" : "recipe-list-toggle"}
-            aria-label={
-              qty > 0
-                ? `Add another ${r.title} to shopping list`
-                : `Add ${r.title} to shopping list`
-            }
-            onClick={() => addToList(r.id)}
-          >
-            +
-          </button>
-        </div>
+        <button
+          type="button"
+          className="recipe-add-to-plan-btn"
+          aria-label={`Add ${r.title} to meal plan`}
+          onClick={() => handleAddToPlan(r)}
+        >
+          Add to plan
+        </button>
       </li>
     );
   };
@@ -171,15 +237,75 @@ export function RecipeList({
       ? mainList.length === 0 && otherList.length === 0
       : listForSideTab.length === 0;
 
+  const phaseHint = inPlanFlow
+    ? readPlanPhaseSide(searchParams)
+      ? "Pick a side (optional — you can add more than one)."
+      : "Pick a main first; then you can add a side."
+    : null;
+
+  const plannedForTarget = planKey ? (plan[planKey] ?? []) : [];
+
   return (
     <>
+      {inPlanFlow && planKey ? (
+        <div className="recipe-add-to-plan-flow-banner" role="region" aria-label="Adding to meal plan">
+          <div className="recipe-add-to-plan-flow-banner-top">
+            <div className="recipe-add-to-plan-flow-banner-text">
+              <strong>Adding for {planTargetLabel(planKey)}</strong>
+              {phaseHint ? <span className="muted recipe-add-to-plan-flow-phase">{phaseHint}</span> : null}
+            </div>
+            <div className="recipe-add-to-plan-flow-banner-actions">
+              <button type="button" className="btn-secondary btn-compact" onClick={() => navigate("/")}>
+                Done
+              </button>
+              <Link to="/" className="btn-ghost btn-compact recipe-add-to-plan-change-link">
+                Change day
+              </Link>
+            </div>
+          </div>
+          {plannedForTarget.length > 0 ? (
+            <ul
+              className="recipe-add-to-plan-flow-planned-list"
+              aria-label={`Meals added for ${planTargetLabel(planKey)}`}
+            >
+              {plannedForTarget.map((meal, index) => (
+                <li key={`${planKey}-${index}-${meal.id}`} className="recipe-add-to-plan-flow-planned-item">
+                  <span
+                    className={`recipe-add-to-plan-flow-planned-kind${meal.kind === "side" ? " recipe-add-to-plan-flow-planned-kind--side" : ""}`}
+                    aria-hidden="true"
+                  >
+                    {meal.kind === "side" ? "Side" : "Main"}
+                  </span>
+                  <Link
+                    to={recipeDetailPath(meal.id, meal.kind === "side", searchParams)}
+                    className="recipe-add-to-plan-flow-planned-title"
+                  >
+                    {meal.title}
+                  </Link>
+                  <button
+                    type="button"
+                    className="recipe-add-to-plan-flow-planned-remove"
+                    aria-label={`Remove ${meal.title} from plan`}
+                    onClick={() => removeMealAt(planKey, index)}
+                  >
+                    ×
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
       <div className="list-header">
         <h1 className="page-title list-title">Recipes</h1>
         <div className="list-header-actions">
           <Link to="/" className="list-header-link">
             Plan
           </Link>
-          <Link to={shoppingListPath(courseTab === "side")} className="shopping-pill">
+          <Link
+            to={shoppingListPath(courseTab === "side", inPlanFlow ? searchParams : undefined)}
+            className="shopping-pill"
+          >
             List{count > 0 ? ` (${count})` : ""}
           </Link>
         </div>
@@ -194,11 +320,7 @@ export function RecipeList({
         autoComplete="off"
         autoCorrect="off"
       />
-      <div
-        className="recipe-course-tabs"
-        role="tablist"
-        aria-label="Recipe course"
-      >
+      <div className="recipe-course-tabs" role="tablist" aria-label="Recipe course">
         <button
           type="button"
           role="tab"
@@ -280,6 +402,12 @@ export function RecipeList({
           <ul className="recipe-list">{listForSideTab.map(renderRecipeRow)}</ul>
         )}
       </div>
+
+      <AddToPlanSheet
+        recipe={addToPlanRecipe}
+        open={addToPlanRecipe !== null}
+        onClose={() => setAddToPlanRecipe(null)}
+      />
     </>
   );
 }

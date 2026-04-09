@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Demo A — Plan + extras (recommended model)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Source+Sans+3:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #f6f3ee;
+        --surface: #fffcf8;
+        --text: #1c1917;
+        --muted: #57534e;
+        --accent: #2d4a3e;
+        --accent-soft: #e8f0ec;
+        --border: #e7e2dc;
+        --extra: #6b4f2a;
+        --extra-bg: #faf6ef;
+        --radius: 12px;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: "Source Sans 3", system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.45;
+        padding: 1rem 1rem 2rem;
+        min-height: 100dvh;
+      }
+      .shell {
+        max-width: 56rem;
+        margin: 0 auto;
+      }
+      h1,
+      h2 {
+        font-family: Fraunces, Georgia, serif;
+        font-weight: 600;
+        margin: 0 0 0.5rem;
+        color: var(--accent);
+      }
+      h1 {
+        font-size: 1.45rem;
+      }
+      h2 {
+        font-size: 1.1rem;
+      }
+      .nav {
+        margin-bottom: 1rem;
+        font-size: 0.9rem;
+      }
+      .nav a {
+        color: var(--accent);
+        font-weight: 600;
+      }
+      .model-banner {
+        background: linear-gradient(135deg, var(--accent-soft), #fff);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 1rem 1.1rem;
+        margin-bottom: 1.25rem;
+        font-size: 0.92rem;
+        color: var(--muted);
+      }
+      .model-banner strong {
+        color: var(--accent);
+      }
+      .model-banner code {
+        font-size: 0.85em;
+        background: rgba(45, 74, 62, 0.08);
+        padding: 0.1em 0.35em;
+        border-radius: 4px;
+      }
+      .grid {
+        display: grid;
+        gap: 1rem;
+      }
+      @media (min-width: 900px) {
+        .grid {
+          grid-template-columns: 1fr 1fr;
+          align-items: start;
+        }
+      }
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 1rem 1.1rem;
+      }
+      .panel.extra-panel {
+        border-color: #d9c9a8;
+        background: var(--extra-bg);
+      }
+      .day {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 0.65rem 0.75rem;
+        margin-bottom: 0.5rem;
+        background: #fff;
+      }
+      .day h3 {
+        margin: 0 0 0.35rem;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+        font-weight: 700;
+      }
+      .slot {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        font-size: 0.9rem;
+        padding: 0.25rem 0;
+        border-bottom: 1px dashed var(--border);
+      }
+      .slot:last-child {
+        border-bottom: none;
+      }
+      .lib {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        margin-top: 0.5rem;
+      }
+      button {
+        font-family: inherit;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: #fff;
+        padding: 0.45rem 0.65rem;
+      }
+      button.primary {
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+      }
+      button.extra-btn {
+        background: #fff;
+        border-color: #c4a574;
+        color: var(--extra);
+      }
+      button.danger {
+        color: #991b1b;
+        border-color: #fecaca;
+        background: #fff5f5;
+        padding: 0.25rem 0.45rem;
+        font-size: 0.8rem;
+      }
+      .shop-section {
+        margin-top: 0.75rem;
+      }
+      .shop-section h3 {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--muted);
+        margin: 0 0 0.35rem;
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        padding: 0.35rem 0;
+        font-size: 0.88rem;
+        border-bottom: 1px solid var(--border);
+      }
+      .row:last-child {
+        border-bottom: none;
+      }
+      .tag {
+        font-size: 0.72rem;
+        font-weight: 700;
+        padding: 0.15rem 0.4rem;
+        border-radius: 4px;
+        background: var(--accent-soft);
+        color: var(--accent);
+      }
+      .tag.extra {
+        background: #f5e6d3;
+        color: var(--extra);
+      }
+      .log {
+        margin-top: 1rem;
+        padding: 0.75rem;
+        background: #1c1917;
+        color: #e7e5e4;
+        border-radius: var(--radius);
+        font-size: 0.8rem;
+        font-family: ui-monospace, monospace;
+        max-height: 9rem;
+        overflow: auto;
+      }
+      .log div {
+        margin-bottom: 0.35rem;
+        opacity: 0.92;
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 0.88rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <p class="nav">
+        <a href="sync-model-b-plan-only.html">→ Open Demo B (plan-only)</a>
+      </p>
+      <h1>Demo A — Plan + extras</h1>
+      <p class="muted" style="margin: 0 0 1rem">
+        Interactive mock of the <strong>recommended</strong> sync model. Shopping recipes are
+        <strong>derived</strong>, not a separate copy of the plan.
+      </p>
+
+      <div class="model-banner">
+        <strong>Rule:</strong> <code>shoppingMultiset = flatten(plan)</code> <strong>+</strong>
+        <code>extraRecipeIds</code> (each stored separately). Removing a row on the shopping side
+        either removes a <strong>plan slot</strong> or one <strong>extra</strong>, depending on
+        where it came from.
+      </div>
+
+      <div class="grid">
+        <div class="panel">
+          <h2>Meal plan (source of truth for calendar)</h2>
+          <p class="muted" style="margin: 0 0 0.75rem; font-size: 0.88rem">
+            Click <strong>Add to Monday</strong> to put a recipe on the plan. That also affects
+            shopping automatically.
+          </p>
+          <div id="plan-root"></div>
+          <h2 style="margin-top: 1rem">Recipe library</h2>
+          <p class="muted" style="margin: 0 0 0.35rem; font-size: 0.88rem">
+            <strong>Add as extra</strong> = on the shopping list but <em>not</em> on any day (party
+            supplies, try this week, etc.).
+          </p>
+          <div class="lib" id="lib-plan"></div>
+          <div class="lib" id="lib-extra"></div>
+        </div>
+
+        <div class="panel extra-panel">
+          <h2>Shopping — selected recipes</h2>
+          <p class="muted" style="margin: 0 0 0.75rem; font-size: 0.88rem">
+            This list is <strong>computed</strong> from the plan + extras. Try removing: plan rows
+            update the calendar; extra rows only shrink extras.
+          </p>
+          <div id="shop-root"></div>
+        </div>
+      </div>
+
+      <div class="log" id="log" aria-live="polite"></div>
+    </div>
+
+    <script>
+      const RECIPES = [
+        { id: "chicken", name: "Chicken (air fried)" },
+        { id: "rice", name: "Regular rice" },
+        { id: "tacos", name: "Taco chicken" },
+        { id: "salad", name: "Lemon burrata salad" },
+      ];
+
+      /** @type {{ mon: { id: string; name: string }[]; tue: { id: string; name: string }[] }} */
+      let plan = { mon: [], tue: [] };
+      /** multiset of recipe ids not tied to the plan */
+      let extras = [];
+
+      function recipeById(id) {
+        return RECIPES.find((r) => r.id === id);
+      }
+
+      function flattenPlan() {
+        const out = [];
+        for (const day of ["mon", "tue"]) {
+          for (let i = 0; i < plan[day].length; i++) {
+            const m = plan[day][i];
+            out.push({ source: "plan", day, index: i, id: m.id, name: m.name });
+          }
+        }
+        return out;
+      }
+
+      function derivedShoppingRows() {
+        const fromPlan = flattenPlan();
+        const fromExtras = extras.map((id, index) => {
+          const r = recipeById(id);
+          return {
+            source: "extra",
+            extraIndex: index,
+            id,
+            name: r ? r.name : id,
+          };
+        });
+        return { fromPlan, fromExtras };
+      }
+
+      function log(msg) {
+        const el = document.getElementById("log");
+        const line = document.createElement("div");
+        line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        el.prepend(line);
+      }
+
+      function addToPlan(day, id) {
+        const r = recipeById(id);
+        if (!r) return;
+        plan[day].push({ id: r.id, name: r.name });
+        log(`Plan: added "${r.name}" to ${day === "mon" ? "Monday" : "Tuesday"} → shopping updates (derived).`);
+        render();
+      }
+
+      function addExtra(id) {
+        const r = recipeById(id);
+        if (!r) return;
+        extras.push(r.id);
+        log(`Extras: added "${r.name}" → shopping shows under "Also shopping" (not on plan).`);
+        render();
+      }
+
+      function removePlanSlot(day, index) {
+        const removed = plan[day].splice(index, 1)[0];
+        if (removed) {
+          log(`Plan: removed "${removed.name}" from ${day === "mon" ? "Monday" : "Tuesday"} → derived shopping shrinks.`);
+        }
+        render();
+      }
+
+      function removeExtraAt(extraIndex) {
+        const id = extras[extraIndex];
+        extras.splice(extraIndex, 1);
+        const r = recipeById(id);
+        log(`Extras: removed "${r ? r.name : id}" → plan unchanged.`);
+        render();
+      }
+
+      function renderPlan() {
+        const root = document.getElementById("plan-root");
+        const days = [
+          { key: "mon", label: "Monday" },
+          { key: "tue", label: "Tuesday" },
+        ];
+        root.innerHTML = days
+          .map(
+            (d) => `
+          <div class="day">
+            <h3>${d.label}</h3>
+            ${plan[d.key].length === 0 ? '<p class="muted" style="margin:0;font-size:0.85rem">No meals</p>' : ""}
+            ${plan[d.key]
+              .map(
+                (m, i) => `
+              <div class="slot">
+                <span>${m.name}</span>
+                <button type="button" class="danger" data-remove-plan="${d.key}" data-index="${i}">Remove</button>
+              </div>
+            `,
+              )
+              .join("")}
+          </div>
+        `,
+          )
+          .join("");
+
+        root.querySelectorAll("[data-remove-plan]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            removePlanSlot(btn.getAttribute("data-remove-plan"), Number(btn.getAttribute("data-index")));
+          });
+        });
+      }
+
+      function renderLib() {
+        const planBtns = document.getElementById("lib-plan");
+        const extraBtns = document.getElementById("lib-extra");
+        planBtns.innerHTML =
+          '<span class="muted" style="width:100%;font-size:0.8rem">Add to <strong>Monday</strong>:</span>' +
+          RECIPES.map(
+            (r) =>
+              `<button type="button" class="primary" data-add-mon="${r.id}">${r.name}</button>`,
+          ).join("");
+        extraBtns.innerHTML =
+          '<span class="muted" style="width:100%;font-size:0.8rem">Add as <strong>extra</strong> (not on plan):</span>' +
+          RECIPES.map(
+            (r) => `<button type="button" class="extra-btn" data-add-extra="${r.id}">+ ${r.name}</button>`,
+          ).join("");
+
+        planBtns.querySelectorAll("[data-add-mon]").forEach((b) => {
+          b.addEventListener("click", () => addToPlan("mon", b.getAttribute("data-add-mon")));
+        });
+        extraBtns.querySelectorAll("[data-add-extra]").forEach((b) => {
+          b.addEventListener("click", () => addExtra(b.getAttribute("data-add-extra")));
+        });
+      }
+
+      function renderShop() {
+        const { fromPlan, fromExtras } = derivedShoppingRows();
+        const root = document.getElementById("shop-root");
+        let html = "";
+
+        html += `<div class="shop-section"><h3>From your plan</h3>`;
+        if (fromPlan.length === 0) {
+          html += `<p class="muted" style="margin:0;font-size:0.85rem">Nothing on the plan yet.</p>`;
+        } else {
+          html += fromPlan
+            .map(
+              (row) => `
+            <div class="row">
+              <span><span class="tag">Plan</span> ${row.name} <span class="muted">· ${row.day === "mon" ? "Mon" : "Tue"}</span></span>
+              <button type="button" class="danger" data-rm-plan="${row.day}" data-rm-idx="${row.index}">Remove</button>
+            </div>
+          `,
+            )
+            .join("");
+        }
+        html += `</div>`;
+
+        html += `<div class="shop-section"><h3>Also shopping (extras)</h3>`;
+        if (fromExtras.length === 0) {
+          html += `<p class="muted" style="margin:0;font-size:0.85rem">No extras.</p>`;
+        } else {
+          html += fromExtras
+            .map(
+              (row) => `
+            <div class="row">
+              <span><span class="tag extra">Extra</span> ${row.name}</span>
+              <button type="button" class="danger" data-rm-extra="${row.extraIndex}">Remove</button>
+            </div>
+          `,
+            )
+            .join("");
+        }
+        html += `<p class="muted" style="margin-top:0.75rem;font-size:0.82rem">
+          <strong>Ingredient lines</strong> (not shown here) would merge from this multiset — same as your real app.
+        </p>`;
+
+        root.innerHTML = html;
+
+        root.querySelectorAll("[data-rm-plan]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            removePlanSlot(btn.getAttribute("data-rm-plan"), Number(btn.getAttribute("data-rm-idx")));
+          });
+        });
+        root.querySelectorAll("[data-rm-extra]").forEach((btn) => {
+          btn.addEventListener("click", () => removeExtraAt(Number(btn.getAttribute("data-rm-extra"))));
+        });
+      }
+
+      function render() {
+        renderPlan();
+        renderLib();
+        renderShop();
+      }
+
+      log("Demo ready — add to plan vs add as extra and watch derived shopping.");
+      render();
+    </script>
+  </body>
+</html>

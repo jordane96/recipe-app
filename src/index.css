@@ -111,6 +111,8 @@ a {
 }
 
 .recipe-course-tabs {
+  position: relative;
+  z-index: 1;
   display: flex;
   gap: 0;
   margin-bottom: 0.75rem;
@@ -383,6 +385,131 @@ a {
   font-size: 0.9rem;
 }
 
+.recipe-add-to-plan-flow-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin: 0 0 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.recipe-add-to-plan-flow-banner-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+}
+
+.recipe-add-to-plan-flow-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+  font-size: 0.92rem;
+  flex: 1;
+}
+
+.recipe-add-to-plan-flow-phase {
+  display: block;
+  font-size: 0.85rem;
+}
+
+.recipe-add-to-plan-flow-banner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  flex-shrink: 0;
+}
+
+a.recipe-add-to-plan-change-link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: underline;
+  color: var(--muted);
+}
+
+.recipe-add-to-plan-flow-planned-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.recipe-add-to-plan-flow-planned-item {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  padding: 0.35rem 0.45rem;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.recipe-add-to-plan-flow-planned-kind {
+  flex-shrink: 0;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.35rem;
+  border-radius: 4px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.recipe-add-to-plan-flow-planned-kind--side {
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  color: var(--muted);
+}
+
+a.recipe-add-to-plan-flow-planned-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: inherit;
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+a.recipe-add-to-plan-flow-planned-title:hover {
+  text-decoration: underline;
+  color: var(--accent);
+}
+
+.recipe-add-to-plan-flow-planned-remove {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.recipe-add-to-plan-flow-planned-remove:hover {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--text);
+}
+
 .list-header {
   display: flex;
   align-items: center;
@@ -445,6 +572,24 @@ a {
 .recipe-row .recipe-link {
   flex: 1;
   min-width: 0;
+}
+
+.recipe-add-to-plan-btn {
+  flex-shrink: 0;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.4rem 0.65rem;
+  border-radius: 10px;
+  border: 1px solid var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.recipe-add-to-plan-btn:active {
+  filter: brightness(0.95);
 }
 
 .recipe-list-toggle {
@@ -803,6 +948,27 @@ a {
   font-weight: 700;
   min-width: 10rem;
   text-align: center;
+}
+
+.planner-unassigned {
+  margin-bottom: 1.25rem;
+}
+
+.planner-unassigned-drop {
+  min-height: 7.5rem;
+  padding: 0.65rem 0.7rem;
+}
+
+.add-to-plan-day-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: min(60vh, 22rem);
+  overflow-y: auto;
+}
+
+.add-to-plan-day-btn {
+  text-align: left;
 }
 
 .week-grid {

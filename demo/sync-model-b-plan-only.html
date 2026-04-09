@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Demo B — Plan-only shopping (strict model)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Source+Sans+3:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #f6f3ee;
+        --surface: #fffcf8;
+        --text: #1c1917;
+        --muted: #57534e;
+        --accent: #2d4a3e;
+        --accent-soft: #e8f0ec;
+        --border: #e7e2dc;
+        --radius: 12px;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: "Source Sans 3", system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.45;
+        padding: 1rem 1rem 2rem;
+        min-height: 100dvh;
+      }
+      .shell {
+        max-width: 56rem;
+        margin: 0 auto;
+      }
+      h1,
+      h2 {
+        font-family: Fraunces, Georgia, serif;
+        font-weight: 600;
+        margin: 0 0 0.5rem;
+        color: var(--accent);
+      }
+      h1 {
+        font-size: 1.45rem;
+      }
+      h2 {
+        font-size: 1.1rem;
+      }
+      .nav {
+        margin-bottom: 1rem;
+        font-size: 0.9rem;
+      }
+      .nav a {
+        color: var(--accent);
+        font-weight: 600;
+      }
+      .model-banner {
+        background: linear-gradient(135deg, #eef4ff, #fff);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 1rem 1.1rem;
+        margin-bottom: 1.25rem;
+        font-size: 0.92rem;
+        color: var(--muted);
+      }
+      .model-banner strong {
+        color: #1e3a5f;
+      }
+      .model-banner code {
+        font-size: 0.85em;
+        background: rgba(30, 58, 95, 0.08);
+        padding: 0.1em 0.35em;
+        border-radius: 4px;
+      }
+      .grid {
+        display: grid;
+        gap: 1rem;
+      }
+      @media (min-width: 900px) {
+        .grid {
+          grid-template-columns: 1fr 1fr;
+          align-items: start;
+        }
+      }
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 1rem 1.1rem;
+      }
+      .day {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 0.65rem 0.75rem;
+        margin-bottom: 0.5rem;
+        background: #fff;
+      }
+      .day h3 {
+        margin: 0 0 0.35rem;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+        font-weight: 700;
+      }
+      .slot {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        font-size: 0.9rem;
+        padding: 0.25rem 0;
+        border-bottom: 1px dashed var(--border);
+      }
+      .slot:last-child {
+        border-bottom: none;
+      }
+      .lib {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        margin-top: 0.5rem;
+      }
+      button {
+        font-family: inherit;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: #fff;
+        padding: 0.45rem 0.65rem;
+      }
+      button.primary {
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+      }
+      button.danger {
+        color: #991b1b;
+        border-color: #fecaca;
+        background: #fff5f5;
+        padding: 0.25rem 0.45rem;
+        font-size: 0.8rem;
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        padding: 0.35rem 0;
+        font-size: 0.88rem;
+        border-bottom: 1px solid var(--border);
+      }
+      .row:last-child {
+        border-bottom: none;
+      }
+      .tag {
+        font-size: 0.72rem;
+        font-weight: 700;
+        padding: 0.15rem 0.4rem;
+        border-radius: 4px;
+        background: var(--accent-soft);
+        color: var(--accent);
+      }
+      .log {
+        margin-top: 1rem;
+        padding: 0.75rem;
+        background: #1c1917;
+        color: #e7e5e4;
+        border-radius: var(--radius);
+        font-size: 0.8rem;
+        font-family: ui-monospace, monospace;
+        max-height: 9rem;
+        overflow: auto;
+      }
+      .log div {
+        margin-bottom: 0.35rem;
+        opacity: 0.92;
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 0.88rem;
+      }
+      .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(28, 25, 23, 0.45);
+        display: none;
+        align-items: flex-end;
+        justify-content: center;
+        padding: 1rem;
+        z-index: 50;
+      }
+      .modal-overlay.open {
+        display: flex;
+      }
+      .modal {
+        background: var(--surface);
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        padding: 1rem;
+        width: 100%;
+        max-width: 22rem;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+      }
+      .modal h3 {
+        margin: 0 0 0.5rem;
+        font-size: 1rem;
+        font-family: Fraunces, Georgia, serif;
+        color: var(--accent);
+      }
+      .modal-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        margin-top: 0.75rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <p class="nav">
+        <a href="sync-model-a-plan-plus-extras.html">→ Open Demo A (plan + extras)</a>
+      </p>
+      <h1>Demo B — Plan-only</h1>
+      <p class="muted" style="margin: 0 0 1rem">
+        Stricter model: there is <strong>no separate shopping recipe list</strong>. If a recipe
+        affects shopping, it <strong>must</strong> live on the plan.
+      </p>
+
+      <div class="model-banner">
+        <strong>Rule:</strong> <code>shoppingMultiset = flatten(plan)</code> only. From the library
+        you <strong>cannot</strong> “add to list” without choosing <strong>Monday</strong> or
+        <strong>Tuesday</strong>. Removing on the shopping screen always removes a <strong>plan
+        slot</strong>.
+      </div>
+
+      <div class="grid">
+        <div class="panel">
+          <h2>Meal plan (only storage)</h2>
+          <p class="muted" style="margin: 0 0 0.75rem; font-size: 0.88rem">
+            Same as Demo A, but every library add goes through the <strong>pick a day</strong> step.
+          </p>
+          <div id="plan-root"></div>
+          <h2 style="margin-top: 1rem">Recipe library</h2>
+          <p class="muted" style="margin: 0 0 0.35rem; font-size: 0.88rem">
+            Tap a recipe → modal forces a day. No “list-only” path.
+          </p>
+          <div class="lib" id="lib-root"></div>
+        </div>
+
+        <div class="panel">
+          <h2>Shopping — selected recipes</h2>
+          <p class="muted" style="margin: 0 0 0.75rem; font-size: 0.88rem">
+            Always mirrors the plan. <strong>Remove</strong> here = remove from that day on the
+            plan.
+          </p>
+          <div id="shop-root"></div>
+        </div>
+      </div>
+
+      <div class="log" id="log" aria-live="polite"></div>
+    </div>
+
+    <div class="modal-overlay" id="modal" role="dialog" aria-modal="true" aria-labelledby="pick-title">
+      <div class="modal">
+        <h3 id="pick-title">Add to which day?</h3>
+        <p class="muted" style="margin: 0; font-size: 0.88rem" id="pick-recipe"></p>
+        <div class="modal-actions">
+          <button type="button" class="primary" id="pick-mon">Monday</button>
+          <button type="button" class="primary" id="pick-tue">Tuesday</button>
+          <button type="button" id="pick-cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const RECIPES = [
+        { id: "chicken", name: "Chicken (air fried)" },
+        { id: "rice", name: "Regular rice" },
+        { id: "tacos", name: "Taco chicken" },
+        { id: "salad", name: "Lemon burrata salad" },
+      ];
+
+      let plan = { mon: [], tue: [] };
+      let pendingId = null;
+
+      function recipeById(id) {
+        return RECIPES.find((r) => r.id === id);
+      }
+
+      function flattenPlan() {
+        const out = [];
+        for (const day of ["mon", "tue"]) {
+          for (let i = 0; i < plan[day].length; i++) {
+            const m = plan[day][i];
+            out.push({ day, index: i, id: m.id, name: m.name });
+          }
+        }
+        return out;
+      }
+
+      function log(msg) {
+        const el = document.getElementById("log");
+        const line = document.createElement("div");
+        line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        el.prepend(line);
+      }
+
+      function openPicker(id) {
+        pendingId = id;
+        const r = recipeById(id);
+        document.getElementById("pick-recipe").textContent = r ? `Recipe: ${r.name}` : id;
+        document.getElementById("modal").classList.add("open");
+      }
+
+      function closePicker() {
+        pendingId = null;
+        document.getElementById("modal").classList.remove("open");
+      }
+
+      function confirmDay(day) {
+        if (!pendingId) return;
+        const r = recipeById(pendingId);
+        if (!r) return;
+        plan[day].push({ id: r.id, name: r.name });
+        log(
+          `Library: added "${r.name}" to ${day === "mon" ? "Monday" : "Tuesday"} — shopping is 1:1 with plan.`,
+        );
+        closePicker();
+        render();
+      }
+
+      function removePlanSlot(day, index) {
+        const removed = plan[day].splice(index, 1)[0];
+        if (removed) {
+          log(`Removed "${removed.name}" from plan → shopping list shrinks (derived).`);
+        }
+        render();
+      }
+
+      function renderPlan() {
+        const root = document.getElementById("plan-root");
+        const days = [
+          { key: "mon", label: "Monday" },
+          { key: "tue", label: "Tuesday" },
+        ];
+        root.innerHTML = days
+          .map(
+            (d) => `
+          <div class="day">
+            <h3>${d.label}</h3>
+            ${plan[d.key].length === 0 ? '<p class="muted" style="margin:0;font-size:0.85rem">No meals</p>' : ""}
+            ${plan[d.key]
+              .map(
+                (m, i) => `
+              <div class="slot">
+                <span>${m.name}</span>
+                <button type="button" class="danger" data-remove-plan="${d.key}" data-index="${i}">Remove</button>
+              </div>
+            `,
+              )
+              .join("")}
+          </div>
+        `,
+          )
+          .join("");
+
+        root.querySelectorAll("[data-remove-plan]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            removePlanSlot(btn.getAttribute("data-remove-plan"), Number(btn.getAttribute("data-index")));
+          });
+        });
+      }
+
+      function renderLib() {
+        const lib = document.getElementById("lib-root");
+        lib.innerHTML = RECIPES.map(
+          (r) => `<button type="button" class="primary" data-pick="${r.id}">Add: ${r.name}</button>`,
+        ).join("");
+        lib.querySelectorAll("[data-pick]").forEach((b) => {
+          b.addEventListener("click", () => openPicker(b.getAttribute("data-pick")));
+        });
+      }
+
+      function renderShop() {
+        const rows = flattenPlan();
+        const root = document.getElementById("shop-root");
+        if (rows.length === 0) {
+          root.innerHTML =
+            '<p class="muted" style="margin:0;font-size:0.88rem">Nothing on the plan — nothing to shop for.</p>';
+          return;
+        }
+        root.innerHTML = rows
+          .map(
+            (row) => `
+          <div class="row">
+            <span><span class="tag">Plan</span> ${row.name} <span class="muted">· ${row.day === "mon" ? "Mon" : "Tue"}</span></span>
+            <button type="button" class="danger" data-rm-plan="${row.day}" data-rm-idx="${row.index}">Remove</button>
+          </div>
+        `,
+          )
+          .join("");
+        root.querySelectorAll("[data-rm-plan]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            removePlanSlot(btn.getAttribute("data-rm-plan"), Number(btn.getAttribute("data-rm-idx")));
+          });
+        });
+      }
+
+      function render() {
+        renderPlan();
+        renderLib();
+        renderShop();
+      }
+
+      document.getElementById("pick-mon").addEventListener("click", () => confirmDay("mon"));
+      document.getElementById("pick-tue").addEventListener("click", () => confirmDay("tue"));
+      document.getElementById("pick-cancel").addEventListener("click", closePicker);
+      document.getElementById("modal").addEventListener("click", (e) => {
+        if (e.target.id === "modal") closePicker();
+      });
+
+      log("Demo ready — every library add requires a day; shopping = flatten(plan).");
+      render();
+    </script>
+  </body>
+</html>

@@ -1,51 +1,16 @@
 import * as React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { formatIngredientLine, ingredientMap } from "./ingredientDisplay";
 import type { IngredientDef, Recipe } from "./types";
-import { shoppingListPath } from "./listTabSearch";
+import { recipesAddToPlanPath, shoppingListPath } from "./listTabSearch";
+import { addDays, iso, startOfWeekMonday, weekRangeLabel } from "./mealPlanDates";
+import { useMealPlan } from "./MealPlanContext";
 import {
-  flattenPlanRecipeIdsInOrder,
-  loadMealPlan,
-  normalizePlanMainBeforeSide,
-  saveMealPlan,
+  MEAL_PLAN_UNASSIGNED_KEY,
   sortMealsMainBeforeSide,
-  type MealPlanByDate,
   type PlannedMeal,
 } from "./mealPlanStorage";
-import { recipeSegment } from "./recipeCourse";
 import { useShoppingList } from "./ShoppingListContext";
-
-function startOfWeekMonday(d: Date): Date {
-  const x = new Date(d);
-  const day = x.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  x.setDate(x.getDate() + diff);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-
-function addDays(d: Date, n: number): Date {
-  const x = new Date(d);
-  x.setDate(x.getDate() + n);
-  return x;
-}
-
-function iso(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
-
-function weekRangeLabel(start: Date): string {
-  const end = addDays(start, 6);
-  const a = start.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-  const b = end.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-  return `${a} – ${b}`;
-}
-
-type PickerStep = "pick-main" | "pick-side";
 
 const MEAL_DRAG_MIME = "application/x-meal-plan-meal+json";
 
@@ -58,48 +23,13 @@ export function MealPlannerPage({
   recipes: Recipe[];
   ingredients: IngredientDef[];
 }) {
-  const { addToList, removeFromList, hydrateShoppingIfEmpty, count } = useShoppingList();
+  const { count } = useShoppingList();
+  const navigate = useNavigate();
+  const { plan, unassignedKey, removeMealAt, moveMealToDay, clearWeekDateRange } = useMealPlan();
   const recipeById = React.useMemo(() => new Map(recipes.map((r) => [r.id, r])), [recipes]);
   const byId = React.useMemo(() => ingredientMap(ingredients), [ingredients]);
 
-  const mainsPool = React.useMemo(
-    () =>
-      recipes
-        .filter((r) => {
-          const s = recipeSegment(r);
-          return s === "main" || s === "other";
-        })
-        .sort((a, b) => a.title.localeCompare(b.title)),
-    [recipes],
-  );
-
-  const sidesPool = React.useMemo(
-    () =>
-      recipes
-        .filter((r) => recipeSegment(r) === "side")
-        .sort((a, b) => a.title.localeCompare(b.title)),
-    [recipes],
-  );
-
   const [weekStart, setWeekStart] = React.useState(() => startOfWeekMonday(new Date()));
-  const [plan, setPlan] = React.useState<MealPlanByDate>(() =>
-    typeof window === "undefined" ? {} : normalizePlanMainBeforeSide(loadMealPlan()),
-  );
-  const initialPlanForHydrate = React.useRef(plan);
-
-  React.useEffect(() => {
-    saveMealPlan(plan);
-  }, [plan]);
-
-  React.useEffect(() => {
-    hydrateShoppingIfEmpty(flattenPlanRecipeIdsInOrder(initialPlanForHydrate.current));
-  }, [hydrateShoppingIfEmpty]);
-
-  const [pickerDate, setPickerDate] = React.useState<string | null>(null);
-  const [pickerStep, setPickerStep] = React.useState<PickerStep>("pick-main");
-  const [pendingMain, setPendingMain] = React.useState<PlannedMeal | null>(null);
-  const [step1ListKind, setStep1ListKind] = React.useState<"main" | "side">("main");
-  const [pickerQuery, setPickerQuery] = React.useState("");
 
   const [readSlot, setReadSlot] = React.useState<PlannedMeal | null>(null);
   const [mealDrag, setMealDrag] = React.useState<MealDragPayload | null>(null);
@@ -113,104 +43,18 @@ export function MealPlannerPage({
     return keys;
   }, [weekStart]);
 
+  const unassignedMeals = plan[unassignedKey] ?? [];
+
   const openPicker = (dateKey: string) => {
-    setPickerDate(dateKey);
-    setPickerStep("pick-main");
-    setPendingMain(null);
-    setStep1ListKind("main");
-    setPickerQuery("");
-  };
-
-  const closePicker = () => {
-    setPickerDate(null);
-    setPickerStep("pick-main");
-    setPendingMain(null);
-    setStep1ListKind("main");
-    setPickerQuery("");
-  };
-
-  const recipeToPlanned = (r: Recipe): PlannedMeal => ({
-    id: r.id,
-    title: r.title,
-    kind: recipeSegment(r) === "side" ? "side" : "main",
-  });
-
-  const finishAddMeals = (entries: PlannedMeal[]) => {
-    if (!pickerDate) {
-      return;
-    }
-    setPlan((prev) => {
-      const next = { ...prev };
-      const cur = sortMealsMainBeforeSide([...(next[pickerDate] ?? []), ...entries]);
-      next[pickerDate] = cur;
-      return next;
-    });
-    for (const e of entries) {
-      addToList(e.id);
-    }
-    closePicker();
-  };
-
-  const removeMealAt = (dateKey: string, index: number) => {
-    const row = plan[dateKey];
-    const removed = row?.[index];
-    if (!removed) {
-      return;
-    }
-    const next: MealPlanByDate = { ...plan };
-    const cur = [...(next[dateKey] ?? [])];
-    cur.splice(index, 1);
-    if (cur.length === 0) {
-      delete next[dateKey];
-    } else {
-      next[dateKey] = sortMealsMainBeforeSide(cur);
-    }
-    setPlan(next);
-    removeFromList(removed.id);
+    navigate(recipesAddToPlanPath(dateKey));
   };
 
   const clearWeek = () => {
     if (!window.confirm("Clear all meals from this week?")) {
       return;
     }
-    const start = iso(weekStart);
-    const end = iso(addDays(weekStart, 6));
-    const mealsDropped: PlannedMeal[] = [];
-    for (const [key, meals] of Object.entries(plan)) {
-      if (key >= start && key <= end) {
-        mealsDropped.push(...meals);
-      }
-    }
-    const next: MealPlanByDate = { ...plan };
-    for (const k of Object.keys(next)) {
-      if (k >= start && k <= end) {
-        delete next[k];
-      }
-    }
-    setPlan(next);
-    for (const m of mealsDropped) {
-      removeFromList(m.id);
-    }
+    clearWeekDateRange(iso(weekStart), iso(addDays(weekStart, 6)));
   };
-
-  const moveMealToDay = React.useCallback((fromKey: string, fromIndex: number, toKey: string) => {
-    setPlan((prev) => {
-      const src = [...(prev[fromKey] ?? [])];
-      if (fromIndex < 0 || fromIndex >= src.length) {
-        return prev;
-      }
-      const [meal] = src.splice(fromIndex, 1);
-      const next: MealPlanByDate = { ...prev };
-      if (src.length === 0) {
-        delete next[fromKey];
-      } else {
-        next[fromKey] = sortMealsMainBeforeSide(src);
-      }
-      const dest = sortMealsMainBeforeSide([...(next[toKey] ?? []), meal]);
-      next[toKey] = dest;
-      return next;
-    });
-  }, []);
 
   const handleChipDragStart = React.useCallback(
     (e: React.DragEvent, fromKey: string, fromIndex: number) => {
@@ -257,29 +101,6 @@ export function MealPlannerPage({
     [moveMealToDay],
   );
 
-  const pickerPool =
-    pickerStep === "pick-main"
-      ? step1ListKind === "main"
-        ? mainsPool
-        : sidesPool
-      : sidesPool;
-
-  const filteredPicker = React.useMemo(() => {
-    const q = pickerQuery.trim().toLowerCase();
-    if (!q) {
-      return pickerPool;
-    }
-    return pickerPool.filter((r) => r.title.toLowerCase().includes(q));
-  }, [pickerPool, pickerQuery]);
-
-  const pickerDateLabel =
-    pickerDate &&
-    new Date(`${pickerDate}T12:00:00`).toLocaleDateString(undefined, {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-    });
-
   const readRecipe = readSlot ? recipeById.get(readSlot.id) : undefined;
 
   const todayIso = iso(new Date());
@@ -319,6 +140,81 @@ export function MealPlannerPage({
         </div>
       </header>
 
+      <section className="planner-unassigned" aria-label="Unassigned meals">
+        <div
+          className={`planner-unassigned-drop day-card${
+            dropTargetKey === unassignedKey ? " day-card--drop-target" : ""
+          }`}
+          onDragOver={(e) => handleDayDragOver(e, unassignedKey)}
+          onDrop={(e) => handleDayDrop(e, unassignedKey)}
+        >
+          <div className="day-card-drop-area">
+            <div
+              className="day-card-header"
+              onDragOver={(e) => handleDayDragOver(e, unassignedKey)}
+              onDrop={(e) => handleDayDrop(e, unassignedKey)}
+            >
+              <div className="day-head">Unassigned</div>
+            </div>
+            {unassignedMeals.length > 0 ? (
+              <ul className="meal-chips">
+                {unassignedMeals.map((m, idx) => (
+                  <li
+                    key={`${unassignedKey}-${idx}-${m.id}`}
+                    className={`meal-chip${m.kind === "side" ? " side" : ""}${
+                      mealDrag?.fromKey === unassignedKey && mealDrag.fromIndex === idx
+                        ? " meal-chip--dragging"
+                        : ""
+                    }`}
+                    draggable
+                    aria-label={`${m.title}. Drag to a day below.`}
+                    onDragStart={(e) => handleChipDragStart(e, unassignedKey, idx)}
+                    onDragEnd={handleChipDragEnd}
+                    onDragOver={(e) => handleDayDragOver(e, unassignedKey)}
+                    onDrop={(e) => {
+                      e.stopPropagation();
+                      handleDayDrop(e, unassignedKey);
+                    }}
+                  >
+                    <span className="meal-chip-handle" aria-hidden="true" title="Drag to a day">
+                      ⋮⋮
+                    </span>
+                    <button
+                      type="button"
+                      className="meal-chip-title"
+                      draggable={false}
+                      aria-label={`Open recipe: ${m.title}`}
+                      onClick={() => setReadSlot(m)}
+                    >
+                      {m.title}
+                    </button>
+                    <button
+                      type="button"
+                      className="meal-chip-x"
+                      draggable={false}
+                      aria-label={`Remove ${m.title}`}
+                      onClick={() => removeMealAt(unassignedKey, idx)}
+                    >
+                      ×
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            <div className="add-meal">
+              <button
+                type="button"
+                onClick={() => openPicker(unassignedKey)}
+                onDragOver={(e) => handleDayDragOver(e, unassignedKey)}
+                onDrop={(e) => handleDayDrop(e, unassignedKey)}
+              >
+                + Add meal
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <div className="week-grid">
         {weekKeys.map((key) => {
           const d = new Date(`${key}T12:00:00`);
@@ -354,7 +250,7 @@ export function MealPlannerPage({
                           : ""
                       }`}
                       draggable
-                      aria-label={`${m.title}. Drag to another day.`}
+                      aria-label={`${m.title}. Drag to another day or Unassigned.`}
                       onDragStart={(e) => handleChipDragStart(e, key, idx)}
                       onDragEnd={handleChipDragEnd}
                       onDragOver={onDayDragOver}
@@ -363,7 +259,7 @@ export function MealPlannerPage({
                       <span
                         className="meal-chip-handle"
                         aria-hidden="true"
-                        title="Drag to another day"
+                        title="Drag to another day or Unassigned"
                       >
                         ⋮⋮
                       </span>
@@ -408,148 +304,6 @@ export function MealPlannerPage({
         <button type="button" className="btn-ghost" onClick={clearWeek}>
           Clear week plan
         </button>
-      </div>
-
-      {/* Add-meal sheet */}
-      <div
-        className={`planner-overlay${pickerDate ? " open" : ""}`}
-        aria-hidden={!pickerDate}
-        onClick={(e) => {
-          if (e.target === e.currentTarget) {
-            closePicker();
-          }
-        }}
-      >
-        <div className="planner-sheet" role="dialog" aria-labelledby="sheetTitle">
-          <div className="planner-sheet-head">
-            <h2 id="sheetTitle">
-              {pickerStep === "pick-main"
-                ? `Add meal · ${pickerDateLabel ?? ""}`
-                : `Optional side · ${pickerDateLabel ?? ""}`}
-            </h2>
-            {pickerStep === "pick-side" && pendingMain ? (
-              <p className="picker-subtitle">
-                With <strong>{pendingMain.title}</strong>. Pick a side or skip.
-              </p>
-            ) : null}
-            <input
-              className="search planner-sheet-search"
-              type="search"
-              placeholder={
-                pickerStep === "pick-main"
-                  ? step1ListKind === "main"
-                    ? "Filter mains…"
-                    : "Filter sides…"
-                  : "Filter sides…"
-              }
-              autoComplete="off"
-              value={pickerQuery}
-              onChange={(e) => setPickerQuery(e.target.value)}
-            />
-            {pickerStep === "pick-main" ? (
-              <div className="picker-kind-tabs" role="tablist" aria-label="Mains or sides">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={step1ListKind === "main"}
-                  data-on={step1ListKind === "main"}
-                  onClick={() => {
-                    setStep1ListKind("main");
-                    setPickerQuery("");
-                  }}
-                >
-                  Mains
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={step1ListKind === "side"}
-                  data-on={step1ListKind === "side"}
-                  onClick={() => {
-                    setStep1ListKind("side");
-                    setPickerQuery("");
-                  }}
-                >
-                  Sides
-                </button>
-              </div>
-            ) : null}
-          </div>
-          <div className="planner-sheet-body">
-            {filteredPicker.length === 0 ? (
-              <p className="muted" style={{ padding: "0.5rem 0.75rem" }}>
-                No recipes match.
-              </p>
-            ) : (
-              filteredPicker.map((r) => (
-                <button
-                  key={r.id}
-                  type="button"
-                  className="pick-row"
-                  onClick={() => {
-                    if (!pickerDate) {
-                      return;
-                    }
-                    if (pickerStep === "pick-main") {
-                      const seg = recipeSegment(r);
-                      if (seg === "side") {
-                        finishAddMeals([recipeToPlanned(r)]);
-                        return;
-                      }
-                      setPendingMain(recipeToPlanned(r));
-                      setPickerStep("pick-side");
-                      setPickerQuery("");
-                    } else {
-                      if (pendingMain) {
-                        finishAddMeals([pendingMain, recipeToPlanned(r)]);
-                      }
-                    }
-                  }}
-                >
-                  <span>{r.title}</span>
-                  <span className="pick-row-meta">
-                    <span className={`planner-badge${recipeSegment(r) === "side" ? " side" : ""}`}>
-                      {recipeSegment(r) === "side" ? "Side" : "Main"}
-                    </span>
-                  </span>
-                </button>
-              ))
-            )}
-          </div>
-          <div className="planner-sheet-foot">
-            {pickerStep === "pick-side" ? (
-              <button
-                type="button"
-                className="btn-skip-side"
-                onClick={() => {
-                  if (pendingMain) {
-                    finishAddMeals([pendingMain]);
-                  }
-                }}
-              >
-                Skip — no side
-              </button>
-            ) : null}
-            <div className="planner-sheet-foot-row">
-              {pickerStep === "pick-side" ? (
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={() => {
-                    setPendingMain(null);
-                    setPickerStep("pick-main");
-                    setPickerQuery("");
-                  }}
-                >
-                  ← Change main
-                </button>
-              ) : null}
-              <button type="button" className="btn-secondary" onClick={closePicker}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Recipe quick-read */}
