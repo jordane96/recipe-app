@@ -18,7 +18,7 @@ import {
 } from "./listTabSearch";
 import { AddToPlanSheet } from "./AddToPlanSheet";
 import { weekRangeLabel } from "./mealPlanDates";
-import { recipeSegment, SEGMENT_LABEL, type RecipeSegment } from "./recipeCourse";
+import { recipeSegment, SEGMENT_LABEL } from "./recipeCourse";
 import { isMealPlanDateKey, MEAL_PLAN_UNASSIGNED_KEY } from "./mealPlanStorage";
 import { useMealPlan } from "./MealPlanContext";
 import { useShoppingList } from "./ShoppingListContext";
@@ -193,22 +193,8 @@ export function RecipeList({
         return;
       }
       addRecipeToPlanKey(planKey, r);
-      const seg: RecipeSegment = recipeSegment(r);
-      // After the first main we switch to Sides; if the user tapped Mains again
-      // (planPhase=main), keep them there so they can add another main.
-      if (seg !== "side" && searchParams.get(PLAN_PHASE_QUERY) !== PLAN_PHASE_MAIN) {
-        setSearchParams(
-          (prev) => {
-            const p = new URLSearchParams(prev);
-            p.set(PLAN_PHASE_QUERY, PLAN_PHASE_SIDE);
-            p.delete(LIST_TAB_QUERY);
-            return p;
-          },
-          { replace: true },
-        );
-      }
     },
-    [planKey, addRecipeToPlanKey, searchParams, setSearchParams],
+    [planKey, addRecipeToPlanKey],
   );
 
   const renderRecipeRow = (r: Recipe) => {
@@ -244,23 +230,16 @@ export function RecipeList({
       ? mainList.length === 0 && otherList.length === 0
       : listForSideTab.length === 0;
 
-  const phaseHint = inPlanFlow
-    ? readPlanPhaseSide(searchParams)
-      ? "Pick a side (optional — you can add more than one)."
-      : "Pick a main first; then you can add a side."
-    : null;
-
   const plannedForTarget = planKey ? (plan[planKey] ?? []) : [];
 
   return (
     <>
       {inPlanFlow && planKey ? (
         <div className="recipe-add-to-plan-flow-banner" role="region" aria-label="Adding to meal plan">
-          <div className="recipe-add-to-plan-flow-banner-top">
-            <div className="recipe-add-to-plan-flow-banner-text">
-              <strong>Adding for {planTargetLabel(planKey, searchParams)}</strong>
-              {phaseHint ? <span className="muted recipe-add-to-plan-flow-phase">{phaseHint}</span> : null}
-            </div>
+          <div className="recipe-add-to-plan-flow-banner-toolbar">
+            <p className="recipe-add-to-plan-flow-banner-title">
+              Adding for <strong>{planTargetLabel(planKey, searchParams)}</strong>
+            </p>
             <div className="recipe-add-to-plan-flow-banner-actions">
               <button type="button" className="btn-secondary btn-compact" onClick={() => navigate("/")}>
                 Done

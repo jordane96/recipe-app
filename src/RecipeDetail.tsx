@@ -1,22 +1,21 @@
 import * as React from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type { IngredientDef, Recipe, RecommendedSideRef } from "./types";
 import { formatIngredientLine, ingredientMap } from "./ingredientDisplay";
 import {
   ADD_TO_PLAN_QUERY,
-  LIST_TAB_QUERY,
-  PLAN_PHASE_MAIN,
-  PLAN_PHASE_QUERY,
-  PLAN_PHASE_SIDE,
   homeListPath,
   readPlanPhaseSide,
   readSidesListTab,
   recipeDetailPath,
+  recipesAddToPlanPath,
   shoppingListPath,
   urlParamToPlanKey,
 } from "./listTabSearch";
 import { AddToPlanSheet } from "./AddToPlanSheet";
+import { iso, startOfWeekMonday } from "./mealPlanDates";
 import { recipeSegment } from "./recipeCourse";
+import { MEAL_PLAN_UNASSIGNED_KEY } from "./mealPlanStorage";
 import { useMealPlan } from "./MealPlanContext";
 import { useShoppingList } from "./ShoppingListContext";
 
@@ -28,17 +27,20 @@ export function RecipeDetail({
   ingredients: IngredientDef[];
 }) {
   const { id } = useParams();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const fromSidesList = readSidesListTab(searchParams);
   const planKey = urlParamToPlanKey(searchParams.get(ADD_TO_PLAN_QUERY));
   const inPlanFlow = planKey != null;
   const listSidesTab = inPlanFlow ? readPlanPhaseSide(searchParams) : fromSidesList;
+  const preserve = inPlanFlow ? searchParams : undefined;
 
   const recipe = recipes.find((r) => r.id === id);
   const { count } = useShoppingList();
   const { addRecipeToPlanKey } = useMealPlan();
   const [planSheetRecipe, setPlanSheetRecipe] = React.useState<Recipe | null>(null);
   const byId = React.useMemo(() => ingredientMap(ingredients), [ingredients]);
+  const sheetWeekStartIso = React.useMemo(() => iso(startOfWeekMonday(new Date())), []);
 
   const addTargetToPlan = React.useCallback(
     (r: Recipe) => {
@@ -47,25 +49,21 @@ export function RecipeDetail({
         return;
       }
       addRecipeToPlanKey(planKey, r);
-      if (
-        recipeSegment(r) !== "side" &&
-        searchParams.get(PLAN_PHASE_QUERY) !== PLAN_PHASE_MAIN
-      ) {
-        setSearchParams(
-          (prev) => {
-            const p = new URLSearchParams(prev);
-            p.set(PLAN_PHASE_QUERY, PLAN_PHASE_SIDE);
-            p.delete(LIST_TAB_QUERY);
-            return p;
-          },
-          { replace: true },
-        );
-      }
+      navigate(homeListPath(listSidesTab, preserve));
     },
-    [planKey, addRecipeToPlanKey, searchParams, setSearchParams],
+    [planKey, addRecipeToPlanKey, navigate, listSidesTab, preserve],
   );
 
-  const preserve = inPlanFlow ? searchParams : undefined;
+  const navigateToListAfterSheetAdd = React.useCallback(
+    (key: string) => {
+      navigate(
+        key === MEAL_PLAN_UNASSIGNED_KEY
+          ? recipesAddToPlanPath(key, sheetWeekStartIso)
+          : recipesAddToPlanPath(key),
+      );
+    },
+    [navigate, sheetWeekStartIso],
+  );
 
   if (!recipe) {
     return (
@@ -221,6 +219,7 @@ export function RecipeDetail({
         recipe={planSheetRecipe}
         open={planSheetRecipe !== null}
         onClose={() => setPlanSheetRecipe(null)}
+        onAfterAdd={navigateToListAfterSheetAdd}
       />
     </>
   );

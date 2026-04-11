@@ -8,9 +8,11 @@ type Props = {
   recipe: Recipe | null;
   open: boolean;
   onClose: () => void;
+  /** Called after a day is chosen and the recipe is saved (e.g. navigate to list). */
+  onAfterAdd?: (planKey: string) => void;
 };
 
-export function AddToPlanSheet({ recipe, open, onClose }: Props) {
+export function AddToPlanSheet({ recipe, open, onClose, onAfterAdd }: Props) {
   const { addRecipeToPlanKey } = useMealPlan();
   const weekStart = React.useMemo(() => startOfWeekMonday(new Date()), []);
   const weekKeys = React.useMemo(() => buildWeekKeys(weekStart), [weekStart]);
@@ -21,6 +23,7 @@ export function AddToPlanSheet({ recipe, open, onClose }: Props) {
     }
     addRecipeToPlanKey(key, recipe);
     onClose();
+    onAfterAdd?.(key);
   };
 
   if (!open || !recipe) {

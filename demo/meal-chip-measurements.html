@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Meal chip — measurement spec</title>
+    <style>
+      :root {
+        --bg: #f6f3ee;
+        --text: #1c1917;
+        --muted: #57534e;
+        --accent: #2d4a3e;
+        --accent-soft: #e8f0ec;
+        --border: #e7e2dc;
+        font-family: system-ui, "Segoe UI", sans-serif;
+        font-size: 16px;
+      }
+      body {
+        margin: 0;
+        padding: 1.5rem;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.45;
+      }
+      h1 {
+        font-size: 1.25rem;
+        margin: 0 0 0.35rem;
+      }
+      .sub {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-bottom: 1rem;
+      }
+      .legend {
+        max-width: 56rem;
+        margin: 0.75rem 0 0;
+        padding: 0.65rem 0.85rem;
+        background: #fffcf8;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        font-size: 0.82rem;
+      }
+      .legend strong {
+        display: inline-block;
+        min-width: 1.5rem;
+        color: var(--accent);
+      }
+      .note {
+        font-size: 0.82rem;
+        color: var(--muted);
+        margin-top: 1rem;
+        max-width: 52rem;
+      }
+      table {
+        border-collapse: collapse;
+        margin-top: 1.25rem;
+        font-size: 0.85rem;
+        max-width: 56rem;
+      }
+      th,
+      td {
+        border: 1px solid var(--border);
+        padding: 0.45rem 0.6rem;
+        text-align: left;
+        vertical-align: top;
+      }
+      th {
+        background: var(--accent-soft);
+        font-weight: 700;
+      }
+      .ref {
+        font-weight: 800;
+        color: #fff;
+        background: var(--accent);
+        border-radius: 999px;
+        width: 1.35rem;
+        height: 1.35rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        margin-right: 0.35rem;
+        vertical-align: middle;
+      }
+      .ref.ref-tap {
+        background: #c41e3a;
+      }
+      .ref.ref-gap {
+        background: #7c3aed;
+      }
+      td.on-diagram {
+        font-size: 0.82rem;
+        line-height: 1.4;
+      }
+      code {
+        font-size: 0.85em;
+        background: #fff;
+        padding: 0.1rem 0.35rem;
+        border-radius: 4px;
+        border: 1px solid var(--border);
+      }
+      .px {
+        color: var(--muted);
+        font-size: 0.85em;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Meal chip — spacing &amp; touch targets</h1>
+    <p class="sub">
+      Values from <code>recipe-app/src/index.css</code>. Px assumes <strong>16px root</strong> (1rem = 16px).
+      <strong>Match the circled numbers</strong> on the diagram to the <strong>#</strong> column in the table.
+    </p>
+
+    <svg
+      width="100%"
+      viewBox="0 0 920 340"
+      style="max-width: 56rem; background: #fffcf8; border: 1px solid var(--border); border-radius: 12px; display: block"
+      aria-label="Annotated meal chip: numbered callouts match table"
+    >
+      <defs>
+        <marker id="arr" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#c41e3a" />
+        </marker>
+        <style>
+          .bn {
+            font-size: 13px;
+            font-weight: 800;
+            fill: #fff;
+            font-family: system-ui, sans-serif;
+          }
+        </style>
+      </defs>
+
+      <!-- Chip row (ref 3) -->
+      <rect
+        id="chip-box"
+        x="120"
+        y="95"
+        width="680"
+        height="58"
+        rx="10"
+        fill="#e8f0ec"
+        stroke="#2d4a3e"
+        stroke-width="2"
+      />
+
+      <!-- Padding inset hint (still row 3) -->
+      <rect x="128" y="103" width="664" height="42" rx="6" fill="none" stroke="#2563eb" stroke-width="1" stroke-dasharray="5 4" opacity="0.85" />
+
+      <!-- Handle (4) -->
+      <text x="132" y="130" font-size="13" fill="#57534e">⋮⋮</text>
+
+      <!-- Title (5) -->
+      <text x="168" y="130" font-size="14" font-weight="600" fill="#1c1917">Beef tortilla melts</text>
+
+      <!-- Set day (6) — pill height ~90% of prior spec -->
+      <rect x="510" y="106" width="92" height="36" rx="7" fill="#fffcf8" stroke="#2d4a3e" stroke-width="1.5" />
+      <text x="556" y="125" font-size="8" font-weight="700" fill="#2d4a3e" text-anchor="middle">Set day</text>
+
+      <!-- × (7) + tap target (1) -->
+      <text x="632" y="132" font-size="20" fill="#57534e">×</text>
+      <rect x="618" y="100" width="48" height="48" rx="10" fill="none" stroke="#c41e3a" stroke-width="2" stroke-dasharray="5 3" />
+
+      <!-- Min-height bracket for chip (uses 1) -->
+      <path d="M 108 95 L 108 153" stroke="#c41e3a" stroke-width="2.5" fill="none" />
+      <path d="M 102 95 L 114 95 M 102 153 L 114 153" stroke="#c41e3a" stroke-width="2.5" />
+
+      <!-- Second chip ghost + gap (2) -->
+      <rect x="120" y="218" width="680" height="36" rx="8" fill="#e8f0ec" opacity="0.45" stroke="#999" stroke-dasharray="4 3" />
+      <text x="135" y="240" font-size="12" fill="#57534e" opacity="0.8">… next meal chip …</text>
+
+      <g transform="translate(52, 118)">
+        <circle r="16" fill="#c41e3a" />
+        <text class="bn" x="0" y="5" text-anchor="middle">1</text>
+      </g>
+      <line x1="68" y1="124" x2="102" y2="124" stroke="#c41e3a" stroke-width="1.5" />
+
+      <g transform="translate(700, 124)">
+        <circle r="16" fill="#c41e3a" />
+        <text class="bn" x="0" y="5" text-anchor="middle">1</text>
+      </g>
+      <line x1="684" y1="124" x2="618" y2="124" stroke="#c41e3a" stroke-width="1.5" marker-end="url(#arr)" />
+
+      <g transform="translate(400, 188)">
+        <circle r="16" fill="#7c3aed" />
+        <text class="bn" x="0" y="5" text-anchor="middle">2</text>
+      </g>
+      <line x1="400" y1="172" x2="400" y2="153" stroke="#7c3aed" stroke-width="1.5" stroke-dasharray="4 2" />
+
+      <g transform="translate(108, 72)">
+        <circle r="16" fill="#2d4a3e" />
+        <text class="bn" x="0" y="5" text-anchor="middle">3</text>
+      </g>
+      <line x1="120" y1="78" x2="120" y2="95" stroke="#2d4a3e" stroke-width="1.5" />
+
+      <g transform="translate(142, 72)">
+        <circle r="15" fill="#0d9488" />
+        <text class="bn" x="0" y="5" text-anchor="middle">4</text>
+      </g>
+      <line x1="142" y1="87" x2="142" y2="103" stroke="#0d9488" stroke-width="1.5" />
+
+      <g transform="translate(280, 72)">
+        <circle r="15" fill="#0d9488" />
+        <text class="bn" x="0" y="5" text-anchor="middle">5</text>
+      </g>
+      <line x1="280" y1="87" x2="280" y2="103" stroke="#0d9488" stroke-width="1.5" />
+
+      <g transform="translate(556, 72)">
+        <circle r="15" fill="#0d9488" />
+        <text class="bn" x="0" y="5" text-anchor="middle">6</text>
+      </g>
+      <line x1="556" y1="87" x2="556" y2="106" stroke="#0d9488" stroke-width="1.5" />
+
+      <g transform="translate(642, 72)">
+        <circle r="15" fill="#0d9488" />
+        <text class="bn" x="0" y="5" text-anchor="middle">7</text>
+      </g>
+      <line x1="642" y1="87" x2="642" y2="100" stroke="#0d9488" stroke-width="1.5" />
+
+      <!-- Internal gap label (part of 3) -->
+      <text x="360" y="88" font-size="10" fill="#2563eb" font-weight="600">inside 3: gap 0.4rem between 4–7</text>
+      <text x="360" y="101" font-size="9" fill="#2563eb">blue dashed = padding 0.45 × 0.5rem</text>
+    </svg>
+
+    <div class="legend" role="note">
+      <div><strong>1</strong> Red — <code>--tap</code> (48px): minimum <strong>row height</strong> (left bracket) and minimum <strong>×</strong> hit box (dashed square).</div>
+      <div><strong>2</strong> Purple — space <strong>between</strong> stacked chips (<code>.meal-chips</code> list only).</div>
+      <div><strong>3</strong> Dark green — whole <strong>chip row</strong> (<code>.meal-chip</code>): outer rounded rect, min-height uses <strong>1</strong>, padding = blue dashed inset, <code>gap</code> between children.</div>
+      <div><strong>4–7</strong> Teal — children <strong>left → right</strong>: drag handle, title, Set day, Remove (×).</div>
+    </div>
+
+    <p class="note">
+      <strong>Layout:</strong> <code>.meal-chip</code> is a flex row (<code>gap: 0.4rem</code>). Title is <code>flex: 1</code> + <code>align-self: stretch</code>
+      so the middle stays easy to tap vertically.
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Selector / token</th>
+          <th>On diagram</th>
+          <th>CSS</th>
+          <th>≈ at 16px root</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="ref ref-tap">1</span></td>
+          <td><code>:root --tap</code></td>
+          <td class="on-diagram">
+            <strong>Two places:</strong> (a) red bracket on the <strong>left</strong> of the chip — row min-height. (b) red dashed <strong>square around ×</strong> — remove button min size. Same 48px token.
+          </td>
+          <td><code>48px</code></td>
+          <td class="px">48px</td>
+        </tr>
+        <tr>
+          <td><span class="ref ref-gap">2</span></td>
+          <td><code>.meal-chips</code></td>
+          <td class="on-diagram">
+            Purple <strong>2</strong> points at the <strong>vertical gap</strong> between the top chip row and the faint “next chip” preview below — not inside the chip.
+          </td>
+          <td><code>gap: 0.5rem</code></td>
+          <td class="px">8px between rows</td>
+        </tr>
+        <tr>
+          <td><span class="ref">3</span></td>
+          <td><code>.meal-chip</code></td>
+          <td class="on-diagram">
+            The full <strong>mint rounded rectangle</strong> (stroke). The <strong>blue dashed inner</strong> rectangle = padding inset. Text at top: internal <strong>gap</strong> between handle / title / Set day / ×, plus <code>border-radius</code> and base <code>font-size</code> for the row.
+          </td>
+          <td>
+            <code>min-height: var(--tap)</code> → see <strong>1</strong><br />
+            <code>padding: 0.45rem 0.5rem</code><br />
+            <code>gap: 0.4rem</code><br />
+            <code>border-radius: 10px</code><br />
+            <code>font-size: var(--fs-ui)</code> (0.875rem)
+          </td>
+          <td class="px">
+            min height = ref <strong>1</strong><br />
+            pad ~7px × ~8px<br />
+            internal gap ~6px<br />
+            radius 10px<br />
+            type ~14px
+          </td>
+        </tr>
+        <tr>
+          <td><span class="ref">4</span></td>
+          <td><code>.meal-chip-handle</code></td>
+          <td class="on-diagram">
+            Teal <strong>4</strong> → <strong>⋮⋮</strong> at the far <strong>left</strong> (drag handle).
+          </td>
+          <td><code>padding: 0.35rem 0.25rem</code><br /><code>font-size: 0.65rem</code></td>
+          <td class="px">~6px × 4px, ~10.4px glyph</td>
+        </tr>
+        <tr>
+          <td><span class="ref">5</span></td>
+          <td><code>.meal-chip-title</code></td>
+          <td class="on-diagram">
+            Teal <strong>5</strong> → the <strong>recipe name</strong> button (“Beef tortilla melts”).
+          </td>
+          <td>
+            <code>padding: 0.35rem 0.4rem</code><br />
+            <code>border-radius: 8px</code><br />
+            <code>line-height: 1.35</code>
+          </td>
+          <td class="px">~6px × ~6px pad, 8px radius</td>
+        </tr>
+        <tr>
+          <td><span class="ref">6</span></td>
+          <td><code>.meal-chip-assign</code></td>
+          <td class="on-diagram">
+            Teal <strong>6</strong> → the <strong>Set day</strong> outlined pill.
+          </td>
+          <td>
+            <code>min-height: calc(2.75rem * 0.9)</code><br />
+            <code>padding: 0 calc(0.65rem * 0.9)</code><br />
+            <code>font-size: var(--fs-caption)</code> (0.75rem)<br />
+            <code>border-radius: calc(8px * 0.9)</code>
+          </td>
+          <td class="px">min height ~40px, ~9px H pad, ~12px type (caption tier)</td>
+        </tr>
+        <tr>
+          <td><span class="ref">7</span></td>
+          <td><code>.meal-chip-x</code></td>
+          <td class="on-diagram">
+            Teal <strong>7</strong> → the <strong>×</strong> control. Its <strong>minimum</strong> square is ref <strong>1</strong> (red dashed); negative margin pulls that 48px target inward so the row doesn’t get too wide.
+          </td>
+          <td>
+            <code>min-width / min-height: var(--tap)</code> → <strong>1</strong><br />
+            <code>margin: -0.2rem -0.15rem -0.2rem 0</code><br />
+            <code>font-size: 1.2rem</code><br />
+            <code>border-radius: 10px</code>
+          </td>
+          <td class="px">48×48 min (see <strong>1</strong>), ~19px ×</td>
+        </tr>
+      </tbody>
+    </table>
+  </body>
+</html>

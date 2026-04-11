@@ -8,7 +8,18 @@
   --border: #e7e2dc;
   --side: #1d6b5a;
   --tap: 48px;
-  font-family: "Source Sans 3", system-ui, sans-serif;
+  /* Type scale (1rem = 16px): shell + meal planner hierarchy */
+  --font-sans: "Source Sans 3", system-ui, sans-serif;
+  --font-display: Fraunces, Georgia, serif;
+  --fs-page-title: 1.5rem; /* h1 — only top-level page name */
+  --fs-subhead: 1rem; /* week range, primary toolbar emphasis */
+  --fs-display-sm: 1.125rem; /* Fraunces card titles: day date, “Cooking soon…”, sheet h2 */
+  --fs-body: 1rem; /* default reading / inputs */
+  --fs-ui: 0.875rem; /* chips, secondary actions, header links, add-meal */
+  --fs-caption: 0.75rem; /* uppercase weekday, compact controls */
+  --fs-micro: 0.65rem; /* drag handle affordance */
+  /* Hierarchy: --fs-page-title > --fs-subhead (week) > --fs-display-sm (Fraunces day / card) > --fs-body > --fs-ui (chips, links) > --fs-caption > --fs-micro */
+  font-family: var(--font-sans);
   color: var(--text);
   background: var(--bg);
   line-height: 1.45;
@@ -34,7 +45,7 @@ body {
 
 h1,
 h2 {
-  font-family: Fraunces, Georgia, serif;
+  font-family: var(--font-display);
   font-weight: 600;
   line-height: 1.2;
 }
@@ -89,7 +100,7 @@ a {
 
 .page-title {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: var(--fs-page-title);
   flex: 1;
 }
 
@@ -388,34 +399,34 @@ a {
 .recipe-add-to-plan-flow-banner {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0;
   margin: 0 0 0.75rem;
-  padding: 0.65rem 0.85rem;
+  padding: 0.5rem 0.75rem;
   border-radius: 12px;
   background: var(--accent-soft);
   border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
-.recipe-add-to-plan-flow-banner-top {
+.recipe-add-to-plan-flow-banner-toolbar {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 0.75rem 1rem;
+  gap: 0.5rem 0.75rem;
 }
 
-.recipe-add-to-plan-flow-banner-text {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
+.recipe-add-to-plan-flow-banner-title {
+  margin: 0;
   min-width: 0;
-  font-size: 0.92rem;
   flex: 1;
+  font-size: var(--fs-ui);
+  line-height: 1.35;
+  color: var(--muted);
 }
 
-.recipe-add-to-plan-flow-phase {
-  display: block;
-  font-size: 0.85rem;
+.recipe-add-to-plan-flow-banner-title strong {
+  font-weight: 700;
+  color: var(--text);
 }
 
 .recipe-add-to-plan-flow-banner-actions {
@@ -435,8 +446,9 @@ a.recipe-add-to-plan-change-link {
 
 .recipe-add-to-plan-flow-planned-list {
   list-style: none;
-  margin: 0;
-  padding: 0;
+  margin: 0.5rem 0 0;
+  padding: 0.5rem 0 0;
+  border-top: 1px solid color-mix(in srgb, var(--accent) 14%, transparent);
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
@@ -455,7 +467,7 @@ a.recipe-add-to-plan-change-link {
 
 .recipe-add-to-plan-flow-planned-kind {
   flex-shrink: 0;
-  font-size: 0.65rem;
+  font-size: var(--fs-micro);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -473,7 +485,7 @@ a.recipe-add-to-plan-change-link {
 a.recipe-add-to-plan-flow-planned-title {
   flex: 1;
   min-width: 0;
-  font-size: 0.9rem;
+  font-size: var(--fs-ui);
   font-weight: 600;
   color: inherit;
   text-decoration: none;
@@ -532,7 +544,7 @@ a.recipe-add-to-plan-flow-planned-title:hover {
 }
 
 .list-header-link {
-  font-size: 0.88rem;
+  font-size: var(--fs-ui);
   font-weight: 600;
   color: var(--accent);
   text-decoration: none;
@@ -555,7 +567,7 @@ a.recipe-add-to-plan-flow-planned-title:hover {
   background: var(--accent);
   color: #fff;
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: var(--fs-ui);
   text-decoration: none;
 }
 
@@ -878,8 +890,8 @@ a.recipe-add-to-plan-flow-planned-title:hover {
 
 .by-recipe-title {
   margin: 0 0 0.4rem;
-  font-family: "Source Sans 3", system-ui, sans-serif;
-  font-size: 0.95rem;
+  font-family: var(--font-sans);
+  font-size: var(--fs-ui);
   font-weight: 700;
   color: var(--accent);
 }
@@ -931,6 +943,7 @@ a.recipe-add-to-plan-flow-planned-title:hover {
 
 .week-nav-btn {
   font: inherit;
+  font-size: var(--fs-subhead);
   font-weight: 700;
   padding: 0.45rem 0.75rem;
   border-radius: 10px;
@@ -945,6 +958,7 @@ a.recipe-add-to-plan-flow-planned-title:hover {
 }
 
 .week-label {
+  font-size: var(--fs-subhead);
   font-weight: 700;
   min-width: 10rem;
   text-align: center;
@@ -995,6 +1009,11 @@ a.recipe-add-to-plan-flow-planned-title:hover {
   flex-direction: column;
 }
 
+/* “Cooking soon” card only — slightly shorter shell than week day cards */
+.planner-unassigned-drop.day-card {
+  min-height: calc(7.5rem * 0.9);
+}
+
 .day-card-drop-area {
   flex: 1;
   display: flex;
@@ -1014,7 +1033,7 @@ a.recipe-add-to-plan-flow-planned-title:hover {
 }
 
 .day-head {
-  font-size: 0.75rem;
+  font-size: var(--fs-caption);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -1022,9 +1041,20 @@ a.recipe-add-to-plan-flow-planned-title:hover {
   margin-bottom: 0.15rem;
 }
 
+/* Same display tier as `.day-date` — section title for unassigned pool */
+.planner-unassigned .day-head {
+  font-family: var(--font-display);
+  font-size: var(--fs-display-sm);
+  font-weight: 600;
+  color: var(--accent);
+  text-transform: none;
+  letter-spacing: normal;
+  margin-bottom: 0.5rem;
+}
+
 .day-date {
-  font-family: Fraunces, Georgia, serif;
-  font-size: 1.1rem;
+  font-family: var(--font-display);
+  font-size: var(--fs-display-sm);
   font-weight: 600;
   color: var(--accent);
   margin-bottom: 0.5rem;
@@ -1037,19 +1067,20 @@ a.recipe-add-to-plan-flow-planned-title:hover {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.5rem;
 }
 
 .meal-chip {
-  font-size: 0.82rem;
-  padding: 0.25rem 0.35rem 0.25rem 0.25rem;
-  border-radius: 8px;
+  font-size: var(--fs-ui);
+  min-height: var(--tap);
+  padding: 0.45rem 0.5rem;
+  border-radius: 10px;
   background: var(--accent-soft);
   color: var(--text);
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 0.25rem;
+  gap: 0.4rem;
   cursor: grab;
 }
 
@@ -1064,9 +1095,9 @@ a.recipe-add-to-plan-flow-planned-title:hover {
 .meal-chip-handle {
   flex-shrink: 0;
   align-self: center;
-  padding: 0.2rem 0.15rem;
+  padding: 0.35rem 0.25rem;
   margin-right: 0.05rem;
-  font-size: 0.62rem;
+  font-size: var(--fs-micro);
   line-height: 1;
   letter-spacing: -0.1em;
   color: var(--muted);
@@ -1082,6 +1113,9 @@ a.recipe-add-to-plan-flow-planned-title:hover {
 .meal-chip-title {
   flex: 1;
   min-width: 0;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
   text-align: left;
   font: inherit;
   font-weight: 600;
@@ -1089,9 +1123,9 @@ a.recipe-add-to-plan-flow-planned-title:hover {
   background: transparent;
   border: none;
   cursor: pointer;
-  padding: 0.2rem 0.35rem;
-  border-radius: 6px;
-  line-height: 1.3;
+  padding: 0.35rem 0.4rem;
+  border-radius: 8px;
+  line-height: 1.35;
 }
 
 .meal-chip-title:hover {
@@ -1104,18 +1138,50 @@ a.recipe-add-to-plan-flow-planned-title:hover {
 }
 
 .meal-chip-x {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--tap);
+  min-height: var(--tap);
+  margin: -0.2rem -0.15rem -0.2rem 0;
+  padding: 0;
   border: none;
+  border-radius: 10px;
   background: transparent;
   color: var(--muted);
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 1.2rem;
   line-height: 1;
-  padding: 0 0.15rem;
-  flex-shrink: 0;
 }
 
 .meal-chip-x:hover {
   color: #b91c1c;
+}
+
+.meal-chip-assign {
+  flex-shrink: 0;
+  align-self: center;
+  font: inherit;
+  font-weight: 700;
+  font-size: var(--fs-caption);
+  letter-spacing: 0.02em;
+  min-height: calc(2.75rem * 0.9);
+  padding: 0 calc(0.65rem * 0.9);
+  border-radius: calc(8px * 0.9);
+  border: 1px solid var(--accent);
+  background: var(--surface);
+  color: var(--accent);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.meal-chip-assign:hover {
+  background: var(--accent-soft);
+}
+
+.meal-chip-assign:active {
+  filter: brightness(0.97);
 }
 
 .add-meal {
@@ -1127,7 +1193,7 @@ a.recipe-add-to-plan-flow-planned-title:hover {
   width: 100%;
   font: inherit;
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: var(--fs-ui);
   padding: 0.4rem;
   border-radius: 8px;
   border: 1px dashed var(--border);
@@ -1166,7 +1232,7 @@ a.recipe-add-to-plan-flow-planned-title:hover {
 
 .planner-unassigned-inline-btn {
   font-weight: 700;
-  font-size: 0.95rem;
+  font-size: var(--fs-body);
 }
 
 .planner-overlay {
@@ -1190,6 +1256,62 @@ a.recipe-add-to-plan-flow-planned-title:hover {
 
 .planner-overlay--recipe {
   z-index: 60;
+}
+
+.planner-overlay--assign {
+  z-index: 55;
+}
+
+.planner-assign-subtitle {
+  margin: 0;
+  font-size: var(--fs-ui);
+  line-height: 1.35;
+}
+
+.planner-assign-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.65rem 0;
+}
+
+.planner-assign-day-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  font-weight: 600;
+  font-size: var(--fs-ui);
+  padding: 0.55rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.planner-assign-day-btn:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.planner-assign-day-btn.is-today {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.planner-assign-day-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.planner-assign-day-date {
+  flex-shrink: 0;
+  font-size: var(--fs-ui);
+  font-weight: 500;
 }
 
 @media (min-width: 540px) {
@@ -1228,8 +1350,8 @@ a.recipe-add-to-plan-flow-planned-title:hover {
 
 .planner-sheet-head h2 {
   margin: 0 0 0.5rem;
-  font-size: 1.1rem;
-  font-family: Fraunces, Georgia, serif;
+  font-size: var(--fs-display-sm);
+  font-family: var(--font-display);
 }
 
 .planner-sheet-search {
@@ -1238,7 +1360,7 @@ a.recipe-add-to-plan-flow-planned-title:hover {
 
 .picker-subtitle {
   margin: 0 0 0.65rem;
-  font-size: 0.88rem;
+  font-size: var(--fs-ui);
   color: var(--muted);
   line-height: 1.35;
 }
@@ -1253,7 +1375,7 @@ a.recipe-add-to-plan-flow-planned-title:hover {
   flex: 1;
   font: inherit;
   font-weight: 700;
-  font-size: 0.82rem;
+  font-size: var(--fs-caption);
   padding: 0.45rem 0.5rem;
   border-radius: 10px;
   border: 1px solid var(--border);
@@ -1299,12 +1421,12 @@ a.recipe-add-to-plan-flow-planned-title:hover {
 }
 
 .pick-row-meta {
-  font-size: 0.8rem;
+  font-size: var(--fs-ui);
   color: var(--muted);
 }
 
 .planner-badge {
-  font-size: 0.65rem;
+  font-size: var(--fs-micro);
   font-weight: 700;
   text-transform: uppercase;
   padding: 0.15rem 0.35rem;
@@ -1360,8 +1482,8 @@ a.recipe-add-to-plan-flow-planned-title:hover {
 }
 
 .planner-read-body h3 {
-  font-family: Fraunces, Georgia, serif;
-  font-size: 1rem;
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
   margin: 1rem 0 0.4rem;
   color: var(--accent);
 }
@@ -1382,7 +1504,7 @@ a.recipe-add-to-plan-flow-planned-title:hover {
 
 .read-kind-badge {
   display: inline-block;
-  font-size: 0.65rem;
+  font-size: var(--fs-micro);
   font-weight: 700;
   text-transform: uppercase;
   padding: 0.2rem 0.4rem;

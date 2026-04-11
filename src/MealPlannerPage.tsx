@@ -32,6 +32,7 @@ export function MealPlannerPage({
   const [weekStart, setWeekStart] = React.useState(() => startOfWeekMonday(new Date()));
 
   const [readSlot, setReadSlot] = React.useState<PlannedMeal | null>(null);
+  const [assignUnassignedIndex, setAssignUnassignedIndex] = React.useState<number | null>(null);
   const [mealDrag, setMealDrag] = React.useState<MealDragPayload | null>(null);
   const [dropTargetKey, setDropTargetKey] = React.useState<string | null>(null);
 
@@ -45,6 +46,18 @@ export function MealPlannerPage({
 
   const unassignedMeals = plan[unassignedKey] ?? [];
   const hasUnassignedMeals = unassignedMeals.length > 0;
+
+  const assignUnassignedMeal =
+    assignUnassignedIndex != null ? unassignedMeals[assignUnassignedIndex] : undefined;
+
+  React.useEffect(() => {
+    if (
+      assignUnassignedIndex != null &&
+      (assignUnassignedIndex < 0 || assignUnassignedIndex >= unassignedMeals.length)
+    ) {
+      setAssignUnassignedIndex(null);
+    }
+  }, [assignUnassignedIndex, unassignedMeals.length]);
 
   const openPicker = (dateKey: string) => {
     navigate(
@@ -110,6 +123,11 @@ export function MealPlannerPage({
 
   const todayIso = iso(new Date());
 
+  const assignSheetOpen =
+    assignUnassignedIndex != null &&
+    assignUnassignedIndex >= 0 &&
+    assignUnassignedIndex < unassignedMeals.length;
+
   return (
     <div className="planner-page">
       <header className="planner-head">
@@ -146,7 +164,7 @@ export function MealPlannerPage({
       </header>
 
       {hasUnassignedMeals ? (
-        <section className="planner-unassigned" aria-label="Unassigned meals">
+        <section className="planner-unassigned" aria-labelledby="planner-no-day-heading">
           <div
             className={`planner-unassigned-drop day-card${
               dropTargetKey === unassignedKey ? " day-card--drop-target" : ""
@@ -160,7 +178,9 @@ export function MealPlannerPage({
                 onDragOver={(e) => handleDayDragOver(e, unassignedKey)}
                 onDrop={(e) => handleDayDrop(e, unassignedKey)}
               >
-                <div className="day-head">Unassigned</div>
+                <div className="day-head" id="planner-no-day-heading">
+                  Cooking soon - set a day
+                </div>
               </div>
               <ul className="meal-chips">
                 {unassignedMeals.map((m, idx) => (
@@ -172,7 +192,7 @@ export function MealPlannerPage({
                         : ""
                     }`}
                     draggable
-                    aria-label={`${m.title}. Drag to a day below.`}
+                    aria-label={`${m.title}. Drag to a day, or use Set day to choose which day.`}
                     onDragStart={(e) => handleChipDragStart(e, unassignedKey, idx)}
                     onDragEnd={handleChipDragEnd}
                     onDragOver={(e) => handleDayDragOver(e, unassignedKey)}
@@ -188,10 +208,22 @@ export function MealPlannerPage({
                       type="button"
                       className="meal-chip-title"
                       draggable={false}
-                      aria-label={`Open recipe: ${m.title}`}
+                      aria-label={`View recipe: ${m.title}`}
                       onClick={() => setReadSlot(m)}
                     >
                       {m.title}
+                    </button>
+                    <button
+                      type="button"
+                      className="meal-chip-assign"
+                      draggable={false}
+                      aria-label={`Set day for ${m.title}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setAssignUnassignedIndex(idx);
+                      }}
+                    >
+                      Set day
                     </button>
                     <button
                       type="button"
@@ -326,6 +358,56 @@ export function MealPlannerPage({
         <button type="button" className="btn-ghost" onClick={clearWeek}>
           Clear week plan
         </button>
+      </div>
+
+      {/* Assign unassigned meal to a day */}
+      <div
+        className={`planner-overlay planner-overlay--assign${assignSheetOpen ? " open" : ""}`}
+        aria-hidden={!assignSheetOpen}
+        onClick={(e) => {
+          if (e.target === e.currentTarget) {
+            setAssignUnassignedIndex(null);
+          }
+        }}
+      >
+        <div className="planner-sheet" role="dialog" aria-labelledby="assignDayTitle" aria-modal="true">
+          <div className="planner-sheet-head">
+            <h2 id="assignDayTitle">Set the day</h2>
+            {assignSheetOpen && assignUnassignedMeal ? (
+              <p className="muted planner-assign-subtitle">{assignUnassignedMeal.title}</p>
+            ) : null}
+          </div>
+          <div className="planner-sheet-body planner-assign-body">
+            {weekKeys.map((dayKey) => {
+              const d = new Date(`${dayKey}T12:00:00`);
+              const wk = d.toLocaleDateString(undefined, { weekday: "long" });
+              const dt = d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+              const isToday = dayKey === todayIso;
+              return (
+                <button
+                  key={dayKey}
+                  type="button"
+                  className={`planner-assign-day-btn${isToday ? " is-today" : ""}`}
+                  onClick={() => {
+                    if (assignUnassignedIndex == null) {
+                      return;
+                    }
+                    moveMealToDay(unassignedKey, assignUnassignedIndex, dayKey);
+                    setAssignUnassignedIndex(null);
+                  }}
+                >
+                  <span className="planner-assign-day-label">{wk}</span>
+                  <span className="muted planner-assign-day-date">{dt}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="planner-sheet-foot">
+            <button type="button" className="btn-secondary" onClick={() => setAssignUnassignedIndex(null)}>
+              Cancel
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Recipe quick-read */}
