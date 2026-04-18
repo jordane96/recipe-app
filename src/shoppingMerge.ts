@@ -171,10 +171,47 @@ export interface IngredientBreakdown {
 
 /** One row on the combined shopping list (merge output). */
 export type CombinedShoppingItem =
-  | { kind: "volume"; line: string; tsp: number; volumeTier: VolumePrimaryTier }
-  | { kind: "weight"; line: string; oz: number; weightTier: WeightPrimaryTier }
-  | { kind: "count"; line: string }
-  | { kind: "raw"; line: string };
+  | {
+      kind: "volume";
+      line: string;
+      tsp: number;
+      volumeTier: VolumePrimaryTier;
+      /** Recipe ids that contributed to this merged line. */
+      sourceRecipeIds: readonly string[];
+    }
+  | {
+      kind: "weight";
+      line: string;
+      oz: number;
+      weightTier: WeightPrimaryTier;
+      sourceRecipeIds: readonly string[];
+    }
+  | { kind: "count"; line: string; sourceRecipeIds: readonly string[] }
+  | { kind: "raw"; line: string; sourceRecipeIds: readonly string[] };
+
+function sortedIds(ids: Set<string>): string[] {
+  return [...ids].sort((a, b) => a.localeCompare(b));
+}
+
+/** Distinct combined-list line strings this recipe contributed to (for purchased UI). */
+export function combinedLinesContributedByRecipe(
+  items: CombinedShoppingItem[],
+  recipeId: string,
+): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const item of items) {
+    if (!item.sourceRecipeIds.includes(recipeId)) {
+      continue;
+    }
+    if (seen.has(item.line)) {
+      continue;
+    }
+    seen.add(item.line);
+    out.push(item.line);
+  }
+  return out;
+}
 
 /**
  * Extra volume equivalents for the shopping list. Never mixes scale groups
@@ -311,11 +348,20 @@ export function buildShoppingListData(
 } {
   const byId = ingredientMap(allIngredients);
 
-  const vol = new Map<string, { name: string; tsp: number }>();
-  const wt = new Map<string, { name: string; oz: number }>();
-  const ct = new Map<string, { name: string; amount: number; unit: string }>();
-  const rawSeen = new Set<string>();
-  const rawOrder: string[] = [];
+  const vol = new Map<
+    string,
+    { name: string; tsp: number; recipeIds: Set<string> }
+  >();
+  const wt = new Map<
+    string,
+    { name: string; oz: number; recipeIds: Set<string> }
+  >();
+  const ct = new Map<
+    string,
+    { name: string; amount: number; unit: string; recipeIds: Set<string> }
+  >();
+  const rawMap = new Map<string, { line: string; recipeIds: Set<string> }>();
+  const rawOrderKeys: string[] = [];
 
   for (const recipe of recipesInOrder) {
     for (const sec of recipe.ingredientSections ?? []) {
@@ -323,18 +369,26 @@ export function buildShoppingListData(
         const b = lineToBucket(line, byId);
         if (b.kind === "raw") {
           const k = b.text.trim().toLowerCase().replace(/\s+/g, " ");
-          if (!rawSeen.has(k)) {
-            rawSeen.add(k);
-            rawOrder.push(b.text);
+          let ex = rawMap.get(k);
+          if (!ex) {
+            ex = { line: b.text, recipeIds: new Set() };
+            rawMap.set(k, ex);
+            rawOrderKeys.push(k);
           }
+          ex.recipeIds.add(recipe.id);
           continue;
         }
         if (b.kind === "volume") {
           const ex = vol.get(b.ingredientId);
           if (ex) {
             ex.tsp += b.tsp;
+            ex.recipeIds.add(recipe.id);
           } else {
-            vol.set(b.ingredientId, { name: b.name, tsp: b.tsp });
+            vol.set(b.ingredientId, {
+              name: b.name,
+              tsp: b.tsp,
+              recipeIds: new Set([recipe.id]),
+            });
           }
           continue;
         }
@@ -342,8 +396,13 @@ export function buildShoppingListData(
           const ex = wt.get(b.ingredientId);
           if (ex) {
             ex.oz += b.oz;
+            ex.recipeIds.add(recipe.id);
           } else {
-            wt.set(b.ingredientId, { name: b.name, oz: b.oz });
+            wt.set(b.ingredientId, {
+              name: b.name,
+              oz: b.oz,
+              recipeIds: new Set([recipe.id]),
+            });
           }
           continue;
         }
@@ -351,36 +410,45 @@ export function buildShoppingListData(
         const ex = ct.get(ckey);
         if (ex) {
           ex.amount += b.amount;
+          ex.recipeIds.add(recipe.id);
         } else {
-          ct.set(ckey, { name: b.name, amount: b.amount, unit: b.unit });
+          ct.set(ckey, {
+            name: b.name,
+            amount: b.amount,
+            unit: b.unit,
+            recipeIds: new Set([recipe.id]),
+          });
         }
       }
     }
   }
 
   const mergedItems: CombinedShoppingItem[] = [];
-  for (const { name, tsp } of vol.values()) {
+  for (const { name, tsp, recipeIds } of vol.values()) {
     const { tier, text } = volumePrimaryDisplay(tsp);
     mergedItems.push({
       kind: "volume",
       line: `${name} - ${text}`,
       tsp,
       volumeTier: tier,
+      sourceRecipeIds: sortedIds(recipeIds),
     });
   }
-  for (const { name, oz } of wt.values()) {
+  for (const { name, oz, recipeIds } of wt.values()) {
     const { tier, text } = weightPrimaryDisplay(oz);
     mergedItems.push({
       kind: "weight",
       line: `${name} - ${text}`,
       oz,
       weightTier: tier,
+      sourceRecipeIds: sortedIds(recipeIds),
     });
   }
-  for (const { name, amount, unit } of ct.values()) {
+  for (const { name, amount, unit, recipeIds } of ct.values()) {
     mergedItems.push({
       kind: "count",
       line: `${name} - ${formatCount(amount, unit)}`,
+      sourceRecipeIds: sortedIds(recipeIds),
     });
   }
 
@@ -388,10 +456,16 @@ export function buildShoppingListData(
     a.line.localeCompare(b.line, undefined, { sensitivity: "base" }),
   );
 
-  const combinedItems: CombinedShoppingItem[] = [
-    ...mergedItems,
-    ...rawOrder.map((line) => ({ kind: "raw" as const, line })),
-  ];
+  const rawItems: CombinedShoppingItem[] = rawOrderKeys.map((k) => {
+    const ex = rawMap.get(k)!;
+    return {
+      kind: "raw" as const,
+      line: ex.line,
+      sourceRecipeIds: sortedIds(ex.recipeIds),
+    };
+  });
+
+  const combinedItems: CombinedShoppingItem[] = [...mergedItems, ...rawItems];
 
   const byRecipe: IngredientBreakdown[] = recipesInOrder.map((r, instanceIndex) => ({
     instanceKey: `${r.id}@${instanceIndex}`,

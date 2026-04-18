@@ -2,17 +2,48 @@ import * as React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { formatIngredientLine, ingredientMap } from "./ingredientDisplay";
 import type { IngredientDef, Recipe } from "./types";
-import { recipesAddToPlanPath, shoppingListPath } from "./listTabSearch";
+import { recipeCookModePath, recipesAddToPlanPath, shoppingListPath } from "./listTabSearch";
 import { addDays, iso, startOfWeekMonday, weekRangeLabel } from "./mealPlanDates";
 import { useMealPlan } from "./MealPlanContext";
+import { recipeSegment } from "./recipeCourse";
 import {
+  isMealPlanDateKey,
   MEAL_PLAN_UNASSIGNED_KEY,
-  sortMealsMainBeforeSide,
+  portionCountOf,
   type PlannedMeal,
 } from "./mealPlanStorage";
+import { shoppingDiscrepancies } from "./mealPlanShopping";
+import {
+  mealPlanShouldFollowShoppingList,
+  usePlanShoppingAuthorityVersion,
+} from "./planShoppingAuthority";
 import { useShoppingList } from "./ShoppingListContext";
+import {
+  COOK_PROGRESS_CHANGED_EVENT,
+  addCookProgressSessionsBatch,
+  isPlanMealCookInProgress,
+} from "./cookProgressSession";
+import { useCookHistory } from "./CookHistoryContext";
+import {
+  findDaySlotHistoryIndex,
+  findUnassignedSlotHistoryLocation,
+  isDaySlotCooked,
+  isUnassignedSlotCooked,
+} from "./mealPlannerCookUi";
 
 const MEAL_DRAG_MIME = "application/x-meal-plan-meal+json";
+
+function formatPlannerDayShort(isoDateKey: string): string {
+  if (!isMealPlanDateKey(isoDateKey)) {
+    return isoDateKey;
+  }
+  const d = new Date(`${isoDateKey}T12:00:00`);
+  return d.toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+}
 
 type MealDragPayload = { fromKey: string; fromIndex: number };
 
@@ -23,9 +54,22 @@ export function MealPlannerPage({
   recipes: Recipe[];
   ingredients: IngredientDef[];
 }) {
-  const { count } = useShoppingList();
+  const { selectedIds } = useShoppingList();
   const navigate = useNavigate();
-  const { plan, unassignedKey, removeMealAt, moveMealToDay, clearWeekDateRange } = useMealPlan();
+  const {
+    plan,
+    unassignedKey,
+    removeMealAt,
+    moveMealToDay,
+    assignUnassignedToCalendarDay,
+    ensureUnassignedSlotRef,
+    clearUnassignedScheduledDay,
+    adjustUnassignedPortionCount,
+    clearWeekDateRange,
+    syncPlanRecipeSlotsToShoppingCount,
+  } = useMealPlan();
+  const { history, removeCookedAt } = useCookHistory();
+
   const recipeById = React.useMemo(() => new Map(recipes.map((r) => [r.id, r])), [recipes]);
   const byId = React.useMemo(() => ingredientMap(ingredients), [ingredients]);
 
@@ -46,6 +90,16 @@ export function MealPlannerPage({
 
   const unassignedMeals = plan[unassignedKey] ?? [];
   const hasUnassignedMeals = unassignedMeals.length > 0;
+
+  const unassignedCookSelectSig = React.useMemo(
+    () => unassignedMeals.map((m, i) => `${i}:${m.id}:${m.planSlotRef ?? ""}`).join("|"),
+    [unassignedMeals],
+  );
+  const [unassignedCookSelect, setUnassignedCookSelect] = React.useState<Set<number>>(() => new Set());
+
+  React.useEffect(() => {
+    setUnassignedCookSelect(new Set());
+  }, [unassignedCookSelectSig]);
 
   const assignUnassignedMeal =
     assignUnassignedIndex != null ? unassignedMeals[assignUnassignedIndex] : undefined;
@@ -123,25 +177,162 @@ export function MealPlannerPage({
 
   const todayIso = iso(new Date());
 
+  const unassignedCookNowDisabled = React.useMemo(() => {
+    if (unassignedCookSelect.size === 0) {
+      return true;
+    }
+    for (const idx of unassignedCookSelect) {
+      if (idx < 0 || idx >= unassignedMeals.length) {
+        continue;
+      }
+      const m = unassignedMeals[idx]!;
+      if (!isUnassignedSlotCooked(history, weekKeys, unassignedMeals, idx, m.id)) {
+        return false;
+      }
+    }
+    return true;
+  }, [history, unassignedCookSelect, unassignedMeals, weekKeys]);
+
+  const handleUnassignedCookNow = React.useCallback(() => {
+    if (unassignedCookSelect.size === 0) {
+      return;
+    }
+    const indices = [...unassignedCookSelect]
+      .filter((idx) => idx >= 0 && idx < unassignedMeals.length)
+      .filter((idx) => {
+        const m = unassignedMeals[idx]!;
+        return !isUnassignedSlotCooked(history, weekKeys, unassignedMeals, idx, m.id);
+      })
+      .sort((a, b) => a - b);
+    if (indices.length === 0) {
+      return;
+    }
+    const items = indices.map((idx) => {
+      const m = unassignedMeals[idx]!;
+      const slotRef = m.planSlotRef ?? ensureUnassignedSlotRef(idx);
+      const cookDate =
+        m.scheduledForDay && isMealPlanDateKey(m.scheduledForDay)
+          ? m.scheduledForDay
+          : todayIso;
+      return {
+        recipeId: m.id,
+        cookDate,
+        planSlotRef: slotRef,
+        title: m.title,
+      };
+    });
+    addCookProgressSessionsBatch(items);
+    const first = unassignedMeals[indices[0]!]!;
+    const firstRef = first.planSlotRef ?? ensureUnassignedSlotRef(indices[0]!);
+    const firstCookDate = items[0]!.cookDate;
+    navigate(recipeCookModePath(first.id, firstCookDate, firstRef ?? null));
+  }, [
+    ensureUnassignedSlotRef,
+    history,
+    navigate,
+    todayIso,
+    unassignedCookSelect,
+    unassignedMeals,
+    weekKeys,
+  ]);
+
+  const toggleUnassignedCookSelectAt = React.useCallback((idx: number) => {
+    setUnassignedCookSelect((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) {
+        next.delete(idx);
+      } else {
+        next.add(idx);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleUnassignedMealChipRowClick = React.useCallback(
+    (e: React.MouseEvent<HTMLElement>, idx: number, cooked: boolean) => {
+      if (cooked) {
+        return;
+      }
+      const t = e.target as HTMLElement;
+      if (t.closest("button, a, input, textarea, select, label.meal-chip-select-cook-wrap")) {
+        return;
+      }
+      toggleUnassignedCookSelectAt(idx);
+    },
+    [toggleUnassignedCookSelectAt],
+  );
+
+  const [cookProgressRev, setCookProgressRev] = React.useState(0);
+  React.useEffect(() => {
+    const onChange = () => setCookProgressRev((r) => r + 1);
+    window.addEventListener(COOK_PROGRESS_CHANGED_EVENT, onChange);
+    return () => window.removeEventListener(COOK_PROGRESS_CHANGED_EVENT, onChange);
+  }, []);
+  void cookProgressRev;
+
   const assignSheetOpen =
     assignUnassignedIndex != null &&
     assignUnassignedIndex >= 0 &&
     assignUnassignedIndex < unassignedMeals.length;
 
+  const authVersion = usePlanShoppingAuthorityVersion();
+  const shoppingLeadingMismatches = React.useMemo(() => {
+    void authVersion;
+    return shoppingDiscrepancies(plan, selectedIds).filter((d) =>
+      mealPlanShouldFollowShoppingList(d.recipeId),
+    );
+  }, [plan, selectedIds, authVersion]);
+
+  const shoppingLeadingSig = shoppingLeadingMismatches
+    .map((d) => `${d.recipeId}:${d.expected}:${d.actual}`)
+    .join("|");
+  const [dismissShoppingLeadingBanner, setDismissShoppingLeadingBanner] = React.useState(false);
+  React.useEffect(() => {
+    setDismissShoppingLeadingBanner(false);
+  }, [shoppingLeadingSig]);
+
   return (
     <div className="planner-page">
-      <header className="planner-head">
-        <div className="planner-head-row">
-          <h1 className="page-title planner-title">Meal planner</h1>
-          <div className="planner-head-actions">
-            <Link to="/recipes" className="list-header-link">
-              Recipes
+      {shoppingLeadingMismatches.length > 0 && !dismissShoppingLeadingBanner ? (
+        <div className="planner-sync-banner" role="status">
+          <p className="planner-sync-banner-text">
+            Your <strong>shopping list</strong> was updated last and doesn&apos;t match the meal plan.
+            Sync the plan to match your list?
+          </p>
+          <div className="planner-sync-banner-actions">
+            <button
+              type="button"
+              className="btn-primary planner-sync-banner-primary"
+              onClick={() => {
+                for (const d of shoppingLeadingMismatches) {
+                  const r = recipeById.get(d.recipeId);
+                  if (!r) {
+                    continue;
+                  }
+                  syncPlanRecipeSlotsToShoppingCount(d.recipeId, d.actual, {
+                    title: r.title,
+                    kind: recipeSegment(r) === "side" ? "side" : "main",
+                  });
+                }
+                setDismissShoppingLeadingBanner(true);
+              }}
+            >
+              Sync meal plan
+            </button>
+            <Link className="btn-secondary planner-sync-banner-secondary" to={shoppingListPath(false)}>
+              Open shopping list
             </Link>
-            <Link to={shoppingListPath(false)} className="shopping-pill">
-              List{count > 0 ? ` (${count})` : ""}
-            </Link>
+            <button
+              type="button"
+              className="btn-ghost planner-sync-banner-dismiss"
+              onClick={() => setDismissShoppingLeadingBanner(true)}
+            >
+              Dismiss
+            </button>
           </div>
         </div>
+      ) : null}
+      <header className="planner-head">
         <div className="week-nav" aria-label="Week navigation">
           <button
             type="button"
@@ -164,7 +355,7 @@ export function MealPlannerPage({
       </header>
 
       {hasUnassignedMeals ? (
-        <section className="planner-unassigned" aria-labelledby="planner-no-day-heading">
+        <section className="planner-unassigned" aria-labelledby="planner-this-week-menu-heading">
           <div
             className={`planner-unassigned-drop day-card${
               dropTargetKey === unassignedKey ? " day-card--drop-target" : ""
@@ -178,21 +369,49 @@ export function MealPlannerPage({
                 onDragOver={(e) => handleDayDragOver(e, unassignedKey)}
                 onDrop={(e) => handleDayDrop(e, unassignedKey)}
               >
-                <div className="day-head" id="planner-no-day-heading">
-                  Cooking soon - set a day
+                <div className="day-head" id="planner-this-week-menu-heading">
+                  This week&apos;s menu
                 </div>
               </div>
               <ul className="meal-chips">
-                {unassignedMeals.map((m, idx) => (
+                {unassignedMeals.map((m, idx) => {
+                  const unassignedCooked = isUnassignedSlotCooked(
+                    history,
+                    weekKeys,
+                    unassignedMeals,
+                    idx,
+                    m.id,
+                  );
+                  const unassignedCookInProgress = isPlanMealCookInProgress(
+                    m.id,
+                    todayIso,
+                    m.planSlotRef,
+                  );
+                  return (
                   <li
                     key={`${unassignedKey}-${idx}-${m.id}`}
-                    className={`meal-chip${m.kind === "side" ? " side" : ""}${
+                    className={`meal-chip meal-chip--has-assign${m.kind === "side" ? " side" : ""}${
+                      !unassignedCooked ? " meal-chip--cook-selectable" : ""
+                    }${
+                      !unassignedCooked && unassignedCookSelect.has(idx)
+                        ? " meal-chip--cook-selected"
+                        : ""
+                    }${
                       mealDrag?.fromKey === unassignedKey && mealDrag.fromIndex === idx
                         ? " meal-chip--dragging"
                         : ""
                     }`}
                     draggable
-                    aria-label={`${m.title}. Drag to a day, or use Set day to choose which day.`}
+                    aria-label={
+                      unassignedCooked
+                        ? m.scheduledForDay
+                          ? `${m.title}. Drag to a day, or use Edit to change which day.`
+                          : `${m.title}. Drag to a day, or use Set day to choose which day.`
+                        : m.scheduledForDay
+                          ? `${m.title}. Click row to select for Cook now, or drag to a day, or use Edit to change which day.`
+                          : `${m.title}. Click row to select for Cook now, or drag to a day, or use Set day to choose which day.`
+                    }
+                    onClick={(e) => handleUnassignedMealChipRowClick(e, idx, unassignedCooked)}
                     onDragStart={(e) => handleChipDragStart(e, unassignedKey, idx)}
                     onDragEnd={handleChipDragEnd}
                     onDragOver={(e) => handleDayDragOver(e, unassignedKey)}
@@ -201,41 +420,193 @@ export function MealPlannerPage({
                       handleDayDrop(e, unassignedKey);
                     }}
                   >
-                    <span className="meal-chip-handle" aria-hidden="true" title="Drag to a day">
-                      ⋮⋮
-                    </span>
-                    <button
-                      type="button"
-                      className="meal-chip-title"
-                      draggable={false}
-                      aria-label={`View recipe: ${m.title}`}
-                      onClick={() => setReadSlot(m)}
-                    >
-                      {m.title}
-                    </button>
-                    <button
-                      type="button"
-                      className="meal-chip-assign"
-                      draggable={false}
-                      aria-label={`Set day for ${m.title}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setAssignUnassignedIndex(idx);
-                      }}
-                    >
-                      Set day
-                    </button>
-                    <button
-                      type="button"
-                      className="meal-chip-x"
-                      draggable={false}
-                      aria-label={`Remove ${m.title}`}
-                      onClick={() => removeMealAt(unassignedKey, idx)}
-                    >
-                      ×
-                    </button>
+                    <div className="meal-chip-title-row">
+                      {!unassignedCooked ? (
+                        <label
+                          className="meal-chip-select-cook-wrap"
+                          draggable={false}
+                          onDragStart={(e) => e.stopPropagation()}
+                          onPointerDown={(e) => e.stopPropagation()}
+                        >
+                          <input
+                            type="checkbox"
+                            className="meal-chip-select-cook"
+                            checked={unassignedCookSelect.has(idx)}
+                            aria-label={`Select ${m.title} for cook now`}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              const checked = e.target.checked;
+                              setUnassignedCookSelect((prev) => {
+                                const next = new Set(prev);
+                                if (checked) {
+                                  next.add(idx);
+                                } else {
+                                  next.delete(idx);
+                                }
+                                return next;
+                              });
+                            }}
+                          />
+                        </label>
+                      ) : (
+                        <span className="meal-chip-check-slot" aria-hidden="true" />
+                      )}
+                      <div className="meal-chip-name-portion">
+                        <button
+                          type="button"
+                          className="meal-chip-title"
+                          draggable={false}
+                          aria-label={
+                            unassignedCooked
+                              ? `View recipe: ${m.title}`
+                              : `Select ${m.title} for Cook now (double-click to view recipe)`
+                          }
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (unassignedCooked) {
+                              setReadSlot(m);
+                              return;
+                            }
+                            if (e.detail !== 1) {
+                              return;
+                            }
+                            toggleUnassignedCookSelectAt(idx);
+                          }}
+                          onDoubleClick={(e) => {
+                            e.stopPropagation();
+                            setReadSlot(m);
+                          }}
+                        >
+                          {m.title}
+                        </button>
+                        <div className="meal-chip-portion-controls">
+                          <button
+                            type="button"
+                            className="meal-chip-portion-btn"
+                            draggable={false}
+                            aria-label={`Remove one portion for ${m.title}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              adjustUnassignedPortionCount(idx, -1);
+                            }}
+                          >
+                            −
+                          </button>
+                          <span
+                            className="meal-chip-portion-value"
+                            aria-label={`Portions: ${portionCountOf(m)}`}
+                          >
+                            {portionCountOf(m)}
+                          </span>
+                          <button
+                            type="button"
+                            className="meal-chip-portion-btn"
+                            draggable={false}
+                            aria-label={`Add one portion for ${m.title}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              adjustUnassignedPortionCount(idx, 1);
+                            }}
+                          >
+                            +
+                          </button>
+                        </div>
+                        {unassignedCooked ? (
+                          <div className="meal-chip-cook-prompt">
+                            <button
+                              type="button"
+                              className="meal-chip-cooked-badge"
+                              draggable={false}
+                              title="Click to unmark as cooked"
+                              aria-label={`${m.title} is logged as cooked. Click to remove`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const loc = findUnassignedSlotHistoryLocation(
+                                  history,
+                                  weekKeys,
+                                  unassignedMeals,
+                                  idx,
+                                  m.id,
+                                );
+                                if (loc) {
+                                  removeCookedAt(loc.dateIso, loc.index);
+                                }
+                              }}
+                            >
+                              ✓ Cooked
+                            </button>
+                          </div>
+                        ) : unassignedCookInProgress ? (
+                          <div className="meal-chip-cook-prompt">
+                            <button
+                              type="button"
+                              className="meal-chip-in-progress"
+                              draggable={false}
+                              aria-label={`${m.title} — in progress. Open cook checklist`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const resumeDate =
+                                  m.scheduledForDay && isMealPlanDateKey(m.scheduledForDay)
+                                    ? m.scheduledForDay
+                                    : todayIso;
+                                navigate(recipeCookModePath(m.id, resumeDate, m.planSlotRef ?? null));
+                              }}
+                            >
+                              In progress
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                    <div className="meal-chip-actions">
+                      {m.scheduledForDay ? (
+                        <div className="meal-chip-scheduled-with-edit">
+                          <span
+                            className="meal-chip-scheduled-date"
+                            title={m.scheduledForDay}
+                          >
+                            {formatPlannerDayShort(m.scheduledForDay)}
+                          </span>
+                          <button
+                            type="button"
+                            className="meal-chip-day-edit"
+                            draggable={false}
+                            aria-label={`Change day for ${m.title} (currently ${formatPlannerDayShort(m.scheduledForDay)})`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setAssignUnassignedIndex(idx);
+                            }}
+                          >
+                            Edit
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          className="meal-chip-assign"
+                          draggable={false}
+                          aria-label={`Set day for ${m.title}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setAssignUnassignedIndex(idx);
+                          }}
+                        >
+                          Set day
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="meal-chip-x"
+                        draggable={false}
+                        aria-label={`Remove ${m.title}`}
+                        onClick={() => removeMealAt(unassignedKey, idx)}
+                      >
+                        ×
+                      </button>
+                    </div>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
               <div className="add-meal">
                 <button
@@ -245,6 +616,21 @@ export function MealPlannerPage({
                   onDrop={(e) => handleDayDrop(e, unassignedKey)}
                 >
                   + Add meal
+                </button>
+              </div>
+              <div className="planner-unassigned-cook-cta">
+                <button
+                  type="button"
+                  className="btn-primary btn-cta-wide"
+                  disabled={unassignedCookNowDisabled}
+                  aria-label={
+                    unassignedCookNowDisabled
+                      ? "Cook now — select one or more meals below"
+                      : `Cook now — open cook checklist for ${unassignedCookSelect.size} selected meal${unassignedCookSelect.size === 1 ? "" : "s"}`
+                  }
+                  onClick={handleUnassignedCookNow}
+                >
+                  Cook now
                 </button>
               </div>
             </div>
@@ -294,8 +680,25 @@ export function MealPlannerPage({
                     {d.toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                   </div>
                 </div>
-                <ul className="meal-chips" onDragOver={onDayDragOver} onDrop={onDayDrop}>
-                  {meals.map((m, idx) => (
+                <ul
+                  className={`meal-chips${meals.length === 0 ? " meal-chips--empty" : ""}`}
+                  onDragOver={onDayDragOver}
+                  onDrop={onDayDrop}
+                  aria-label={
+                    meals.length === 0
+                      ? "No meals planned for this day"
+                      : `Planned meals for ${d.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}`
+                  }
+                >
+                  {meals.length === 0 ? (
+                    <li className="meal-chips-empty">
+                      <span className="meal-chips-empty-text">Nothing planned yet</span>
+                    </li>
+                  ) : (
+                  meals.map((m, idx) => {
+                    const daySlotCooked = isDaySlotCooked(history, key, meals, idx, m.id);
+                    const dayCookInProgress = isPlanMealCookInProgress(m.id, key, m.planSlotRef);
+                    return (
                     <li
                       key={`${key}-${idx}-${m.id}`}
                       className={`meal-chip${m.kind === "side" ? " side" : ""}${
@@ -310,13 +713,6 @@ export function MealPlannerPage({
                       onDragOver={onDayDragOver}
                       onDrop={onChipDrop}
                     >
-                      <span
-                        className="meal-chip-handle"
-                        aria-hidden="true"
-                        title="Drag to another day or Unassigned"
-                      >
-                        ⋮⋮
-                      </span>
                       <button
                         type="button"
                         className="meal-chip-title"
@@ -325,29 +721,76 @@ export function MealPlannerPage({
                         onClick={() => setReadSlot(m)}
                       >
                         {m.title}
+                        {portionCountOf(m) > 1 ? (
+                          <span className="meal-chip-portion-inline"> × {portionCountOf(m)}</span>
+                        ) : null}
                       </button>
-                      <button
-                        type="button"
-                        className="meal-chip-x"
-                        draggable={false}
-                        aria-label={`Remove ${m.title}`}
-                        onClick={() => removeMealAt(key, idx)}
-                      >
-                        ×
-                      </button>
+                      {daySlotCooked ? (
+                        <div className="meal-chip-cook-prompt">
+                          <button
+                            type="button"
+                            className="meal-chip-cooked-badge"
+                            draggable={false}
+                            title="Click to unmark as cooked"
+                            aria-label={`${m.title} is logged as cooked for this day. Click to remove`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const i = findDaySlotHistoryIndex(history, key, meals, idx, m.id);
+                              if (i != null) {
+                                removeCookedAt(key, i);
+                              }
+                            }}
+                          >
+                            ✓ Cooked
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="meal-chip-cook-prompt">
+                          {dayCookInProgress ? (
+                            <button
+                              type="button"
+                              className="meal-chip-in-progress"
+                              draggable={false}
+                              aria-label={`${m.title} — in progress. Open cook checklist`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(recipeCookModePath(m.id, key, m.planSlotRef ?? null));
+                              }}
+                            >
+                              In progress
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="meal-chip-cook-now"
+                              draggable={false}
+                              aria-label={`Cook now — open ${m.title} with step checklist`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(recipeCookModePath(m.id, key, m.planSlotRef ?? null));
+                              }}
+                            >
+                              Cook now
+                            </button>
+                          )}
+                        </div>
+                      )}
+                      <div className="meal-chip-actions">
+                        <button
+                          type="button"
+                          className="meal-chip-x"
+                          draggable={false}
+                          aria-label={`Remove ${m.title}`}
+                          onClick={() => removeMealAt(key, idx)}
+                        >
+                          ×
+                        </button>
+                      </div>
                     </li>
-                  ))}
+                    );
+                  })
+                  )}
                 </ul>
-                <div className="add-meal">
-                  <button
-                    type="button"
-                    onClick={() => openPicker(key)}
-                    onDragOver={onDayDragOver}
-                    onDrop={onDayDrop}
-                  >
-                    + Add meal
-                  </button>
-                </div>
               </div>
             </div>
           );
@@ -374,7 +817,12 @@ export function MealPlannerPage({
           <div className="planner-sheet-head">
             <h2 id="assignDayTitle">Set the day</h2>
             {assignSheetOpen && assignUnassignedMeal ? (
-              <p className="muted planner-assign-subtitle">{assignUnassignedMeal.title}</p>
+              <>
+                <p className="muted planner-assign-subtitle">{assignUnassignedMeal.title}</p>
+                <p className="muted planner-assign-subtitle" style={{ marginTop: "0.25rem" }}>
+                  Stays in this week&apos;s menu; also appears on the day you pick.
+                </p>
+              </>
             ) : null}
           </div>
           <div className="planner-sheet-body planner-assign-body">
@@ -392,7 +840,7 @@ export function MealPlannerPage({
                     if (assignUnassignedIndex == null) {
                       return;
                     }
-                    moveMealToDay(unassignedKey, assignUnassignedIndex, dayKey);
+                    assignUnassignedToCalendarDay(assignUnassignedIndex, dayKey);
                     setAssignUnassignedIndex(null);
                   }}
                 >
@@ -403,9 +851,26 @@ export function MealPlannerPage({
             })}
           </div>
           <div className="planner-sheet-foot">
-            <button type="button" className="btn-secondary" onClick={() => setAssignUnassignedIndex(null)}>
-              Cancel
-            </button>
+            <div className="planner-sheet-foot-row planner-sheet-foot-row--assign-actions">
+              {assignSheetOpen &&
+              assignUnassignedMeal?.scheduledForDay &&
+              assignUnassignedIndex != null ? (
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  aria-label={`Remove day for ${assignUnassignedMeal.title}; meal stays on this week’s menu only`}
+                  onClick={() => {
+                    clearUnassignedScheduledDay(assignUnassignedIndex);
+                    setAssignUnassignedIndex(null);
+                  }}
+                >
+                  Remove day
+                </button>
+              ) : null}
+              <button type="button" className="btn-secondary" onClick={() => setAssignUnassignedIndex(null)}>
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       </div>
