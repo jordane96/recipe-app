@@ -6,11 +6,25 @@
       "title": "Chicken (air fried)",
       "type": "recipe",
       "instructions": [
-        "Butterfly chicken and pound (optional)",
-        "Coat in olive oil and rub/spices",
+        {
+          "text": "Butterfly chicken and pound (optional)",
+          "stepIngredients": [
+            "Chicken breast"
+          ]
+        },
+        {
+          "text": "Coat in olive oil and rub/spices",
+          "stepIngredients": [
+            "Olive oil",
+            "Cajun rub or spice mix"
+          ]
+        },
         {
           "text": "Air Fry 10-13 minutes at 350",
-          "durationSeconds": 660
+          "durationSeconds": 660,
+          "stepIngredients": [
+            "Coated chicken"
+          ]
         }
       ],
       "sourceUrl": "https://therecipecritic.com/air-fryer-chicken-breast/",
