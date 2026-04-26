@@ -14,7 +14,7 @@ export function useToast(): ToastCtx {
   return v;
 }
 
-const TOAST_MS = 3800;
+const TOAST_MS = 3000;
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toast, setToast] = React.useState<{ message: string; id: number } | null>(null);

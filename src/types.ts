@@ -6,5 +6,6 @@ export type {
   RecipeBundle,
   RecipeFile,
   RecipeIngredientLine,
+  RecipeInstructionStep,
   RecommendedSideRef,
 } from "./ingredientTypes";

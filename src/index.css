@@ -3,13 +3,18 @@
   --surface: #fffcf8;
   --text: #1c1917;
   --muted: #57534e;
-  --accent: #2d4a3e;
-  --accent-soft: #e8f0ec;
+  /* Primary actions / links / CTAs — same as cook-mode chrome (Figma #1D6B5A) */
+  --cook-teal: #1d6b5a;
+  --accent: var(--cook-teal);
+  --accent-soft: color-mix(in srgb, var(--cook-teal) 10%, #fffcf8 90%);
   --border: #e7e2dc;
+  --cook-chip-bg: #fcf8f0;
+  --cook-chip-border: #e0d6c8;
+  --font-cook: "Inter", var(--font-sans);
   /* Calendar: meal plan rows vs cook-log rows */
   --history-planned-soft: #fefdec;
   --history-planned-border: #d4c9b8;
-  --side: #1d6b5a;
+  --side: var(--cook-teal);
   --tap: 48px;
   /* Type scale (1rem = 16px): shell + meal planner hierarchy */
   --font-sans: "Source Sans 3", system-ui, sans-serif;
@@ -22,6 +27,8 @@
   --fs-caption: 0.75rem; /* uppercase weekday, compact controls */
   --fs-micro: 0.65rem; /* drag handle affordance */
   /* Hierarchy: --fs-page-title > --fs-subhead (week) > --fs-display-sm (Fraunces day / card) > --fs-body > --fs-ui (chips, links) > --fs-caption > --fs-micro */
+  /* Sticky app chrome: offset for secondary sticky rows (e.g. planner week nav) = safe top + hamburger row + bar padding */
+  --app-chrome-sticky-offset: calc(max(0.75rem, env(safe-area-inset-top, 0px)) + 3.75rem);
   font-family: var(--font-sans);
   color: var(--text);
   background: var(--bg);
@@ -62,9 +69,8 @@ a {
   max-width: 40rem;
   margin: 0 auto;
   min-height: 100dvh;
-  padding: max(0.75rem, env(safe-area-inset-top))
-    max(1rem, env(safe-area-inset-right))
-    max(1.25rem, env(safe-area-inset-bottom))
+  /* Top safe area lives in .app-chrome-bar so the bar can stick flush to the viewport */
+  padding: 0 max(1rem, env(safe-area-inset-right)) max(1.25rem, env(safe-area-inset-bottom))
     max(1rem, env(safe-area-inset-left));
 }
 
@@ -121,10 +127,16 @@ a {
 
 /* —— App chrome (hamburger + home) —— */
 .app-chrome-bar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
   display: flex;
   align-items: center;
   gap: 0.65rem;
-  margin-bottom: 1rem;
+  margin: 0 0 1rem;
+  padding: max(0.75rem, env(safe-area-inset-top, 0px)) 0 0.75rem;
+  background: var(--bg);
+  box-shadow: 0 1px 0 rgba(28, 25, 23, 0.08);
 }
 
 .app-chrome-menu-btn {
@@ -179,13 +191,14 @@ a {
 }
 
 .app-chrome-home--current {
-  color: var(--accent);
+  color: var(--text);
 }
 
+/* Above .app-chrome-bar (100) so the hamburger/title do not cover the open drawer */
 .app-chrome-scrim {
   position: fixed;
   inset: 0;
-  z-index: 80;
+  z-index: 110;
   margin: 0;
   padding: 0;
   border: none;
@@ -198,7 +211,7 @@ a {
   top: 0;
   left: 0;
   bottom: 0;
-  z-index: 90;
+  z-index: 120;
   width: min(17.5rem, 88vw);
   padding: max(0.85rem, env(safe-area-inset-top)) 1rem 1.25rem max(1rem, env(safe-area-inset-left));
   background: var(--surface);
@@ -221,7 +234,7 @@ a {
   font-family: var(--font-display);
   font-weight: 600;
   font-size: var(--fs-display-sm);
-  color: var(--muted);
+  color: var(--text);
 }
 
 .app-chrome-drawer-close {
@@ -265,7 +278,7 @@ a {
   border-radius: 10px;
   font-size: var(--fs-body);
   font-weight: 600;
-  color: var(--accent);
+  color: var(--text);
   text-decoration: none;
 }
 
@@ -276,6 +289,12 @@ a {
 .app-chrome-nav-link--current {
   background: var(--accent-soft);
   color: var(--text);
+}
+
+.app-chrome-nav-link--disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 .app-chrome-nav-hint {
@@ -378,6 +397,30 @@ a {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
   border-radius: 4px;
+}
+
+.recipe-detail-resume-cook {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 1rem;
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border));
+  background: var(--accent-soft);
+}
+
+.recipe-detail-resume-cook-text {
+  margin: 0;
+  flex: 1 1 12rem;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: var(--text);
+}
+
+.recipe-detail-resume-cook-btn {
+  flex-shrink: 0;
 }
 
 .search {
@@ -651,203 +694,1328 @@ a {
   margin-bottom: 0.6rem;
 }
 
-/* Cook mode — checklist + primary / secondary CTAs */
-.recipe-cook-mode {
-  padding-bottom: 1rem;
+.recipe-step-text {
+  display: block;
 }
 
-.recipe-cook-sibling-banner {
-  margin-bottom: 0.85rem;
-  padding: 0.45rem;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--surface) 88%, var(--muted) 12%);
+.recipe-step-ingredients {
+  margin: 0.35rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.9rem;
+  color: var(--muted, #666);
+  list-style: disc;
 }
 
-.recipe-cook-sibling-toggle {
+.recipe-step-ingredients li {
+  margin-bottom: 0.2rem;
+}
+
+/* Cook mode — airy surface; layout padding from .app-shell */
+.cook-mode-v2 {
+  font-family: var(--font-cook);
+  padding-bottom: 0;
+  background: #f6f3ee;
+}
+
+.cook-mode-v2-pills {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.3rem;
-  align-items: stretch;
+  gap: 0.4rem;
+  margin: 0;
 }
 
-.recipe-cook-sibling-pill {
+/* Session pills sit above the main card (sibling before article) */
+.cook-mode-v2 > .cook-mode-v2-pills {
+  margin-top: 0.15rem;
+  margin-bottom: 0.65rem;
+}
+
+/* Figma session pills: 30px height, 11px semibold */
+.cook-mode-v2-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  box-sizing: border-box;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid #e7e2dc;
+  background: #fffcf8;
+  color: #57534e;
+  font-family: var(--font-cook);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 20px;
+  cursor: pointer;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cook-mode-v2-pill-dot {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--cook-teal);
+}
+
+.cook-mode-v2-pill-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cook-mode-v2-pill:hover:not(.cook-mode-v2-pill--selected):not(.cook-mode-v2-pill--add) {
+  color: #44403c;
+  background: color-mix(in srgb, #fffcf8 88%, #e8f0ec 12%);
+}
+
+.cook-mode-v2-pill--selected {
+  background: #e8f0ec;
+  color: var(--cook-teal);
+  border-color: var(--cook-teal);
+}
+
+.cook-mode-v2-pill--selected:hover {
+  color: var(--cook-teal);
+  background: #e0ebe4;
+}
+
+.cook-mode-v2-pill--add {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  font-weight: 600;
+  color: #57534e;
+  background: #fffcf8;
+  border-color: #e7e2dc;
+}
+
+.cook-mode-v2-pill--add:hover {
+  color: #44403c;
+  background: color-mix(in srgb, #fffcf8 88%, #e8f0ec 12%);
+}
+
+/* Figma node 15:127 — step progress is footer dots only; no strip under pills */
+.cook-mode-v2-session-progress {
+  display: none;
+}
+
+.cook-mode-v2-session-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 0.25s ease;
+}
+
+/* Figma Group 2 — dark bar: centered title + session elapsed + pause (tap = session clock) */
+.cook-mode-v2-meal-banner {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(2.5rem, 1fr) minmax(0, auto) minmax(2.5rem, 1fr);
+  align-items: center;
+  column-gap: 0.35rem;
+  width: 100%;
+  margin: 0 0 0.65rem;
+  padding: 0.55rem 0.75rem 0.6rem;
+  border-radius: 17.5px;
+  background: var(--cook-teal);
+  color: #fff;
+  font-family: var(--font-cook);
+}
+
+.cook-mode-v2-meal-banner--static {
+  margin-bottom: 0;
+}
+
+/* In-chrome banner min-height; --top and confirm use 52px below (no jump confirm → steps) */
+.cook-mode-v2-main-card--confirm .cook-mode-v2-cook-chrome--confirm .cook-mode-v2-meal-banner--in-chrome,
+.cook-mode-v2-cook-chrome .cook-mode-v2-meal-banner--in-chrome {
+  box-sizing: border-box;
+  min-height: 34px;
+}
+
+.cook-mode-v2-meal-banner--interactive {
+  margin: 0 0 0.65rem;
+  border: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Cook step chrome + footer — teal bands; layout is flex/grid for readability (not frame-perfect absolute) */
+.cook-mode-v2-cook-chrome {
+  flex-shrink: 0;
+  width: calc(100% + 2rem);
+  max-width: none;
+  box-sizing: border-box;
+  margin: -1rem -1rem 0.75rem -1rem;
+  border-radius: 17.5px 17.5px 0 0;
+  overflow: hidden;
+  background: var(--cook-teal);
+}
+
+.cook-mode-v2-cook-chrome--top {
+  margin-bottom: 0;
+}
+
+.cook-mode-v2-cook-footer {
+  position: relative;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: calc(100% + 2rem);
+  max-width: none;
+  margin: 0 -1rem -1.15rem -1rem;
+  padding: 6px 10px 6px;
+  border-radius: 0 0 17.5px 17.5px;
+  overflow: hidden;
+  background: var(--cook-teal);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 2px;
+}
+
+/* Step card: keep nav + cancel visible when the shell scrolls (tall steps, dock, small viewports) */
+.cook-mode-v2-main-card:not(.cook-mode-v2-main-card--confirm) > .cook-mode-v2-cook-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+}
+
+.cook-mode-v2-cook-footer .cook-mode-v2-cook-bottom {
+  margin: 0;
+  padding: 0;
+  text-align: center;
+}
+
+/* Cancel sits in footer: undo main-card .cook-bottom margin-top:auto (pushes link to bottom of teal strip) */
+.cook-mode-v2-main-card:not(.cook-mode-v2-main-card--confirm) .cook-mode-v2-cook-footer .cook-mode-v2-cook-bottom {
+  margin-top: 0;
+  padding-top: 0;
+}
+
+/* Step 0 (confirm) — same green + title as cook chrome; bleed matches .cook-mode-v2-main-card--confirm padding */
+.cook-mode-v2-cook-chrome--confirm {
+  width: calc(100% + 2.3rem);
+  margin: -1.25rem -1.15rem 0.75rem;
+  border-radius: 20px 20px 0 0;
+}
+
+/* Solid banner bg would block the blend — stay transparent on chrome */
+.cook-mode-v2-meal-banner--in-chrome,
+button.cook-mode-v2-meal-banner--in-chrome,
+.cook-mode-v2-meal-banner--static.cook-mode-v2-meal-banner--in-chrome {
+  width: 100%;
+  margin: 0;
+  border-radius: 0;
+  max-width: none;
+  background: transparent;
+  /* Figma: title at ~12px; strip uses ~10px+14px+6px; timer 10px/line 12 (node 32:207) */
+  padding: 0.62rem 0.95rem 0.5rem;
+}
+
+.cook-mode-v2-cook-chrome--top .cook-mode-v2-meal-banner--in-chrome,
+.cook-mode-v2-cook-chrome--top button.cook-mode-v2-meal-banner--in-chrome {
+  min-height: 52px;
+  padding: 12px 14px;
+  align-items: center;
+}
+
+/* Same teal strip as cook steps (Figma 44:77) — was shorter on confirm only */
+.cook-mode-v2-main-card--confirm .cook-mode-v2-cook-chrome--confirm .cook-mode-v2-meal-banner--in-chrome {
+  min-height: 52px;
+  padding: 12px 14px;
+  align-items: center;
+}
+
+.cook-mode-v2-main-card:not(.cook-mode-v2-main-card--confirm) .cook-mode-v2-meal-banner--interactive {
+  margin-bottom: 0;
+}
+
+/* Figma 32:208 — 14px bold white */
+.cook-mode-v2-meal-banner--in-chrome .cook-mode-v2-meal-banner-title,
+.cook-mode-v2-meal-banner--in-chrome.cook-mode-v2-meal-banner--static .cook-mode-v2-meal-banner-title--solo {
+  font-size: 14px;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.cook-mode-v2-cook-header-nav {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  /* Figma: 15px inset (nodes 32:199 / 32:201), 12px bottom in nav */
+  padding: 0 15px 12px;
+  column-gap: 0.4rem;
+}
+
+.cook-mode-v2-cook-footer .cook-mode-v2-cook-header-nav {
+  /* static: prev/next buttons use position:absolute and center vs full .cook-mode-v2-cook-footer height */
+  position: static;
+  flex: 0 0 auto;
+  min-height: 34px;
+  height: auto;
+  max-height: none;
+  margin: 0;
+  /* Side inset = footer edge padding (10px) + former nav gutter (4px); keeps mid column off the arrows */
+  padding: 6px calc(10px + 4px + 44px) 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Vertically center arrow controls in the entire teal footer (nav row + Cancel), not just the nav row */
+.cook-mode-v2-cook-footer .cook-mode-v2-cook-header-nav > .cook-mode-v2-nav-btn.cook-mode-v2-nav-btn--figma.cook-mode-v2-nav-btn--figma-airy:first-of-type {
+  position: absolute;
+  top: 50%;
+  left: calc(10px + 4px);
+  transform: translateY(-50%);
+  z-index: 1;
+}
+
+.cook-mode-v2-cook-footer .cook-mode-v2-cook-header-nav > .cook-mode-v2-nav-btn.cook-mode-v2-nav-btn--figma.cook-mode-v2-nav-btn--figma-airy:last-of-type {
+  position: absolute;
+  top: 50%;
+  right: calc(10px + 4px);
+  transform: translateY(-50%);
+  z-index: 1;
+}
+
+/* Match arrow height so “Step n” + dots sit on the same vertical center as ← / → */
+.cook-mode-v2-cook-footer .cook-mode-v2-cook-header-mid {
+  flex: 0 1 auto;
+  min-height: 34px;
+  justify-content: center;
+  gap: 0.2rem;
+}
+
+.cook-mode-v2-cook-footer .cook-mode-v2-cook-header-step-label {
+  line-height: 1.15;
+}
+
+.cook-mode-v2-cook-footer .cook-mode-v2-nav-btn.cook-mode-v2-nav-btn--figma.cook-mode-v2-nav-btn--figma-airy {
+  width: 44px;
+  min-width: 44px;
+  max-width: 44px;
+  height: 34px;
+  min-height: 34px;
+  max-height: 34px;
+  border-radius: 10px;
+}
+
+.cook-mode-v2-cook-footer .cook-mode-v2-nav-btn.cook-mode-v2-nav-btn--figma.cook-mode-v2-nav-btn--figma-airy .cook-mode-v2-nav-arrow {
+  height: auto;
+  font-family: SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 40px;
+  line-height: 1;
+}
+
+.cook-mode-v2-cook-header-mid {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  align-self: center;
+  justify-content: center;
+  /* Figma 44:77 footer — “Step n of m” then dots */
+  gap: 0.35rem;
+  min-width: 0;
+  padding: 0 0.1rem;
+}
+
+.cook-mode-v2-cook-header-step-label {
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-cook);
+  /* Figma 32:186: 11px semibold white */
+  font-size: 11px;
+  line-height: 1.2;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: 0.01em;
+}
+
+.cook-mode-v2-cook-chrome .cook-mode-v2-dots,
+.cook-mode-v2-cook-footer .cook-mode-v2-dots {
+  margin: 0;
+  gap: 6px;
+}
+
+.cook-mode-v2-cook-chrome .cook-mode-v2-dot,
+.cook-mode-v2-cook-footer .cook-mode-v2-dot {
+  background: rgba(255, 255, 255, 0.35);
+  align-self: center;
+}
+
+.cook-mode-v2-cook-chrome .cook-mode-v2-dot--active,
+.cook-mode-v2-cook-footer .cook-mode-v2-dot--active {
+  width: 10px;
+  height: 10px;
+  background: #fff;
+}
+
+.cook-mode-v2-cook-chrome .cook-mode-v2-dot--completed,
+.cook-mode-v2-cook-footer .cook-mode-v2-dot--completed {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+/* Header arrow sizing / ← vs → border: see .cook-mode-v2-nav-btn--figma-airy under Figma 15:127 */
+.cook-mode-v2-meal-banner--interactive:active {
+  filter: brightness(0.94);
+}
+
+.cook-mode-v2-meal-banner-spacer {
+  grid-column: 1;
+}
+
+.cook-mode-v2-meal-banner-title {
+  grid-column: 2;
+  justify-self: stretch;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+
+.cook-mode-v2-meal-banner-title--solo {
+  grid-column: 1 / -1;
+  text-align: center;
+  font-size: 13px;
+  line-height: 16px;
+}
+
+.cook-mode-v2-meal-banner-right {
+  grid-column: 3;
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  color: #fff;
+}
+
+.cook-mode-v2-meal-banner-time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 10px;
+  line-height: 12px;
+  letter-spacing: 0.02em;
+}
+
+.cook-mode-v2-meal-banner-right .cook-mode-v2-timer-ppc-glyph {
+  color: #fff;
+}
+
+.cook-mode-v2-main-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  box-shadow: 0 8px 24px rgba(26, 26, 26, 0.1);
+  padding: 1rem 1rem 1.1rem;
+  margin-bottom: 1rem;
+  touch-action: pan-y;
+}
+
+.cook-mode-v2-main-card:not(.cook-mode-v2-main-card--confirm) {
+  display: flex;
+  flex-direction: column;
+  background: #fffcf8;
+  border-color: #e7e2dc;
+  padding: 1rem 1rem 1.15rem;
+  /* Stable card height between steps; short steps show cream space above the footer */
+  min-height: min(650px, calc(100dvh - 10.5rem));
+}
+
+/* Scrollable step content; slight top air below chrome (Figma ~23px title-to-body) */
+.cook-mode-v2-cook-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-top: 10px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/*
+ * Cook steps: banner + body share one scroller (sticky teal strip).
+ * Bleed wrapper cancels article padding — chrome’s negative margins were clipped by
+ * overflow-y: auto here (same pattern as .cook-mode-v2-confirm-scroll).
+ */
+.cook-mode-v2-main-card:not(.cook-mode-v2-main-card--confirm) .cook-mode-v2-cook-main-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  scrollbar-color: transparent transparent;
+  -ms-overflow-style: none;
+  margin: -1rem -1rem 0;
+  width: calc(100% + 2rem);
+  max-width: none;
+  box-sizing: border-box;
+}
+
+.cook-mode-v2-main-card:not(.cook-mode-v2-main-card--confirm) .cook-mode-v2-cook-main-scroll > .cook-mode-v2-cook-chrome--top {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  width: 100%;
+  margin: 0;
+}
+
+.cook-mode-v2-main-card:not(.cook-mode-v2-main-card--confirm) .cook-mode-v2-cook-main-scroll .cook-mode-v2-cook-body {
+  flex: none;
+  min-height: unset;
+  overflow: visible;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  box-sizing: border-box;
+}
+
+.cook-mode-v2-step-rule {
+  height: 1px;
+  margin: 0.65rem 0 0.75rem;
+  background: #e7e2dc;
+  border: none;
+}
+
+.cook-mode-v2-step-rule--before-timer {
+  margin-top: 0.85rem;
+}
+
+.cook-mode-v2-main-card--confirm {
+  display: flex;
+  flex-direction: column;
+  height: 650px;
+  min-height: 0;
+  padding: 1.25rem 1.15rem 1.15rem;
+  overflow: hidden;
+}
+
+/*
+ * Confirm scroll: bleed to card edges like pre-wrapper layout. Negative margins on
+ * children were clipped by overflow-y: auto here; instead cancel article padding on
+ * this wrapper and pad title/ingredients only.
+ */
+.cook-mode-v2-main-card--confirm .cook-mode-v2-confirm-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  scrollbar-color: transparent transparent;
+  -ms-overflow-style: none;
+  margin: -1.25rem -1.15rem 0;
+  width: calc(100% + 2.3rem);
+  max-width: none;
+  box-sizing: border-box;
+}
+
+/* Full-width teal strip; no extra negative margin (scroll box is already full-bleed) */
+.cook-mode-v2-main-card--confirm .cook-mode-v2-confirm-scroll > .cook-mode-v2-cook-chrome--confirm {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  width: 100%;
+  margin: 0 0 0.75rem;
+}
+
+.cook-mode-v2-main-card--confirm .cook-mode-v2-confirm-scroll .cook-mode-v2-confirm-title,
+.cook-mode-v2-main-card--confirm .cook-mode-v2-confirm-scroll .cook-mode-v2-confirm-ing {
+  padding-left: 1.15rem;
+  padding-right: 1.15rem;
+  box-sizing: border-box;
+}
+
+.cook-mode-v2-main-card--confirm .cook-mode-v2-confirm-scroll::-webkit-scrollbar,
+.cook-mode-v2-main-card:not(.cook-mode-v2-main-card--confirm) .cook-mode-v2-cook-main-scroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.cook-mode-v2-main-card--confirm .cook-mode-v2-confirm-scroll::-webkit-scrollbar-track,
+.cook-mode-v2-main-card:not(.cook-mode-v2-main-card--confirm) .cook-mode-v2-cook-main-scroll::-webkit-scrollbar-track,
+.cook-mode-v2-main-card--confirm .cook-mode-v2-confirm-scroll::-webkit-scrollbar-thumb,
+.cook-mode-v2-main-card:not(.cook-mode-v2-main-card--confirm) .cook-mode-v2-cook-main-scroll::-webkit-scrollbar-thumb,
+.cook-mode-v2-main-card--confirm .cook-mode-v2-confirm-scroll::-webkit-scrollbar-corner,
+.cook-mode-v2-main-card:not(.cook-mode-v2-main-card--confirm) .cook-mode-v2-cook-main-scroll::-webkit-scrollbar-corner {
+  display: none;
+  background: transparent;
+}
+
+/* Bottom of card; stays visible while ingredient list scrolls in .cook-mode-v2-confirm-scroll */
+.cook-mode-v2-confirm-footer {
+  flex-shrink: 0;
+  padding-top: 0.35rem;
+  background: var(--surface);
+}
+
+/* Match .cook-mode-v2-step-text (Figma 32:178) */
+.cook-mode-v2-confirm-title {
+  margin: 0 0 1.05rem;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 30px;
+  color: #1c1917;
+}
+
+.cook-mode-v2-confirm-ing {
+  margin-bottom: 0.2rem;
+}
+
+.cook-mode-v2-confirm-ing-label {
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cook-teal);
+  margin-bottom: 0.5rem;
+}
+
+.cook-mode-v2-confirm-chip-row {
+  gap: 0.4rem;
+}
+
+.cook-mode-v2-confirm-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 1.05rem 0 1rem;
+}
+
+.cook-mode-v2-confirm-footer .cook-mode-v2-confirm-divider {
+  margin: 0 0 1rem;
+}
+
+.cook-mode-v2-confirm-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.cook-mode-v2-confirm-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  font-family: var(--font-cook);
+  font-size: 1rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  border: 2px solid transparent;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+/* Cook-mode confirm: same #1D6B5A as .cook-mode-v2-cook-chrome / meal banner (see --cook-teal) */
+.cook-mode-v2-confirm-btn--primary {
+  background: var(--cook-teal);
+  color: #fff;
+  border-color: var(--cook-teal);
+}
+
+.cook-mode-v2-confirm-btn--primary:hover {
+  filter: brightness(0.96);
+}
+
+.cook-mode-v2-confirm-btn--primary:active {
+  filter: brightness(0.92);
+}
+
+.cook-mode-v2-confirm-btn--outline {
+  background: var(--surface);
+  color: var(--cook-teal);
+  border-color: var(--cook-teal);
+}
+
+.cook-mode-v2-confirm-btn--outline:hover {
+  background: color-mix(in srgb, var(--surface) 70%, var(--cook-teal) 10%);
+}
+
+.cook-mode-v2-confirm-btn--outline:active {
+  background: color-mix(in srgb, var(--surface) 50%, var(--cook-teal) 16%);
+}
+
+.cook-mode-v2-confirm-cancel {
+  display: block;
+  width: 100%;
+  margin: 1rem 0 0;
+  padding: 0.5rem;
+  border: none;
+  background: none;
+  font-family: var(--font-cook);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--cook-teal);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.cook-mode-v2-confirm-cancel:hover {
+  color: var(--text);
+}
+
+/** Center column in cook footer nav — same typography as confirm screen; shrink-wrap in grid. */
+.cook-mode-v2-confirm-cancel--nav {
+  margin: 0;
+  width: max-content;
+  max-width: 100%;
+  justify-self: center;
+}
+
+.cook-mode-v2-card-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.cook-mode-v2-card-meta-left {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.45rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.cook-mode-v2-card-meta-step {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.cook-mode-v2-card-meta-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.cook-mode-v2-card-meta-ppc {
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+  min-width: 1rem;
+  min-height: 1rem;
+  margin: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--cook-teal) 32%, var(--border));
+  background: color-mix(in srgb, var(--cook-teal) 6%, var(--surface));
+  color: var(--cook-teal);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cook-mode-v2-card-meta-ppc:hover {
+  background: color-mix(in srgb, var(--cook-teal) 14%, var(--surface));
+}
+
+.cook-mode-v2-card-meta-ppc:active {
+  transform: scale(0.95);
+}
+
+.cook-mode-v2-card-meta-step,
+.cook-mode-v2-card-meta-total {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--cook-teal);
+  letter-spacing: 0.02em;
+}
+
+.cook-mode-v2-card-meta-total--empty {
+  min-width: 1px;
+  visibility: hidden;
+}
+
+/* Figma 32:178 — 20px / 30lh, semibold #1c1917 */
+.cook-mode-v2-step-text {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 30px;
+  color: #1c1917;
+}
+
+.cook-mode-v2-ing-block {
+  margin-bottom: 1rem;
+}
+
+.cook-mode-v2-ing-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Figma: 10px / 12lh, extrabold caps */
+.cook-mode-v2-ing-label {
+  font-size: 10px;
+  line-height: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cook-teal);
+}
+
+.cook-mode-v2-view-all {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 10px;
+  line-height: 12px;
+  font-weight: 400;
+  color: var(--cook-teal);
+  text-decoration: underline;
+  cursor: pointer;
+  font-family: var(--font-cook);
+}
+
+.cook-mode-v2-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+/* Figma chips: 30px tall, 12px type, 8px radius */
+.cook-mode-v2-chip {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-height: 30px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid #e0d6c8;
+  background: #fcf8f0;
+  font-size: 12px;
+  line-height: 15px;
+  font-weight: 600;
+  color: #1c1917;
+  max-width: 100%;
+}
+
+.cook-mode-v2-chip-name {
+  font-weight: 600;
+  color: #1c1917;
+}
+
+.cook-mode-v2-chip-sep {
+  font-weight: 400;
+  color: #57534e;
+}
+
+.cook-mode-v2-chip-qty {
+  font-weight: 500;
+  color: #57534e;
+}
+
+.cook-mode-v2-ing-expanded {
+  margin-top: 0.65rem;
+  font-size: var(--fs-ui);
+}
+
+.cook-mode-v2-ing-sec-name {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: var(--fs-caption);
+  color: var(--text);
+}
+
+.cook-mode-v2-ing-list {
+  margin: 0.25rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.cook-mode-v2-timer {
+  margin-bottom: 1rem;
+}
+
+/* Step timer row — Figma Cook Mode — Exploration */
+.cook-mode-v2-timer-layout {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* Timer primary control — Figma 13:115: time CENTER in flex region, Start LEFT at right */
+.cook-mode-v2-timer-main {
   flex: 1 1 auto;
   min-width: 0;
+  min-height: 75px;
   margin: 0;
-  padding: 0.45rem 0.75rem;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0;
+  padding: 16px 24px 16px 16px;
+  border: none;
+  border-radius: 16px;
+  background: #e8f0ec;
+  color: #2d4a3e;
+  cursor: pointer;
+  font-family: var(--font-cook);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cook-mode-v2-timer-main:hover {
+  filter: brightness(0.985);
+}
+
+.cook-mode-v2-timer-main:active {
+  transform: scale(0.992);
+}
+
+.cook-mode-v2-timer-main-digits-wrap {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Figma: 36px / 44lh */
+.cook-mode-v2-timer-main-digits {
+  font-family: var(--font-cook);
+  font-size: 36px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 44px;
+  letter-spacing: -0.02em;
+  text-align: center;
+  color: #2d4a3e;
+}
+
+/* Figma Start: 16px / 19lh */
+.cook-mode-v2-timer-main-action {
+  box-sizing: border-box;
+  flex: 0 0 5.25rem;
+  width: 5.25rem;
+  margin-left: 4px;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 19px;
+  text-align: left;
+  color: #2d4a3e;
+}
+
+.cook-mode-v2-timer-adjusts {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+/* +30 sec / -30 sec — top matches Figma 13:167 */
+.cook-mode-v2-timer-adjust {
+  box-sizing: border-box;
+  margin: 0;
+  width: 95px;
+  min-height: 35px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  border: 1px solid #e7e2dc;
+  background: #fffcf8;
+  color: #57534e;
+  font-family: var(--font-cook);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 16px;
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cook-mode-v2-timer-adjust:hover {
+  background: color-mix(in srgb, #fffcf8 88%, #e8f0ec 12%);
+}
+
+.cook-mode-v2-timer-adjust:active {
+  transform: scale(0.97);
+}
+
+.cook-mode-v2-timer-ppc-glyph {
+  display: block;
+  fill: currentColor;
+  overflow: visible;
+}
+
+.cook-mode-v2-timer-ppc-bar {
+  stroke: currentColor;
+  stroke-width: 3.25;
+}
+
+.cook-mode-v2-timer-ppc-bar--compact {
+  stroke-width: 2.75;
+}
+
+.cook-mode-v2-timer-ppc-bar--micro {
+  stroke-width: 2.35;
+}
+
+.cook-mode-v2-timer-ppc-bar--banner {
+  stroke-width: 2.5;
+}
+
+.cook-mode-v2-btn {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  font-family: var(--font-cook);
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.cook-mode-v2-btn--primary {
+  flex: 1 1 10rem;
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.cook-mode-v2-btn--ghost {
+  flex: 0 1 auto;
+  background: var(--surface);
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  font-weight: 600;
+  font-size: 0.8125rem;
+}
+
+.cook-mode-v2-last-step-cta {
+  margin-top: 0.85rem;
+  margin-bottom: 30px;
+}
+
+.cook-mode-v2-card-footer {
+  margin-top: 0.35rem;
+  padding-top: 0.25rem;
+}
+
+.cook-mode-v2-cook-bottom {
+  text-align: center;
+}
+
+.cook-mode-v2-main-card:not(.cook-mode-v2-main-card--confirm) .cook-mode-v2-cook-bottom {
+  flex-shrink: 0;
+  margin-top: auto;
+  padding-top: 0.45rem;
+}
+
+
+/* Figma 15:127 — [←] Step x of y [→] */
+.cook-mode-v2-footer-nav {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  margin-bottom: 0.45rem;
+}
+
+/* Figma: Step x of y — 11px / 13lh */
+.cook-mode-v2-footer-step-label {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: center;
+  font-family: var(--font-cook);
+  font-size: 11px;
+  line-height: 13px;
+  font-weight: 600;
+  color: #beb5af;
+  letter-spacing: 0.02em;
+}
+
+.cook-mode-v2-card-footer .cook-mode-v2-dots {
+  margin: 0 0 0.55rem;
+}
+
+/* Figma Dev — prev/next: 52×44px, 12px radius (not circles) */
+.cook-mode-v2-nav-btn.cook-mode-v2-nav-btn--figma {
+  width: 52px;
+  height: 44px;
+  min-width: 52px;
+  min-height: 44px;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.cook-mode-v2-nav-btn.cook-mode-v2-nav-btn--figma:not(.cook-mode-v2-nav-btn--primary) {
+  background: #fffcf8;
+  border: 1px solid #e7e2dc;
+  color: var(--cook-teal);
+}
+
+.cook-mode-v2-nav-btn.cook-mode-v2-nav-btn--figma.cook-mode-v2-nav-btn--primary {
+  background: var(--cook-teal);
+  border-color: var(--cook-teal);
+  color: #fff;
+}
+
+.cook-mode-v2-nav-btn.cook-mode-v2-nav-btn--figma .cook-mode-v2-nav-arrow {
+  font-size: 20px;
+  line-height: 24px;
+  font-weight: 700;
+}
+
+.cook-mode-v2-nav-btn.cook-mode-v2-nav-btn--figma.cook-mode-v2-nav-btn--primary .cook-mode-v2-nav-arrow {
+  color: #fff;
+}
+
+/* Figma 32:199 / 32:201 — 52×44 @ 12px radius; prev + next use identical cream stroke */
+.cook-mode-v2-nav-btn.cook-mode-v2-nav-btn--figma.cook-mode-v2-nav-btn--figma-airy {
+  box-sizing: border-box;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  min-width: 52px;
+  max-width: 52px;
+  height: 44px;
+  min-height: 44px;
+  max-height: 44px;
+  border-radius: 12px;
+  padding: 0;
+  border: 1px solid #e7e2dc;
+  background: #fffcf8;
+  color: var(--cook-teal);
+  box-shadow: none;
+}
+
+.cook-mode-v2-nav-btn.cook-mode-v2-nav-btn--figma.cook-mode-v2-nav-btn--figma-airy .cook-mode-v2-nav-arrow {
+  /* Figma 44:141 — Inter bold 20px */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  height: 40px;
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-cook);
+  font-size: 20px;
+  line-height: 24px;
+  font-weight: 700;
+  font-style: normal;
+  color: #2d4a3e;
+}
+
+.cook-mode-v2-footer-cancel {
+  display: block;
+  width: 100%;
+  margin: 0.15rem 0 0;
+  padding: 0.35rem 0 0;
+  color: var(--cook-teal);
+}
+
+/* Figma footer cancel: 10px / 12, regular, underline */
+.cook-mode-v2-footer-cancel.cook-mode-v2-confirm-cancel {
+  font-size: 10px;
+  line-height: 12px;
+  font-weight: 400;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.cook-mode-v2-cook-footer .cook-mode-v2-footer-cancel.cook-mode-v2-confirm-cancel {
+  color: #fff;
+  padding: 0.1rem 0.35rem;
+  margin: 0 auto;
+  max-width: 100%;
+}
+
+.cook-mode-v2-cook-footer .cook-mode-v2-footer-cancel.cook-mode-v2-confirm-cancel:hover {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.cook-mode-v2-dots {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+}
+
+.cook-mode-v2-dot {
+  box-sizing: border-box;
+  appearance: none;
+  width: 7px;
+  height: 7px;
+  padding: 0;
+  margin: 0;
   border: none;
   border-radius: 999px;
-  font-family: var(--font-sans);
-  font-size: var(--fs-ui);
-  font-weight: 600;
-  line-height: 1.3;
-  color: var(--muted);
-  background: transparent;
+  background: #e7e2dc;
   cursor: pointer;
-  text-align: center;
-  transition:
-    background 0.15s ease,
-    color 0.15s ease,
-    box-shadow 0.15s ease;
+  flex-shrink: 0;
+  line-height: 0;
+  align-self: center;
 }
 
-.recipe-cook-sibling-pill:hover:not(.recipe-cook-sibling-pill--selected) {
-  color: var(--text);
-  background: color-mix(in srgb, var(--surface) 70%, var(--accent-soft) 30%);
+.cook-mode-v2-dot--active {
+  width: 10px;
+  height: 10px;
+  background: var(--cook-teal);
+  align-self: center;
 }
 
-.recipe-cook-sibling-pill--selected {
-  color: #fff;
-  background: var(--accent);
-  cursor: default;
-  box-shadow: 0 1px 2px color-mix(in srgb, var(--text) 12%, transparent);
+/* Steps before current — small forest green (Figma 15:127 pagination) */
+.cook-mode-v2-dot--completed {
+  background: var(--cook-teal);
 }
 
-.recipe-cook-sibling-pill--selected:hover {
-  color: #fff;
-  background: var(--accent);
-}
-
-.recipe-cook-sibling-pill:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-.recipe-cook-cook-else {
-  text-align: center;
-}
-
-.recipe-cook-timer-block {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.45rem 0.75rem;
-  margin-bottom: 0.85rem;
-}
-
-.recipe-cook-timer-actions {
-  display: flex;
-  flex-wrap: wrap;
+.cook-mode-v2-nav-row {
+  display: grid;
+  grid-template-columns: minmax(2.75rem, auto) 1fr minmax(2.75rem, auto);
   align-items: center;
   gap: 0.35rem;
 }
 
-.recipe-cook-timer-action {
-  font-family: var(--font-sans);
-  font-size: var(--fs-ui);
-  padding: 0.4rem 0.7rem;
-  margin: 0;
-  border-radius: 8px;
+.cook-mode-v2-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  appearance: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0;
+  border-radius: 14px;
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--accent);
   cursor: pointer;
-  line-height: 1.2;
-  transition:
-    background 0.15s ease,
-    border-color 0.15s ease;
+  font-family: var(--font-cook);
+  -webkit-tap-highlight-color: transparent;
 }
 
-.recipe-cook-timer-action:hover {
+.cook-mode-v2-nav-btn--primary:active:not(:disabled) {
+  filter: brightness(0.94);
+}
+
+.cook-mode-v2-nav-btn:not(.cook-mode-v2-nav-btn--primary):active:not(:disabled) {
   background: color-mix(in srgb, var(--accent-soft) 55%, var(--surface));
-  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
 }
 
-.recipe-cook-timer-action:active {
-  transform: scale(0.98);
+.cook-mode-v2-nav-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
-.recipe-cook-timer-action--clear {
-  color: var(--muted);
-  border-color: transparent;
-  background: transparent;
-  text-decoration: underline;
-  text-underline-offset: 0.12em;
+.cook-mode-v2-nav-btn--primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
 }
 
-.recipe-cook-timer-action--clear:hover {
-  color: var(--text);
-  background: transparent;
-  border-color: transparent;
-}
-
-.recipe-cook-timer-readout {
-  font-family: ui-monospace, "Cascadia Code", "Segoe UI Mono", monospace;
-  font-size: 1.35rem;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-  color: var(--text);
-  letter-spacing: 0.02em;
-  min-width: 4.5ch;
-}
-
-.recipe-cook-timer-readout--idle {
-  color: var(--muted);
-}
-
-.recipe-cook-timer-readout--paused {
-  color: var(--muted);
-}
-
-.recipe-cook-ingredients {
-  margin-bottom: 1rem;
-}
-
-.recipe-cook-steps-section {
-  margin-bottom: 1rem;
-}
-
-.recipe-cook-no-steps {
-  margin: 0;
-}
-
-.recipe-cook-progress {
-  margin: 0 0 0.65rem;
-  font-size: var(--fs-caption);
-}
-
-.recipe-cook-step-list {
-  margin: 0;
-  padding-left: 0;
-  list-style: none;
-}
-
-.recipe-cook-step-item {
-  margin-bottom: 0.75rem;
-}
-
-.recipe-cook-step-label {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.65rem;
-  cursor: pointer;
-  font-size: var(--fs-body);
-  line-height: 1.45;
-}
-
-.recipe-cook-step-check {
+/* Cook mode nav arrows (← / →). Header buttons use --figma-airy which overrides with flex layout. */
+.cook-mode-v2-nav-arrow {
+  display: block;
   flex-shrink: 0;
-  width: 1.35rem;
-  height: 1.35rem;
-  margin-top: 0.15rem;
-  accent-color: var(--accent);
+  width: 100%;
+  max-width: 3.25rem;
+  font-family: SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-style: normal;
+  font-weight: 700;
+  font-size: 40px;
+  line-height: 1;
+  text-align: center;
+  color: var(--cook-teal);
+}
+
+.cook-mode-v2-nav-btn--primary .cook-mode-v2-nav-arrow {
+  color: #fff;
+}
+
+.cook-mode-v2-dock {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  padding: 0.75rem 1rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.cook-mode-v2-dock-label {
+  /* Match .cook-mode-v2-ing-label (“All ingredients” / step ingredients) */
+  margin: 0 0 0.45rem;
+  font-size: 10px;
+  line-height: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cook-teal);
+}
+
+.cook-mode-v2-dock-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.cook-mode-v2-dock-card {
+  text-align: left;
+  padding: 0.65rem 0.75rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg);
   cursor: pointer;
+  min-width: 8rem;
+  font-family: var(--font-cook);
 }
 
-.recipe-cook-step-text {
-  flex: 1;
-  min-width: 0;
+.cook-mode-v2-dock-card-title {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text);
 }
 
-.recipe-cook-step-item:has(.recipe-cook-step-check:checked) .recipe-cook-step-text {
+.cook-mode-v2-dock-card-timer {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--cook-teal);
+}
+
+.cook-mode-v2-dock-card-sub {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.625rem;
   color: var(--muted);
-  text-decoration: line-through;
-  text-decoration-color: color-mix(in srgb, var(--muted) 55%, transparent);
-}
-
-.recipe-cook-cta {
-  margin-top: 0.5rem;
 }
 
 .empty {
@@ -876,9 +2044,51 @@ a {
   font-size: 0.9rem;
 }
 
-/* Recipe list root (add-flow modifier changes section order in TSX). */
+/* Recipe list root (add-flow modifier changes section in TSX). */
+/* Recipe detail: same bottom inset so fixed CTA does not cover content */
+.recipe-list-page--add-flow,
+.recipe-detail-page--bottom-cta {
+  /* Primary + secondary CTA bar (fixed) + safe area */
+  padding-bottom: max(1rem, calc(7.5rem + env(safe-area-inset-bottom, 0px)));
+}
+
 .recipe-list-page--add-flow .list-header {
   margin-bottom: 0.65rem;
+}
+
+.recipe-list-cart-bar {
+  position: fixed;
+  z-index: 40;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  padding: 0.65rem max(1rem, env(safe-area-inset-right)) max(0.75rem, env(safe-area-inset-bottom))
+    max(1rem, env(safe-area-inset-left));
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  max-width: 40rem;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Match .cta-panel: stacked primary + secondary (same as meal planner / recipe detail) */
+.recipe-list-cart-bar-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 100%;
+  font-family: var(--font-sans);
+}
+
+.recipe-list-cart-bar-inner .btn-primary:focus-visible,
+.recipe-list-cart-bar-inner .btn-secondary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .recipe-add-to-plan-flow-banner {
@@ -973,7 +2183,7 @@ a {
 }
 
 .list-header--recipe-toolbar {
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .list-header-actions {
@@ -983,36 +2193,40 @@ a {
   flex-shrink: 0;
 }
 
-/* Mobile: compact tap target; sm+: show “New recipe” (same family as Add to plan) */
 .recipe-add-new-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0;
-  min-width: var(--tap);
+  gap: 0.4rem;
   min-height: var(--tap);
-  padding: 0;
-  border-radius: 12px;
+  padding: 0.45rem 0.85rem;
+  border-radius: 10px;
   border: 1px solid var(--accent);
   background: var(--accent-soft);
   color: var(--accent);
   font: inherit;
+  font-size: var(--fs-ui);
   font-weight: 700;
-  line-height: 1;
+  line-height: 1.2;
   text-decoration: none;
   cursor: pointer;
   flex-shrink: 0;
   -webkit-tap-highlight-color: transparent;
 }
 
-.recipe-add-new-btn-plus {
-  font-size: 1.35rem;
-  line-height: 1;
+.recipe-add-new-btn-icon {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  line-height: 0;
 }
 
-.recipe-add-new-btn-text {
-  display: none;
-  font-size: var(--fs-ui);
+.recipe-add-new-btn-icon svg {
+  display: block;
+}
+
+.recipe-add-new-btn-label {
+  line-height: 1.2;
 }
 
 .recipe-add-new-btn:hover {
@@ -1027,20 +2241,6 @@ a {
 .recipe-add-new-btn:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-}
-
-@media (min-width: 640px) {
-  .recipe-add-new-btn {
-    min-width: unset;
-    min-height: var(--tap);
-    padding: 0.45rem 0.85rem;
-    border-radius: 10px;
-    gap: 0.4rem;
-  }
-
-  .recipe-add-new-btn-text {
-    display: inline;
-  }
 }
 
 .recipe-experience-tbd-msg {
@@ -1101,8 +2301,113 @@ a {
   min-width: 0;
 }
 
+/* Add-to-plan / shop / cook-now: checkbox pick + in-card View (menu-tab pattern). */
+.recipe-row--add-flow {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Pick flow: no padding on the shell — put it on the label and actions so the
+   tappable <label> includes top/bottom “whitespace” (not dead padding outside the label). */
+.recipe-link.recipe-row-add-card {
+  padding: 0;
+}
+
+.recipe-row-add-card {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0.55rem;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+/* Full-width / full-height tap target for pick (entire card left of View), except the View control. */
+.recipe-row-add-card-pick {
+  display: flex;
+  flex: 1;
+  flex-direction: row;
+  align-items: stretch;
+  align-self: stretch;
+  gap: 0.55rem;
+  min-width: 0;
+  margin: 0;
+  /* Same insets as .recipe-link, but on the control so all of it is inside the label. */
+  padding: 1rem 0 1rem 1rem;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+}
+
+.recipe-row-pick-cb {
+  flex-shrink: 0;
+  width: 1.2rem;
+  height: 1.2rem;
+  margin: 0.2rem 0 0 0.05rem;
+  accent-color: var(--accent);
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+/* Stretches with the label row so space above/below the title (inside the text column) is still the label. */
+.recipe-row-add-card-text {
+  flex: 1;
+  min-width: 0;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  box-sizing: border-box;
+}
+
+.recipe-row-add-card-actions {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 0.4rem;
+  min-width: 6.75rem;
+  box-sizing: border-box;
+  padding: 1rem 1rem 1rem 0;
+}
+
+.recipe-row-view-link {
+  display: block;
+  text-align: center;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.4rem 0.65rem;
+  border-radius: 10px;
+  border: 1px solid var(--accent);
+  background: var(--surface);
+  color: var(--accent);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.recipe-row-view-link:hover {
+  background: var(--accent-soft);
+}
+
+.recipe-row-view-link:active {
+  filter: brightness(0.95);
+}
+
 .recipe-add-to-plan-btn {
   flex-shrink: 0;
+  box-sizing: border-box;
+  /* Fixed width so “Add to menu” / “Remove” share one column without shifting the recipe link. */
+  width: 108px;
+  text-align: center;
   font: inherit;
   font-size: 0.8rem;
   font-weight: 700;
@@ -1116,6 +2421,29 @@ a {
 }
 
 .recipe-add-to-plan-btn:active {
+  filter: brightness(0.95);
+}
+
+.recipe-add-to-plan-btn:disabled {
+  cursor: default;
+  opacity: 0.72;
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.recipe-add-to-plan-btn:disabled:active {
+  filter: none;
+}
+
+.recipe-add-to-plan-btn--remove {
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.recipe-add-to-plan-btn--remove:active {
   filter: brightness(0.95);
 }
 
@@ -1203,13 +2531,6 @@ a {
   gap: 0.5rem;
 }
 
-.cta-panel-bottom {
-  margin-top: 1.75rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid var(--border);
-  margin-bottom: 0.5rem;
-}
-
 .btn-cta-wide {
   width: 100%;
   min-height: var(--tap);
@@ -1220,6 +2541,15 @@ a {
   font-size: 1rem;
   cursor: pointer;
   border: none;
+}
+
+a.btn-primary.btn-cta-wide,
+a.btn-secondary.btn-cta-wide {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  box-sizing: border-box;
 }
 
 .btn-primary {
@@ -1242,7 +2572,15 @@ a {
   border: 2px solid var(--accent);
 }
 
-.btn-secondary:active {
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  color: var(--muted);
+  border-color: var(--border);
+  background: color-mix(in srgb, var(--surface) 80%, var(--bg));
+}
+
+.btn-secondary:active:not(:disabled) {
   background: var(--accent-soft);
 }
 
@@ -1285,6 +2623,14 @@ a.recipe-detail-back-cta {
   align-items: center;
   justify-content: flex-end;
   gap: 0.75rem 1rem;
+}
+
+.shopping-list-empty-cta {
+  align-self: stretch;
+  width: 100%;
+  max-width: 100%;
+  margin-top: 1rem;
+  box-sizing: border-box;
 }
 
 a.shopping-place-order-btn {
@@ -1694,8 +3040,93 @@ a.shopping-place-order-btn:active {
   padding-bottom: 0.5rem;
 }
 
+.cooking-now-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 0.5rem 0.25rem 2rem;
+  gap: 0.75rem;
+}
+
+.cooking-now-page-title {
+  font-family: var(--font-display);
+  font-size: var(--fs-page-title);
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--text);
+  margin: 0.75rem 0 0;
+}
+
+.cooking-now-page-hint {
+  font-size: var(--fs-ui);
+  color: var(--muted);
+  margin: 0;
+  max-width: 22rem;
+  line-height: 1.45;
+}
+
+.cooking-now-page-cta {
+  align-self: stretch;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin-top: 1.25rem;
+}
+
+.cooking-now-menu-block {
+  align-self: stretch;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.cooking-now-menu-heading {
+  font-family: var(--font-display);
+  font-size: var(--fs-display-sm);
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--text);
+  margin: 0 0 0.65rem;
+  text-align: left;
+  width: 100%;
+}
+
+.cooking-now-menu-hint {
+  margin: 0 0 0.75rem;
+  text-align: left;
+  width: 100%;
+}
+
+.cooking-now-menu-chip {
+  cursor: pointer;
+}
+
+.cooking-now-menu-chip .meal-chip-title--cooking-now-text {
+  cursor: inherit;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.cooking-now-menu-chips {
+  text-align: left;
+}
+
+.cooking-now-pill-when {
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  color: var(--muted);
+  line-height: 1.2;
+}
+
 .planner-head {
+  position: sticky;
+  top: var(--app-chrome-sticky-offset);
+  z-index: 50;
   margin-bottom: 1rem;
+  padding-top: 0.2rem;
+  padding-bottom: 0.4rem;
+  background: var(--bg);
+  box-shadow: 0 1px 0 rgba(28, 25, 23, 0.06);
 }
 
 .planner-head-row {
@@ -1814,10 +3245,23 @@ a.shopping-place-order-btn:active {
   margin-bottom: 0;
 }
 
+.planner-unassigned-cooked-section {
+  margin-top: 0.65rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--border);
+}
+
+.planner-unassigned-cooked-section .day-card-header {
+  margin-bottom: 0.35rem;
+}
+
 .planner-unassigned-cook-cta {
   margin-top: 0.65rem;
   padding-top: 0.65rem;
   border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .meal-chip-select-cook-wrap {
@@ -1877,10 +3321,14 @@ a.shopping-place-order-btn:active {
   font-family: var(--font-display);
   font-size: var(--fs-display-sm);
   font-weight: 600;
-  color: var(--accent);
+  color: var(--text);
   text-transform: none;
   letter-spacing: normal;
   margin-bottom: 0.5rem;
+}
+
+#planner-this-week-menu-heading {
+  height: 35px;
 }
 
 .day-date {
@@ -1954,11 +3402,29 @@ a.shopping-place-order-btn:active {
   font-size: var(--fs-body);
   font-weight: 600;
   padding: 0.12rem 0.4rem 0.1rem 0.1rem;
+  cursor: default;
+}
+
+.planner-unassigned .meal-chip--has-assign .meal-chip-title:hover,
+.planner-unassigned .meal-chip.side .meal-chip--has-assign .meal-chip-title:hover {
+  text-decoration: none;
+  background: transparent;
 }
 
 .planner-unassigned .meal-chip--has-assign .meal-chip-select-cook {
   width: 1.35rem;
   height: 1.35rem;
+}
+
+/* Logged as cooked — neutral row, listed after uncooked slots */
+.planner-unassigned .meal-chip--has-assign.meal-chip--logged-cooked {
+  background: rgba(235, 235, 235, 1);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.planner-unassigned .meal-chip--has-assign.meal-chip--logged-cooked .meal-chip-title {
+  color: color-mix(in srgb, var(--text) 88%, var(--muted) 12%);
 }
 
 .meal-chip:active {
@@ -2099,6 +3565,16 @@ a.shopping-place-order-btn:active {
   overflow-wrap: break-word;
   word-break: normal;
   hyphens: auto;
+}
+
+.meal-chip-name-portion .meal-chip-cooked-date {
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  color: var(--muted);
+  line-height: 1.25;
+  margin: -0.15rem 0 0;
+  padding: 0 0.08rem 0 0.08rem;
+  width: 100%;
 }
 
 .meal-chip-name-portion .meal-chip-portion-controls {
@@ -2248,6 +3724,13 @@ a.shopping-place-order-btn:active {
   padding-top: 0.5rem;
 }
 
+/* This week’s menu: + Add meal after the uncooked list, not flex-pinned to the card bottom */
+.add-meal--this-week {
+  margin-top: 0;
+  padding-top: 0.35rem;
+  padding-bottom: 0.25rem;
+}
+
 .add-meal button {
   width: 100%;
   font: inherit;
@@ -2308,17 +3791,11 @@ a.shopping-place-order-btn:active {
   transition: opacity 0.2s;
 }
 
+/* Above .app-chrome-bar (100) and nav drawer (120) so modals cover the full shell */
 .planner-overlay.open {
   opacity: 1;
   pointer-events: auto;
-}
-
-.planner-overlay--recipe {
-  z-index: 60;
-}
-
-.planner-overlay--assign {
-  z-index: 55;
+  z-index: 130;
 }
 
 .planner-assign-subtitle {
@@ -2414,7 +3891,19 @@ a.shopping-place-order-btn:active {
 }
 
 .planner-sheet-search {
-  margin-bottom: 0.65rem;
+  flex-shrink: 0;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 16px 1rem 0.5rem;
+}
+
+.planner-sheet-search .search {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  box-sizing: border-box;
+  padding-top: 15px;
 }
 
 .picker-subtitle {

@@ -1,362 +1,65 @@
 import * as React from "react";
-import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type { IngredientDef, Recipe, RecommendedSideRef } from "./types";
 import { formatIngredientLine, ingredientMap } from "./ingredientDisplay";
 import {
   ADD_TO_PLAN_QUERY,
-  homeListPath,
   readCookModeParams,
   readFromHistory,
+  readFromPlanner,
   readFromShopping,
   readPlanPhaseSide,
+  readPlannerMenuCookContext,
   readSidesListTab,
+  recipeCookModePath,
   recipeDetailBackPath,
+  readRecipeListPickExperience,
   recipeDetailPath,
   recipeEditPath,
+  recipeDetailAddCtaLabel,
+  recipesListAddToCartPath,
   urlParamToPlanKey,
 } from "./listTabSearch";
-import { useCookHistory } from "./CookHistoryContext";
+import { addFlowCartSessionKey, setActiveAddFlowSessionKey } from "./addFlowCartSession";
 import { recipeSegment } from "./recipeCourse";
 import { MEAL_PLAN_UNASSIGNED_KEY } from "./mealPlanStorage";
 import { useMealPlan } from "./MealPlanContext";
 import { useToast } from "./ToastContext";
+import { RecipeCookModePanel } from "./RecipeCookModePanel";
+import { normalizeInstructionStep } from "./recipeInstructions";
+import { loadCookUi } from "./cookModeSessionStorage";
 import {
   COOK_PROGRESS_CHANGED_EVENT,
-  addCookProgressSession,
-  cookProgressEntryHref,
-  cookProgressSessionKey,
   getCookProgressSessions,
-  removeCookProgressSession,
+  type CookProgressEntry,
 } from "./cookProgressSession";
 
-/** Prepended in cook mode only — always step 1 before recipe instructions. */
-const COOK_MODE_INGREDIENTS_CONFIRM_STEP = "Confirm you have all necessary ingredients";
-
-function formatCookElapsed(totalSeconds: number): string {
-  const h = Math.floor(totalSeconds / 3600);
-  const m = Math.floor((totalSeconds % 3600) / 60);
-  const s = totalSeconds % 60;
-  if (h > 0) {
-    return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-  }
-  return `${m}:${String(s).padStart(2, "0")}`;
+function slotParamFromCookProgressEntry(e: CookProgressEntry): string | null {
+  return e.slotRef.length > 0 ? e.slotRef : null;
 }
 
-type CookTimerPhase = "idle" | "running" | "paused";
-
-type CookTimerModel = {
-  phase: CookTimerPhase;
-  accumulatedMs: number;
-  segmentStartAt: number | null;
-};
-
-const COOK_TIMER_INITIAL: CookTimerModel = {
-  phase: "idle",
-  accumulatedMs: 0,
-  segmentStartAt: null,
-};
-
-function cookTimerElapsedMs(model: CookTimerModel, now: number): number {
-  if (model.phase === "running") {
-    if (model.segmentStartAt != null) {
-      return model.accumulatedMs + (now - model.segmentStartAt);
-    }
-    return model.accumulatedMs;
+/** If the same recipe was planned on multiple days, prefer the session with the furthest saved step, then latest date. */
+function pickActiveCookProgressEntry(recipeId: string): CookProgressEntry | null {
+  const list = getCookProgressSessions().filter((e) => e.recipeId === recipeId);
+  if (list.length === 0) {
+    return null;
   }
-  if (model.phase === "paused") {
-    return model.accumulatedMs;
+  if (list.length === 1) {
+    return list[0]!;
   }
-  return 0;
-}
-
-type CookTimerAction =
-  | { type: "RESET" }
-  | { type: "START" }
-  | { type: "PAUSE" }
-  | { type: "RESUME" }
-  | { type: "CLEAR" };
-
-function cookTimerReducer(state: CookTimerModel, action: CookTimerAction): CookTimerModel {
-  const now = Date.now();
-  switch (action.type) {
-    case "RESET":
-      return COOK_TIMER_INITIAL;
-    case "START":
-      if (state.phase !== "idle") {
-        return state;
-      }
-      return { phase: "running", accumulatedMs: 0, segmentStartAt: now };
-    case "PAUSE": {
-      if (state.phase !== "running") {
-        return state;
-      }
-      const seg = state.segmentStartAt;
-      const add = seg != null ? now - seg : 0;
-      return {
-        phase: "paused",
-        accumulatedMs: state.accumulatedMs + add,
-        segmentStartAt: null,
-      };
+  const stepFor = (e: CookProgressEntry) =>
+    loadCookUi(e.recipeId, e.cookDate, slotParamFromCookProgressEntry(e))?.activeStepIndex ?? 0;
+  return list.reduce((best, cur) => {
+    const sb = stepFor(best);
+    const sc = stepFor(cur);
+    if (sc > sb) {
+      return cur;
     }
-    case "RESUME":
-      if (state.phase !== "paused") {
-        return state;
-      }
-      return { ...state, phase: "running", segmentStartAt: now };
-    case "CLEAR":
-      if (state.phase !== "paused") {
-        return state;
-      }
-      return COOK_TIMER_INITIAL;
-    default:
-      return state;
-  }
-}
-
-function RecipeCookModePanel({
-  recipe,
-  cookDate,
-  cookSlotRef,
-  ingredients,
-}: {
-  recipe: Recipe;
-  cookDate: string;
-  cookSlotRef: string | null;
-  ingredients: IngredientDef[];
-}) {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { logCooked } = useCookHistory();
-  const { assignUnassignedToCalendarDay, plan } = useMealPlan();
-  const byId = React.useMemo(() => ingredientMap(ingredients), [ingredients]);
-  const [checkedSteps, setCheckedSteps] = React.useState<Set<number>>(() => new Set());
-  const [cookTimer, dispatchCookTimer] = React.useReducer(cookTimerReducer, COOK_TIMER_INITIAL);
-  const [, setTimerTick] = React.useState(0);
-  const [cookProgressListRev, setCookProgressListRev] = React.useState(0);
-
-  const hereHref = `${location.pathname}${location.search}`;
-
-  React.useEffect(() => {
-    setCheckedSteps(new Set());
-    dispatchCookTimer({ type: "RESET" });
-  }, [recipe.id, cookDate]);
-
-  /** Subscribe before registering this cook so the same-mount `addCookProgressSession` event is not missed. */
-  React.useEffect(() => {
-    const onChange = () => setCookProgressListRev((r) => r + 1);
-    window.addEventListener(COOK_PROGRESS_CHANGED_EVENT, onChange);
-    return () => window.removeEventListener(COOK_PROGRESS_CHANGED_EVENT, onChange);
-  }, []);
-
-  React.useEffect(() => {
-    addCookProgressSession(recipe.id, cookDate, cookSlotRef, recipe.title);
-  }, [recipe.id, cookDate, cookSlotRef, recipe.title]);
-
-  void cookProgressListRev;
-
-  const cookSwitcherPills = React.useMemo(() => {
-    const sessions = getCookProgressSessions();
-    if (sessions.length <= 1) {
-      return null;
+    if (sc < sb) {
+      return best;
     }
-    return [...sessions]
-      .map((e) => ({
-        key: cookProgressSessionKey(e),
-        href: cookProgressEntryHref(e),
-        title: e.title,
-      }))
-      .sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: "base" }));
-  }, [hereHref, cookProgressListRev]);
-
-  const switchToCookSession = (targetHref: string) => {
-    if (targetHref === hereHref) {
-      return;
-    }
-    navigate(targetHref);
-  };
-
-  const handleCookSomethingElse = () => {
-    navigate("/");
-  };
-
-  React.useEffect(() => {
-    if (cookTimer.phase !== "running") {
-      return;
-    }
-    const id = window.setInterval(() => setTimerTick((n) => n + 1), 1000);
-    return () => clearInterval(id);
-  }, [cookTimer.phase, cookTimer.segmentStartAt]);
-
-  const instructions = recipe.instructions ?? [];
-  const cookSteps = [COOK_MODE_INGREDIENTS_CONFIRM_STEP, ...instructions];
-  const nSteps = cookSteps.length;
-
-  const handleMarkCooked = () => {
-    removeCookProgressSession(recipe.id, cookDate, cookSlotRef);
-    logCooked(cookDate, {
-      id: recipe.id,
-      title: recipe.title,
-      kind: recipeSegment(recipe) === "side" ? "side" : "main",
-      ...(cookSlotRef ? { planSlotRef: cookSlotRef } : {}),
-    });
-    if (cookSlotRef) {
-      const urow = plan[MEAL_PLAN_UNASSIGNED_KEY] ?? [];
-      const unassignedIdx = urow.findIndex((m) => m.planSlotRef === cookSlotRef);
-      if (unassignedIdx >= 0) {
-        assignUnassignedToCalendarDay(unassignedIdx, cookDate);
-      }
-    }
-    navigate("/");
-  };
-
-  const elapsedSeconds = Math.max(0, Math.floor(cookTimerElapsedMs(cookTimer, Date.now()) / 1000));
-
-  const timerStart = () => {
-    dispatchCookTimer({ type: "START" });
-  };
-
-  const timerPause = () => {
-    dispatchCookTimer({ type: "PAUSE" });
-  };
-
-  const timerResume = () => {
-    dispatchCookTimer({ type: "RESUME" });
-  };
-
-  const timerClear = () => {
-    dispatchCookTimer({ type: "CLEAR" });
-  };
-
-  const toggleStep = (index: number) => {
-    setCheckedSteps((prev) => {
-      const next = new Set(prev);
-      if (next.has(index)) {
-        next.delete(index);
-      } else {
-        next.add(index);
-      }
-      return next;
-    });
-  };
-
-  return (
-    <div className="recipe-cook-mode">
-      {cookSwitcherPills ? (
-        <div className="recipe-cook-sibling-banner" role="group" aria-label="Switch between active recipes">
-          <div className="recipe-cook-sibling-toggle">
-            {cookSwitcherPills.map((p) => {
-              const selected = p.href === hereHref;
-              return (
-                <button
-                  key={p.key}
-                  type="button"
-                  className={`recipe-cook-sibling-pill${selected ? " recipe-cook-sibling-pill--selected" : ""}`}
-                  aria-pressed={selected}
-                  onClick={() => switchToCookSession(p.href)}
-                >
-                  {p.title}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      ) : null}
-
-      <div className="recipe-cook-timer-block" role="group" aria-label="Cooking timer">
-        <span
-          className={`recipe-cook-timer-readout${cookTimer.phase === "idle" ? " recipe-cook-timer-readout--idle" : ""}${cookTimer.phase === "paused" ? " recipe-cook-timer-readout--paused" : ""}`}
-          aria-live="polite"
-        >
-          {formatCookElapsed(elapsedSeconds)}
-        </span>
-        <div className="recipe-cook-timer-actions">
-          {cookTimer.phase === "idle" ? (
-            <button type="button" className="recipe-cook-timer-action" onClick={timerStart}>
-              Start
-            </button>
-          ) : null}
-          {cookTimer.phase === "running" ? (
-            <button type="button" className="recipe-cook-timer-action" onClick={timerPause}>
-              Pause
-            </button>
-          ) : null}
-          {cookTimer.phase === "paused" ? (
-            <>
-              <button type="button" className="recipe-cook-timer-action" onClick={timerResume}>
-                Resume
-              </button>
-              <button type="button" className="recipe-cook-timer-action recipe-cook-timer-action--clear" onClick={timerClear}>
-                Clear
-              </button>
-            </>
-          ) : null}
-        </div>
-      </div>
-
-      {recipe.ingredientSections?.map((sec) => (
-        <section key={sec.name} className="detail-section recipe-cook-ingredients">
-          <h2>{sec.name}</h2>
-          {sec.lines.length === 0 ? (
-            <p className="muted">No structured ingredients (see steps below).</p>
-          ) : (
-            <ul>
-              {sec.lines.map((line, i) => (
-                <li key={`${line.ingredientId}-${i}`}>{formatIngredientLine(line, byId)}</li>
-              ))}
-            </ul>
-          )}
-        </section>
-      ))}
-
-      <section className="detail-section recipe-cook-steps-section">
-        <h2>Steps</h2>
-        <>
-          <p className="muted recipe-cook-progress" aria-live="polite">
-            {checkedSteps.size} of {nSteps} steps complete
-          </p>
-          <ol className="recipe-cook-step-list">
-            {cookSteps.map((step, i) => {
-              const id = `cook-step-${recipe.id}-${i}`;
-              return (
-                <li key={i} className="recipe-cook-step-item">
-                  <label className="recipe-cook-step-label" htmlFor={id}>
-                    <input
-                      id={id}
-                      type="checkbox"
-                      className="recipe-cook-step-check"
-                      checked={checkedSteps.has(i)}
-                      onChange={() => toggleStep(i)}
-                    />
-                    <span className="recipe-cook-step-text">{step}</span>
-                  </label>
-                </li>
-              );
-            })}
-          </ol>
-        </>
-      </section>
-
-      <div className="cta-panel cta-panel-bottom recipe-cook-cta">
-        <button type="button" className="btn-primary btn-cta-wide" onClick={handleMarkCooked}>
-          It's ready!
-        </button>
-        <Link
-          to="/"
-          className="btn-secondary btn-cta-wide recipe-detail-back-cta recipe-cook-back-bottom"
-          onClick={() => removeCookProgressSession(recipe.id, cookDate, cookSlotRef)}
-        >
-          Cancel
-        </Link>
-        <button
-          type="button"
-          className="btn-secondary btn-cta-wide recipe-detail-back-cta recipe-cook-cook-else"
-          onClick={handleCookSomethingElse}
-        >
-          Cook something else
-        </button>
-      </div>
-    </div>
-  );
+    return cur.cookDate >= best.cookDate ? cur : best;
+  });
 }
 
 export function RecipeDetail({
@@ -372,10 +75,17 @@ export function RecipeDetail({
   const fromSidesList = readSidesListTab(searchParams);
   const fromShopping = readFromShopping(searchParams);
   const fromHistory = readFromHistory(searchParams);
+  const fromPlanner = readFromPlanner(searchParams);
+  const plannerMenuCtx = readPlannerMenuCookContext(searchParams);
   const planKey = urlParamToPlanKey(searchParams.get(ADD_TO_PLAN_QUERY));
   const inPlanFlow = planKey != null;
   const listSidesTab = inPlanFlow ? readPlanPhaseSide(searchParams) : fromSidesList;
-  const preserve = inPlanFlow || fromShopping || fromHistory ? searchParams : undefined;
+  const preserve =
+    inPlanFlow || fromShopping || fromHistory || fromPlanner ? searchParams : undefined;
+  const pickExperience = readRecipeListPickExperience(searchParams);
+  const isShopMenuBuildFlow = pickExperience === "shop";
+  const isCookNowPickFlow = pickExperience === "cook";
+  const addToCartSelectionLabel = recipeDetailAddCtaLabel(searchParams);
 
   const recipe = recipes.find((r) => r.id === id);
   const cookParams = readCookModeParams(searchParams);
@@ -383,24 +93,78 @@ export function RecipeDetail({
   const { showToast } = useToast();
   const byId = React.useMemo(() => ingredientMap(ingredients), [ingredients]);
 
+  const [cookProgressRev, setCookProgressRev] = React.useState(0);
+  React.useEffect(() => {
+    const on = () => setCookProgressRev((n) => n + 1);
+    window.addEventListener(COOK_PROGRESS_CHANGED_EVENT, on);
+    return () => window.removeEventListener(COOK_PROGRESS_CHANGED_EVENT, on);
+  }, []);
+
+  const activeCookForRecipe = React.useMemo(() => {
+    if (!recipe) {
+      return null;
+    }
+    return pickActiveCookProgressEntry(recipe.id);
+  }, [recipe, cookProgressRev]);
+
   const addTargetToPlan = React.useCallback(
     (r: Recipe) => {
-      const key = planKey ?? MEAL_PLAN_UNASSIGNED_KEY;
-      addRecipeToPlanKey(key, r);
-      showToast(`Added “${r.title}” to your meal plan.`);
-      if (planKey) {
-        navigate(homeListPath(listSidesTab, preserve));
+      if (planKey != null) {
+        navigate(recipesListAddToCartPath(searchParams, r.id));
+        showToast(`Added “${r.title}” to your selection.`);
+        return;
       }
+      const key = MEAL_PLAN_UNASSIGNED_KEY;
+      addRecipeToPlanKey(key, r);
+      showToast(`Added “${r.title}” to your menu.`);
     },
-    [planKey, addRecipeToPlanKey, navigate, listSidesTab, preserve, showToast],
+    [planKey, addRecipeToPlanKey, navigate, searchParams, showToast],
   );
+
+  /**
+   * Keep the add-flow “active key” in sync on recipe detail (list unmounts when you open a recipe).
+   * Clear when leaving cart-builder URL context (handled in App) or in active cook mode.
+   */
+  React.useLayoutEffect(() => {
+    if (cookParams.cookMode && cookParams.cookDate) {
+      setActiveAddFlowSessionKey(null);
+      return;
+    }
+    if (planKey != null) {
+      const k = addFlowCartSessionKey(searchParams);
+      if (k) {
+        setActiveAddFlowSessionKey(k);
+      }
+    } else {
+      setActiveAddFlowSessionKey(null);
+    }
+  }, [cookParams.cookMode, cookParams.cookDate, planKey, searchParams.toString()]);
+
+  /** Must run before any early return — same hook order in cook mode vs full detail. */
+  const sideRefs = React.useMemo(() => {
+    if (!recipe) {
+      return [] as { recipeId: string; label: string; recipe: Recipe | undefined }[];
+    }
+    const recommended = recipe.recommendedSides ?? [];
+    const map = new Map<string, RecommendedSideRef>();
+    for (const ref of recommended) {
+      if (!map.has(ref.recipeId)) {
+        map.set(ref.recipeId, ref);
+      }
+    }
+    return [...map.entries()].map(([recipeId, ref]) => ({
+      recipeId,
+      label: ref.label,
+      recipe: recipes.find((r) => r.id === recipeId),
+    }));
+  }, [recipe, recipes]);
 
   if (!recipe) {
     return (
       <>
         <div className="top-bar">
           <Link
-            to={recipeDetailBackPath(listSidesTab, preserve, fromShopping, fromHistory)}
+            to={recipeDetailBackPath(id ?? "", listSidesTab, preserve, fromShopping, fromHistory, searchParams)}
             className="back-btn"
           >
             Back
@@ -414,6 +178,7 @@ export function RecipeDetail({
   if (cookParams.cookMode && cookParams.cookDate) {
     return (
       <RecipeCookModePanel
+        key={`${recipe.id}-${cookParams.cookDate}-${cookParams.cookSlotRef ?? ""}`}
         recipe={recipe}
         cookDate={cookParams.cookDate}
         cookSlotRef={cookParams.cookSlotRef}
@@ -422,23 +187,8 @@ export function RecipeDetail({
     );
   }
 
-  const recommended = recipe.recommendedSides ?? [];
-  const sideRefs = React.useMemo(() => {
-    const map = new Map<string, RecommendedSideRef>();
-    for (const ref of recommended) {
-      if (!map.has(ref.recipeId)) {
-        map.set(ref.recipeId, ref);
-      }
-    }
-    return [...map.entries()].map(([recipeId, ref]) => ({
-      recipeId,
-      label: ref.label,
-      recipe: recipes.find((r) => r.id === recipeId),
-    }));
-  }, [recommended, recipes]);
-
   return (
-    <>
+    <div className="recipe-detail-page recipe-detail-page--bottom-cta">
       <div className="top-bar">
         <h1 className="page-title recipe-detail-page-title" style={{ fontSize: "1.25rem" }}>
           <span className="recipe-detail-headline">
@@ -458,6 +208,23 @@ export function RecipeDetail({
           ) : null}
         </h1>
       </div>
+      {!cookParams.cookMode && activeCookForRecipe ? (
+        <div className="recipe-detail-resume-cook">
+          <p className="recipe-detail-resume-cook-text">
+            You have an active cook session for this recipe — reopen cook mode to pick up where you left off.
+          </p>
+          <Link
+            to={recipeCookModePath(
+              activeCookForRecipe.recipeId,
+              activeCookForRecipe.cookDate,
+              slotParamFromCookProgressEntry(activeCookForRecipe),
+            )}
+            className="btn-primary btn-compact recipe-detail-resume-cook-btn"
+          >
+            Continue cooking
+          </Link>
+        </div>
+      ) : null}
       {recipe.tags && recipe.tags.length > 0 ? (
         <p className="muted" style={{ marginTop: "-0.5rem", marginBottom: "1rem" }}>
           {recipe.tags.join(" · ")}
@@ -485,8 +252,15 @@ export function RecipeDetail({
         <section className="detail-section recommended-sides-section">
           <h2>Recommended sides</h2>
           <p className="muted recommended-sides-intro">
-            Open a side for full prep instructions. Use <strong>Add to plan</strong> to add to this meal
-            {inPlanFlow ? "" : " (goes to This week’s menu; set a day from the Plan tab)"}.
+            Open a side for full prep instructions. Use <strong>{addToCartSelectionLabel}</strong> to
+            add to this meal
+            {inPlanFlow
+              ? isShopMenuBuildFlow
+                ? " (adds to your pick on the recipe list; confirm there to add to your list and menu)."
+                : isCookNowPickFlow
+                  ? " (adds to your cook-now pick on the recipe list)."
+                  : " (adds to your pick on the recipe list)."
+              : " (goes to This week’s menu; set a day from the Plan tab)."}
           </p>
           <ul className="recommended-sides-list">
             {sideRefs.map(({ recipeId, label, recipe: sideRecipe }) => {
@@ -511,7 +285,7 @@ export function RecipeDetail({
                         className="btn-primary btn-compact"
                         onClick={() => addTargetToPlan(sideRecipe)}
                       >
-                        Add to plan
+                        Add to menu
                       </button>
                     ) : null}
                   </div>
@@ -527,9 +301,21 @@ export function RecipeDetail({
         <section className="detail-section">
           <h2>Instructions</h2>
           <ol className="steps">
-            {recipe.instructions.map((step, i) => (
-              <li key={i}>{step}</li>
-            ))}
+            {recipe.instructions.map((step, i) => {
+              const n = normalizeInstructionStep(step);
+              return (
+                <li key={i}>
+                  <span className="recipe-step-text">{n.text}</span>
+                  {n.stepIngredients && n.stepIngredients.length > 0 ? (
+                    <ul className="recipe-step-ingredients" aria-label="For this step">
+                      {n.stepIngredients.map((label, j) => (
+                        <li key={`${i}-${j}`}>{label}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </li>
+              );
+            })}
           </ol>
         </section>
       ) : null}
@@ -551,22 +337,78 @@ export function RecipeDetail({
         <p className="muted detail-section">{recipe.notes}</p>
       ) : null}
 
-      <div className="cta-panel cta-panel-bottom">
-        <button
-          type="button"
-          className="btn-primary btn-cta-wide"
-          onClick={() => addTargetToPlan(recipe)}
-        >
-          Add to plan
-        </button>
-        <Link
-          to={recipeDetailBackPath(listSidesTab, preserve, fromShopping, fromHistory)}
-          className="btn-secondary btn-cta-wide recipe-detail-back-cta"
-        >
-          Back
-        </Link>
+      <div
+        className="recipe-list-cart-bar"
+        role="region"
+        aria-label={fromPlanner && plannerMenuCtx ? "Cook now and navigation" : "Add to menu and navigation"}
+      >
+        <div className="recipe-list-cart-bar-inner">
+          {fromPlanner && plannerMenuCtx ? (
+            <>
+              <Link
+                to={recipeCookModePath(
+                  recipe.id,
+                  plannerMenuCtx.dateIso,
+                  plannerMenuCtx.planSlotRef,
+                )}
+                className="btn-primary btn-cta-wide"
+              >
+                Cook now
+              </Link>
+              <Link
+                to={recipeDetailBackPath(
+                  recipe.id,
+                  listSidesTab,
+                  preserve,
+                  fromShopping,
+                  fromHistory,
+                  searchParams,
+                )}
+                className="btn-secondary btn-cta-wide recipe-detail-back-cta"
+              >
+                Back
+              </Link>
+            </>
+          ) : fromPlanner ? (
+            <Link
+              to={recipeDetailBackPath(
+                recipe.id,
+                listSidesTab,
+                preserve,
+                fromShopping,
+                fromHistory,
+                searchParams,
+              )}
+              className="btn-secondary btn-cta-wide recipe-detail-back-cta"
+            >
+              Back
+            </Link>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="btn-primary btn-cta-wide"
+                onClick={() => addTargetToPlan(recipe)}
+              >
+                {addToCartSelectionLabel}
+              </button>
+              <Link
+                to={recipeDetailBackPath(
+                  recipe.id,
+                  listSidesTab,
+                  preserve,
+                  fromShopping,
+                  fromHistory,
+                  searchParams,
+                )}
+                className="btn-secondary btn-cta-wide recipe-detail-back-cta"
+              >
+                Back
+              </Link>
+            </>
+          )}
+        </div>
       </div>
-
-    </>
+    </div>
   );
 }

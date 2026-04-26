@@ -22,7 +22,17 @@ import { CookHistoryProvider } from "./CookHistoryContext";
 import { HistoryPage } from "./HistoryPage";
 import { ToastProvider } from "./ToastContext";
 import { InstacartPlaceholderPage } from "./InstacartPlaceholderPage";
+import { CookingNowPage } from "./CookingNowPage";
+import {
+  COOK_PROGRESS_CHANGED_EVENT,
+  getFirstActiveCookSessionHref,
+  getCookProgressSessions,
+} from "./cookProgressSession";
 import { readCookModeParams, shoppingListPath } from "./listTabSearch";
+import {
+  clearActiveAddFlowSessionStorage,
+  isAddFlowBuilderLocation,
+} from "./addFlowCartSession";
 
 function appChromeSectionTitle(pathname: string): string {
   if (pathname === "/" || pathname === "") {
@@ -52,15 +62,14 @@ function appChromeSectionTitle(pathname: string): string {
   return "My menu";
 }
 
-function appChromeTitle(pathname: string, search: string, recipes: Recipe[]): string {
+function appChromeTitle(pathname: string, search: string): string {
+  if (pathname === "/cooking-now") {
+    return "Cooking now";
+  }
   const cook = readCookModeParams(new URLSearchParams(search));
   const recipeDetail = pathname.match(/^\/recipe\/([^/]+)$/);
   if (cook.cookMode && recipeDetail) {
-    const recipe = recipes.find((r) => r.id === recipeDetail[1]);
-    if (recipe) {
-      return `Cooking: ${recipe.title}`;
-    }
-    return "Cooking";
+    return "Cooking now";
   }
   return appChromeSectionTitle(pathname);
 }
@@ -143,16 +152,48 @@ function AppLayout({
   const menuBtnRef = React.useRef<HTMLButtonElement>(null);
 
   const isPlannerHome = pathname === "/" || pathname === "";
-  const wide = isPlannerHome || pathname === "/history";
+  const wide = isPlannerHome || pathname === "/history" || pathname === "/cooking-now";
 
-  const chromeTitle = React.useMemo(
-    () => appChromeTitle(pathname, search, recipes),
-    [pathname, search, recipes],
+  const chromeTitle = React.useMemo(() => appChromeTitle(pathname, search), [pathname, search]);
+
+  const [cookProgressRev, setCookProgressRev] = React.useState(0);
+  React.useEffect(() => {
+    const on = () => setCookProgressRev((n) => n + 1);
+    window.addEventListener(COOK_PROGRESS_CHANGED_EVENT, on);
+    return () => window.removeEventListener(COOK_PROGRESS_CHANGED_EVENT, on);
+  }, []);
+  const cookNowSessions = React.useMemo(() => getCookProgressSessions(), [cookProgressRev]);
+  const cookNowCount = cookNowSessions.length;
+
+  const cookNowHref = React.useMemo(
+    () => getFirstActiveCookSessionHref(),
+    [cookProgressRev],
   );
+  const cookingNowNavTo = cookNowHref ?? "/cooking-now";
+
+  const isCookingNowView = React.useMemo(() => {
+    if (pathname === "/cooking-now") {
+      return true;
+    }
+    const cook = readCookModeParams(new URLSearchParams(search));
+    return Boolean(cook.cookMode && pathname.match(/^\/recipe\/[^/]+$/));
+  }, [pathname, search]);
 
   React.useEffect(() => {
     setMenuOpen(false);
   }, [pathname]);
+
+  /** Snap to top on every in-app navigation (HashRouter does not scroll the window). */
+  React.useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname, search]);
+
+  /** Drop add-to-plan cart in session when leaving the list/detail builder routes. */
+  React.useEffect(() => {
+    if (!isAddFlowBuilderLocation(pathname, search)) {
+      clearActiveAddFlowSessionStorage();
+    }
+  }, [pathname, search]);
 
   React.useEffect(() => {
     if (!menuOpen) {
@@ -262,6 +303,23 @@ function AppLayout({
               </li>
               <li>
                 <Link
+                  to={cookingNowNavTo}
+                  className={
+                    isCookingNowView
+                      ? "app-chrome-nav-link app-chrome-nav-link--current"
+                      : "app-chrome-nav-link"
+                  }
+                  aria-current={isCookingNowView ? "page" : undefined}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Cooking now
+                  {cookNowCount > 0 ? (
+                    <span className="app-chrome-nav-count">{cookNowCount}</span>
+                  ) : null}
+                </Link>
+              </li>
+              <li>
+                <Link
                   to="/history"
                   className={
                     pathname === "/history"
@@ -298,6 +356,7 @@ function AppLayout({
           path="/shopping"
           element={<ShoppingListPage recipes={recipes} ingredients={ingredients} />}
         />
+        <Route path="/cooking-now" element={<CookingNowPage />} />
         <Route path="/history" element={<HistoryPage recipes={recipes} />} />
         <Route path="/place-order" element={<InstacartPlaceholderPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />

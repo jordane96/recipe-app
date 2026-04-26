@@ -1,3 +1,8 @@
+/**
+ * Structured ingredient sections keyed by recipe id.
+ * Used by `migrate-legacy-to-recipes-v2.mjs` only — `npm run data:publish` reads `data/recipes.v2.json`.
+ * Edit shopping structure in that JSON (or run migrate after changing this file).
+ */
 /** @typedef {{ ingredientId: string, amount: number|null, unit: string|null, note?: string }} L */
 /** @typedef {{ name: string, lines: L[] }} S */
 

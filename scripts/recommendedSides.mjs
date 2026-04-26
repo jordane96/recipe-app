@@ -2,8 +2,10 @@
  * Maps a main (or any) recipe id → library side recipes that carry full instructions.
  * Curated from Side/Sides sections and obvious optional-starch lines (e.g. rice with mains).
  *
- * Only reference recipe ids with course: "side" in legacy-recipes-v1.json.
- * To extend: add an entry here, then run npm run data:publish.
+ * Used by `migrate-legacy-to-recipes-v2.mjs` only — canonical data lives in `data/recipes.v2.json`
+ * (`recommendedSides` on each main). To extend: edit that JSON, then `npm run data:publish`.
+ *
+ * Only reference recipe ids with course: "side" in legacy when running migrate.
  *
  * Not mapped (no matching side recipe in library yet):
  * - mozzarella-crusted-chicken (couscous-or-pasta + carrots)

@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "data:publish": "node scripts/publish-recipes.mjs",
+    "data:migrate-legacy-to-v2": "node scripts/migrate-legacy-to-recipes-v2.mjs",
     "data:apply-qualitative": "node scripts/apply-qualitative-overrides-to-sections.mjs",
     "build": "vite build",
     "preview": "vite preview",

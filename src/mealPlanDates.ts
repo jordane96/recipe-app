@@ -41,3 +41,22 @@ export function buildWeekKeys(weekStart: Date): string[] {
   }
   return keys;
 }
+
+/**
+ * `dateIso` (YYYY-MM-DD) falls within the last `numDays` local calendar days ending on
+ * `reference`’s **calendar** date (inclusive) — the range includes the reference day
+ * (typically “today”) and the `numDays - 1` days before it.
+ */
+export function isIsoDateInLocalRollingLastNDays(
+  dateIso: string,
+  numDays: number,
+  reference: Date = new Date(),
+): boolean {
+  const endLabel = iso(reference);
+  const startOfRange = addDays(
+    new Date(reference.getFullYear(), reference.getMonth(), reference.getDate(), 0, 0, 0, 0),
+    -(numDays - 1),
+  );
+  const startLabel = iso(startOfRange);
+  return dateIso >= startLabel && dateIso <= endLabel;
+}

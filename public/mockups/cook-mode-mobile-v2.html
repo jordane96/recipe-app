@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Cook mode (mobile mock) — v2</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Source+Sans+3:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #f6f3ee;
+        --surface: #fffcf8;
+        --text: #1c1917;
+        --muted: #57534e;
+        --accent: #2d4a3e;
+        --accent-soft: #e8f0ec;
+        --border: #e7e2dc;
+        --side: #1d6b5a;
+        --success: #3f6b4a;
+        --shadow: 0 8px 28px rgba(28, 25, 23, 0.08);
+        --radius: 16px;
+        --tap: 48px;
+        --font-sans: "Source Sans 3", system-ui, sans-serif;
+        --font-display: "Fraunces", Georgia, serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: var(--font-sans);
+        background: #d4cfc7;
+        color: var(--text);
+        min-height: 100dvh;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding: 12px;
+      }
+
+      /* Phone frame on desktop; full bleed on small screens */
+      .device {
+        width: 100%;
+        max-width: 390px;
+        min-height: 780px;
+        background: var(--bg);
+        border-radius: 28px;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.12);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+      }
+
+      .variant-tabs {
+        flex-shrink: 0;
+        padding: 8px 10px 0;
+      }
+
+      .screen-main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        position: relative;
+      }
+
+      @media (max-width: 420px) {
+        body {
+          padding: 0;
+        }
+        .device {
+          border-radius: 0;
+          min-height: 100dvh;
+          max-width: none;
+        }
+      }
+
+      .top {
+        padding: 12px 14px 8px;
+        padding-top: max(12px, env(safe-area-inset-top));
+        background: linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%);
+        border-bottom: 1px solid var(--border);
+      }
+
+      .top-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+
+      .back {
+        min-width: var(--tap);
+        min-height: var(--tap);
+        border: none;
+        background: transparent;
+        color: var(--accent);
+        font: inherit;
+        font-weight: 700;
+        border-radius: 12px;
+      }
+
+      .title-block {
+        flex: 1;
+        text-align: center;
+        min-width: 0;
+      }
+
+      .title-block h1 {
+        margin: 0;
+        font-family: var(--font-display);
+        font-size: 1.05rem;
+        font-weight: 700;
+        line-height: 1.2;
+        letter-spacing: -0.02em;
+      }
+
+      .title-block p {
+        margin: 2px 0 0;
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      .sessions {
+        display: flex;
+        gap: 6px;
+        overflow-x: auto;
+        padding-bottom: 2px;
+        scrollbar-width: none;
+      }
+      .sessions::-webkit-scrollbar {
+        display: none;
+      }
+
+      .session-pill {
+        flex-shrink: 0;
+        padding: 8px 14px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        font: inherit;
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: var(--muted);
+        white-space: nowrap;
+      }
+
+      .session-pill[aria-selected="true"] {
+        border-color: var(--accent);
+        background: var(--accent-soft);
+        color: var(--accent);
+      }
+
+      .session-pill .dot {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #f59e0b;
+        margin-right: 6px;
+        vertical-align: middle;
+      }
+
+      .main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        padding: 14px 14px 100px;
+        overflow: hidden;
+      }
+
+      .progress-line {
+        height: 4px;
+        border-radius: 999px;
+        background: var(--border);
+        margin-bottom: 14px;
+        overflow: hidden;
+      }
+
+      .progress-line > i {
+        display: block;
+        height: 100%;
+        width: 37%;
+        background: linear-gradient(90deg, var(--accent), var(--side));
+        border-radius: inherit;
+        transition: width 0.25s ease;
+      }
+
+      .step-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 10px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--muted);
+      }
+
+      .step-meta span strong {
+        color: var(--text);
+        font-size: 0.85rem;
+      }
+
+      .carousel {
+        flex: 1;
+        position: relative;
+        touch-action: pan-y;
+      }
+
+      .step-card {
+        background: var(--surface);
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow);
+        padding: 18px 16px 16px;
+        min-height: 320px;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .step-card .step-label {
+        font-size: 0.7rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--side);
+        margin-bottom: 8px;
+      }
+
+      .step-card .step-text {
+        font-size: 1.08rem;
+        line-height: 1.45;
+        font-weight: 600;
+        flex: 1;
+      }
+
+      .timer-block {
+        margin-top: 18px;
+        padding: 14px;
+        border-radius: 14px;
+        background: linear-gradient(145deg, #f0faf4 0%, var(--accent-soft) 100%);
+        border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+        text-align: center;
+      }
+
+      .timer-block.is-idle .count {
+        color: var(--muted);
+      }
+
+      .timer-block .label {
+        font-size: 0.72rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--accent);
+        margin-bottom: 6px;
+      }
+
+      .timer-block .count {
+        font-family: var(--font-display);
+        font-size: 2.5rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        line-height: 1.1;
+        color: var(--accent);
+      }
+
+      .timer-block .hint {
+        margin-top: 6px;
+        font-size: 0.75rem;
+        color: var(--muted);
+      }
+
+      .timer-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+
+      .btn {
+        min-height: var(--tap);
+        padding: 0 18px;
+        border-radius: 12px;
+        border: none;
+        font: inherit;
+        font-weight: 700;
+        font-size: 0.88rem;
+        cursor: pointer;
+      }
+
+      .btn-primary {
+        background: var(--accent);
+        color: #fff;
+      }
+
+      .btn-secondary {
+        background: var(--surface);
+        color: var(--accent);
+        border: 1px solid var(--accent);
+      }
+
+      .btn-ghost {
+        background: transparent;
+        color: var(--muted);
+        border: 1px dashed var(--border);
+      }
+
+      .nav-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-top: 16px;
+      }
+
+      .nav-row .dots {
+        display: flex;
+        gap: 5px;
+        flex: 1;
+        justify-content: center;
+      }
+
+      .nav-row .dots button {
+        width: 7px;
+        height: 7px;
+        padding: 0;
+        border: none;
+        border-radius: 50%;
+        background: var(--border);
+        cursor: pointer;
+      }
+
+      .nav-row .dots button[aria-current="true"] {
+        background: var(--accent);
+        transform: scale(1.25);
+      }
+
+      .swipe-hint {
+        text-align: center;
+        font-size: 0.68rem;
+        font-weight: 600;
+        color: var(--muted);
+        margin-top: 8px;
+      }
+
+      .dock {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        padding: 10px 12px;
+        padding-bottom: max(10px, env(safe-area-inset-bottom));
+        background: color-mix(in srgb, var(--surface) 92%, transparent);
+        backdrop-filter: blur(10px);
+        border-top: 1px solid var(--border);
+      }
+
+      .dock-title {
+        font-size: 0.65rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: var(--muted);
+        margin-bottom: 8px;
+      }
+
+      .dock-cards {
+        display: flex;
+        gap: 8px;
+      }
+
+      .dock-card {
+        flex: 1;
+        min-width: 0;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 10px 10px 8px;
+      }
+
+      .dock-card h3 {
+        margin: 0 0 4px;
+        font-size: 0.72rem;
+        font-weight: 800;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .dock-card .t {
+        font-family: var(--font-display);
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--accent);
+      }
+
+      .dock-card.is-back {
+        opacity: 0.72;
+      }
+
+      .celebrate {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.35s ease;
+      }
+
+      .celebrate.on {
+        opacity: 1;
+      }
+
+      .celebrate span {
+        background: var(--accent);
+        color: #fff;
+        padding: 12px 20px;
+        border-radius: 999px;
+        font-weight: 800;
+        font-size: 0.9rem;
+        box-shadow: var(--shadow);
+        transform: scale(0.9);
+        animation: pop 0.5s ease forwards;
+      }
+
+      @keyframes pop {
+        to {
+          transform: scale(1);
+        }
+      }
+
+      .variant-tabs {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 12px;
+      }
+
+      .variant-tabs button {
+        flex: 1;
+        padding: 8px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        font: inherit;
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: var(--muted);
+      }
+
+      .variant-tabs button[aria-selected="true"] {
+        border-color: var(--accent);
+        color: var(--accent);
+        background: var(--accent-soft);
+      }
+
+      .screen-alt {
+        display: none;
+        flex: 1;
+        min-height: 0;
+        flex-direction: column;
+      }
+
+      .screen-alt.active {
+        display: flex;
+      }
+
+      .screen-main.hidden {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="device" id="device">
+      <div class="variant-tabs" role="tablist" aria-label="Mock screens">
+        <button type="button" role="tab" aria-selected="true" data-screen="cook">Cook flow</button>
+        <button type="button" role="tab" aria-selected="false" data-screen="tray">Timer tray</button>
+      </div>
+
+      <!-- Screen A: primary cook + carousel -->
+      <div class="screen-main" id="screen-cook">
+        <header class="top">
+          <div class="top-row">
+            <button type="button" class="back" aria-label="Back">←</button>
+            <div class="title-block">
+              <p>Now cooking</p>
+              <h1>Lemon garlic salmon</h1>
+            </div>
+            <button type="button" class="back" aria-label="More">⋯</button>
+          </div>
+          <div class="sessions" role="tablist" aria-label="Active recipes">
+            <button type="button" class="session-pill" aria-selected="true">
+              <span class="dot" aria-hidden="true"></span>Salmon
+            </button>
+            <button type="button" class="session-pill" aria-selected="false">Rice pilaf</button>
+            <button type="button" class="session-pill" aria-selected="false">+ Add</button>
+          </div>
+        </header>
+
+        <div class="main">
+          <div class="progress-line" aria-hidden="true"><i id="progressFill"></i></div>
+          <div class="step-meta">
+            <span>Step <strong id="stepNum">3</strong> of <strong id="stepTotal">7</strong></span>
+            <span id="stepTag">Timed</span>
+          </div>
+
+          <div class="carousel" id="carousel">
+            <div class="step-card" id="stepCard">
+              <div class="step-label" id="stepKind">Hands-on</div>
+              <p class="step-text" id="stepText">
+                Sear skin-side down without moving until the skin releases easily, ~4 minutes.
+              </p>
+
+              <div class="timer-block" id="timerBlock">
+                <div class="label">Step timer</div>
+                <div class="count" id="timerDisplay">4:00</div>
+                <p class="hint">Starts when you’re ready — we’ll nudge at 30s left.</p>
+                <div class="timer-actions">
+                  <button type="button" class="btn btn-primary" id="btnStart">Start</button>
+                  <button type="button" class="btn btn-secondary" id="btnAdd">+1 min</button>
+                  <button type="button" class="btn btn-ghost" id="btnSkip">Skip timer</button>
+                </div>
+              </div>
+
+              <div class="nav-row">
+                <button type="button" class="btn btn-secondary" id="btnPrev" style="min-width: 52px">Prev</button>
+                <div class="dots" id="dots" aria-label="Steps"></div>
+                <button type="button" class="btn btn-secondary" id="btnNext" style="min-width: 52px">Next</button>
+              </div>
+              <p class="swipe-hint">Swipe the card left/right to change steps — buttons always work too.</p>
+            </div>
+          </div>
+        </div>
+
+        <footer class="dock">
+          <div class="dock-title">Also running</div>
+          <div class="dock-cards">
+            <div class="dock-card is-back">
+              <h3>Rice pilaf</h3>
+              <div class="t">12:40</div>
+              <div style="font-size: 0.65rem; color: var(--muted); margin-top: 2px">Simmer · tap to switch</div>
+            </div>
+            <div class="dock-card">
+              <h3>Salmon (this)</h3>
+              <div class="t" id="dockMini">—</div>
+              <div style="font-size: 0.65rem; color: var(--muted); margin-top: 2px">Step timer</div>
+            </div>
+          </div>
+        </footer>
+
+        <div class="celebrate" id="celebrate" aria-live="polite"><span>Step done ✓</span></div>
+      </div>
+
+      <!-- Screen B: expanded timer tray (multi parallel) -->
+      <div class="screen-alt" id="screen-tray" style="padding: 14px; flex: 1; overflow: auto">
+        <header class="top" style="border-radius: var(--radius)">
+          <div class="top-row">
+            <button type="button" class="back">←</button>
+            <div class="title-block">
+              <p>Timers</p>
+              <h1>Everything on the stove</h1>
+            </div>
+            <button type="button" class="back">+</button>
+          </div>
+        </header>
+        <p style="font-size: 0.85rem; color: var(--muted); margin: 12px 0 14px">
+          Mock for when two recipes need overlapping waits — each row is tappable to jump back to that recipe’s
+          step.
+        </p>
+        <div style="display: flex; flex-direction: column; gap: 10px">
+          <div class="step-card" style="min-height: auto; box-shadow: none">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px">
+              <div>
+                <div class="step-label" style="margin-bottom: 4px">Salmon · Step 3</div>
+                <div style="font-weight: 700">Sear skin-side</div>
+              </div>
+              <div class="t" style="font-size: 1.75rem">3:12</div>
+            </div>
+          </div>
+          <div class="step-card" style="min-height: auto; box-shadow: none">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px">
+              <div>
+                <div class="step-label" style="margin-bottom: 4px">Rice · Step 2</div>
+                <div style="font-weight: 700">Simmer covered</div>
+              </div>
+              <div class="t" style="font-size: 1.75rem">12:40</div>
+            </div>
+          </div>
+          <div class="step-card" style="min-height: auto; box-shadow: none; border-style: dashed">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px">
+              <div>
+                <div class="step-label" style="margin-bottom: 4px">Optional</div>
+                <div style="font-weight: 700">Rest salmon</div>
+              </div>
+              <div class="t" style="font-size: 1.75rem; color: var(--muted)">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const steps = [
+        { kind: "Prep", tag: "Check", text: "Gather fillets, pat very dry, season skin with salt.", seconds: 0 },
+        {
+          kind: "Hands-on",
+          tag: "Timed",
+          text: "Heat oil in skillet until it shimmers (not smoking).",
+          seconds: 120,
+        },
+        {
+          kind: "Hands-on",
+          tag: "Timed",
+          text: "Sear skin-side down without moving until the skin releases easily, ~4 minutes.",
+          seconds: 240,
+        },
+        {
+          kind: "Wait",
+          tag: "Timed",
+          text: "Flip; cook flesh side until center hits 125°F, then rest 5 minutes.",
+          seconds: 300,
+        },
+        { kind: "Finish", tag: "Plating", text: "Spoon pan butter + lemon over top. Finish with herbs.", seconds: 0 },
+      ];
+
+      let idx = 2;
+      let remaining = steps[idx].seconds;
+      let running = false;
+      let tick = null;
+
+      const el = (id) => document.getElementById(id);
+      const fmt = (s) => {
+        if (s <= 0) return "0:00";
+        const m = Math.floor(s / 60);
+        const r = s % 60;
+        return `${m}:${String(r).padStart(2, "0")}`;
+      };
+
+      function renderDots() {
+        const dots = el("dots");
+        dots.innerHTML = "";
+        steps.forEach((_, i) => {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.setAttribute("aria-label", "Go to step " + (i + 1));
+          b.setAttribute("aria-current", i === idx ? "true" : "false");
+          b.addEventListener("click", () => go(i));
+          dots.appendChild(b);
+        });
+      }
+
+      function updateProgress() {
+        el("progressFill").style.width = ((idx + 1) / steps.length) * 100 + "%";
+      }
+
+      function renderStep() {
+        const s = steps[idx];
+        el("stepNum").textContent = String(idx + 1);
+        el("stepTotal").textContent = String(steps.length);
+        el("stepKind").textContent = s.kind;
+        el("stepTag").textContent = s.tag;
+        el("stepText").textContent = s.text;
+        const tb = el("timerBlock");
+        if (s.seconds > 0) {
+          tb.style.display = "block";
+          remaining = s.seconds;
+          running = false;
+          if (tick) clearInterval(tick);
+          tick = null;
+          el("timerDisplay").textContent = fmt(remaining);
+          el("btnStart").textContent = "Start";
+          tb.classList.toggle("is-idle", true);
+          el("dockMini").textContent = "—";
+        } else {
+          tb.style.display = "none";
+        }
+        renderDots();
+        updateProgress();
+      }
+
+      function go(i) {
+        idx = (i + steps.length) % steps.length;
+        renderStep();
+      }
+
+      el("btnPrev").addEventListener("click", () => go(idx - 1));
+      el("btnNext").addEventListener("click", () => go(idx + 1));
+
+      el("btnStart").addEventListener("click", () => {
+        if (steps[idx].seconds <= 0) return;
+        if (running) {
+          running = false;
+          clearInterval(tick);
+          tick = null;
+          el("btnStart").textContent = "Resume";
+          el("timerBlock").classList.add("is-idle");
+          return;
+        }
+        running = true;
+        el("btnStart").textContent = "Pause";
+        el("timerBlock").classList.remove("is-idle");
+        tick = setInterval(() => {
+          remaining = Math.max(0, remaining - 1);
+          el("timerDisplay").textContent = fmt(remaining);
+          el("dockMini").textContent = fmt(remaining);
+          if (remaining <= 0) {
+            running = false;
+            clearInterval(tick);
+            tick = null;
+            el("btnStart").textContent = "Start";
+            el("timerBlock").classList.add("is-idle");
+          }
+        }, 1000);
+      });
+
+      el("btnAdd").addEventListener("click", () => {
+        remaining += 60;
+        el("timerDisplay").textContent = fmt(remaining);
+        el("dockMini").textContent = fmt(remaining);
+      });
+
+      el("btnSkip").addEventListener("click", () => {
+        remaining = 0;
+        el("timerDisplay").textContent = fmt(0);
+        el("dockMini").textContent = "—";
+        running = false;
+        if (tick) clearInterval(tick);
+        tick = null;
+        el("btnStart").textContent = "Start";
+      });
+
+      /* swipe */
+      let x0 = null;
+      el("carousel").addEventListener(
+        "touchstart",
+        (e) => {
+          x0 = e.changedTouches[0].screenX;
+        },
+        { passive: true },
+      );
+      el("carousel").addEventListener("touchend", (e) => {
+        if (x0 == null) return;
+        const x1 = e.changedTouches[0].screenX;
+        const d = x1 - x0;
+        x0 = null;
+        if (d < -48) go(idx + 1);
+        if (d > 48) go(idx - 1);
+      });
+
+      /* mock: mark step done */
+      const doneBtn = document.createElement("button");
+      doneBtn.type = "button";
+      doneBtn.className = "btn btn-primary";
+      doneBtn.style.marginTop = "12px";
+      doneBtn.style.width = "100%";
+      doneBtn.textContent = "Mark step done";
+      doneBtn.addEventListener("click", () => {
+        const c = el("celebrate");
+        c.classList.add("on");
+        setTimeout(() => c.classList.remove("on"), 900);
+        setTimeout(() => go(idx + 1), 400);
+      });
+      el("stepCard").appendChild(doneBtn);
+
+      /* screen tabs */
+      document.querySelectorAll(".variant-tabs [data-screen]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll(".variant-tabs [data-screen]").forEach((b) => b.setAttribute("aria-selected", "false"));
+          btn.setAttribute("aria-selected", "true");
+          const id = btn.getAttribute("data-screen");
+          el("screen-cook").classList.toggle("hidden", id !== "cook");
+          el("screen-tray").classList.toggle("active", id === "tray");
+        });
+      });
+
+      renderStep();
+    </script>
+  </body>
+</html>

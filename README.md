@@ -3,15 +3,28 @@
 Mobile-friendly recipe viewer. Data is **structured**:
 
 - `public/ingredients.json` — canonical ingredient IDs, display names, and `kind` (`volume` | `weight` | `count` | `other`) for shopping-list math.
-- `public/recipes.json` — `version: 2` recipes with `ingredientSections` (groups of `{ ingredientId, amount, unit, note? }`).
+- `public/recipes.json` — generated; do not edit by hand for day-to-day work.
 
-**Edit flow:** change `scripts/ingredientLibrary.mjs` and/or `scripts/recipeIngredientSections.mjs`, then run:
+**Canonical recipe source:** `data/recipes.v2.json` — `{ "version": 2, "recipes": [ … ] }` with full `Recipe` objects (`ingredientSections`, `instructions`, optional `recommendedSides`, structured steps, `stepIngredients`, `durationSeconds`, etc.).
+
+**Edit flow:**
+
+1. Edit `data/recipes.v2.json` (and/or `scripts/ingredientLibrary.mjs` for the ingredient catalog).
+2. Run:
 
 ```bash
 npm run data:publish
 ```
 
-That reads `data/legacy-recipes-v1.json` for recipe metadata (title, tags, instructions, URLs) and writes both JSON files under `public/`. To refresh legacy metadata only, update `data/legacy-recipes-v1.json` first (or replace it with a v1 export), then publish again.
+That validates ingredient IDs and `recommendedSides` links, then writes `public/ingredients.json` and `public/recipes.json`.
+
+**Legacy / recovery:** `data/legacy-recipes-v1.json` plus `scripts/recipeIngredientSections.mjs` and `scripts/recommendedSides.mjs` are no longer used by `data:publish`. To **rebuild** `data/recipes.v2.json` from those sources (this **overwrites** hand-edited v2 data):
+
+```bash
+npm run data:migrate-legacy-to-v2
+```
+
+Then merge any edits you need before publishing again. `scripts/apply-qualitative-overrides-to-sections.mjs` still updates `recipeIngredientSections.mjs`; after using it, run `data:migrate-legacy-to-v2` if you want that merged into v2, or copy changed sections into `recipes.v2.json` manually.
 
 ## Local dev
 
@@ -62,10 +75,11 @@ Routing uses **hash URLs** (e.g. `/#/` meal planner, `/#/recipes` library, `/#/r
 
 ## Syncing recipes from PM-Operating-System
 
-If you keep canonical JSON in another repo, copy it in:
+If you keep canonical JSON in another repo, copy the bundle into the v2 source, then publish:
 
 ```bash
-cp ../recipes/recipes.json public/recipes.json
+cp ../recipes/recipes.json data/recipes.v2.json
+npm run data:publish
 ```
 
 Then commit and run `npm run deploy` again.

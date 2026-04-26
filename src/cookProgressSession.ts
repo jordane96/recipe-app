@@ -91,6 +91,21 @@ export function cookProgressEntryHref(e: CookProgressEntry): string {
   return recipeCookModePath(e.recipeId, e.cookDate, slot);
 }
 
+/** Sessions sorted by title (stable) — “next” cook target for nav and cancel. */
+export function getSortedCookProgressSessions(): CookProgressEntry[] {
+  const list = getCookProgressSessions();
+  return [...list].sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: "base" }));
+}
+
+/** First session’s cook-mode URL, or `null` if none. */
+export function getFirstActiveCookSessionHref(): string | null {
+  const sorted = getSortedCookProgressSessions();
+  if (sorted.length === 0) {
+    return null;
+  }
+  return cookProgressEntryHref(sorted[0]!);
+}
+
 export type CookProgressBatchItem = {
   recipeId: string;
   cookDate: string;

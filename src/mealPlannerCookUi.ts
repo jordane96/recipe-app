@@ -1,5 +1,6 @@
 import type { CookHistoryByDate } from "./cookHistoryStorage";
-import type { PlannedMeal } from "./mealPlanStorage";
+import { isIsoDateInLocalRollingLastNDays } from "./mealPlanDates";
+import { isMealPlanDateKey, type PlannedMeal } from "./mealPlanStorage";
 
 export function historyCountForRecipeOnDay(
   history: CookHistoryByDate,
@@ -106,6 +107,22 @@ export function isUnassignedSlotCooked(
   return weekHistoryCountForRecipe(history, weekKeys, recipeId) >= ordinal;
 }
 
+/** Cook status for an unassigned slot using the full cook log (not the planner’s visible week). */
+export function isUnassignedSlotCookedAllTime(
+  history: CookHistoryByDate,
+  unassignedMeals: PlannedMeal[],
+  idx: number,
+  recipeId: string,
+): boolean {
+  return isUnassignedSlotCooked(
+    history,
+    sortedHistoryDateKeys(history),
+    unassignedMeals,
+    idx,
+    recipeId,
+  );
+}
+
 /** Index in `history[dateIso]` for this chip’s cook log. */
 export function findDaySlotHistoryIndex(
   history: CookHistoryByDate,
@@ -194,4 +211,90 @@ export function findUnassignedSlotHistoryLocation(
     }
   }
   return null;
+}
+
+export function sortedHistoryDateKeys(history: CookHistoryByDate): string[] {
+  return Object.keys(history).sort((a, b) => a.localeCompare(b));
+}
+
+/**
+ * Calendar day that “pins” a cooked unassigned chip to a week for planner navigation
+ * (scheduled day if set, otherwise the cook-log date).
+ */
+export function cookedUnassignedAnchorDateIso(
+  history: CookHistoryByDate,
+  unassignedMeals: PlannedMeal[],
+  planIdx: number,
+): string | null {
+  const m = unassignedMeals[planIdx];
+  if (!m) {
+    return null;
+  }
+  if (m.scheduledForDay && isMealPlanDateKey(m.scheduledForDay)) {
+    return m.scheduledForDay;
+  }
+  if (m.planSlotRef) {
+    for (const k of sortedHistoryDateKeys(history)) {
+      const row = history[k] ?? [];
+      if (row.some((e) => e.id === m.id && e.planSlotRef === m.planSlotRef)) {
+        return k;
+      }
+    }
+    const ordinal = slotOrdinalAmongSameRecipe(unassignedMeals, planIdx, m.id);
+    let seen = 0;
+    for (const k of sortedHistoryDateKeys(history)) {
+      for (const e of history[k] ?? []) {
+        if (e.id !== m.id || e.planSlotRef !== undefined) {
+          continue;
+        }
+        seen++;
+        if (seen === ordinal) {
+          return k;
+        }
+      }
+    }
+    return null;
+  }
+
+  const ordinal = slotOrdinalAmongSameRecipe(unassignedMeals, planIdx, m.id);
+  let seen = 0;
+  for (const k of sortedHistoryDateKeys(history)) {
+    for (const e of history[k] ?? []) {
+      if (e.id !== m.id) {
+        continue;
+      }
+      seen++;
+      if (seen === ordinal) {
+        return k;
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Whether this unassigned row should appear in the planner unassigned card (This week’s
+ * menu or Cooked recently). Cooked rows appear in “Cooked recently” when their anchor
+ * date (scheduled day or cook log) is in the last 7 local calendar days; older cooked
+ * rows are hidden. `weekKeys` is kept for call-site compatibility.
+ */
+export function unassignedSlotShownInPlannerWeek(
+  history: CookHistoryByDate,
+  weekKeys: string[],
+  unassignedMeals: PlannedMeal[],
+  planIdx: number,
+): boolean {
+  void weekKeys;
+  const m = unassignedMeals[planIdx];
+  if (!m) {
+    return false;
+  }
+  if (!isUnassignedSlotCookedAllTime(history, unassignedMeals, planIdx, m.id)) {
+    return true;
+  }
+  const anchor = cookedUnassignedAnchorDateIso(history, unassignedMeals, planIdx);
+  if (!anchor) {
+    return true;
+  }
+  return isIsoDateInLocalRollingLastNDays(anchor, 7);
 }

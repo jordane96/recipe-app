@@ -179,7 +179,7 @@ export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
   const { plan, removeMealAt, ensureCalendarSlotRef } = useMealPlan();
   const todayIso = iso(new Date());
 
-  const [granularity, setGranularity] = React.useState<CalendarGranularity>("week");
+  const [granularity, setGranularity] = React.useState<CalendarGranularity>("month");
 
   const [viewMonth, setViewMonth] = React.useState(() => {
     const d = new Date();
@@ -331,18 +331,6 @@ export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
           <button
             type="button"
             role="tab"
-            id="history-tab-week"
-            aria-selected={granularity === "week"}
-            aria-controls="history-calendar-panel"
-            className="history-view-tab"
-            data-on={granularity === "week"}
-            onClick={selectWeekView}
-          >
-            Week
-          </button>
-          <button
-            type="button"
-            role="tab"
             id="history-tab-month"
             aria-selected={granularity === "month"}
             aria-controls="history-calendar-panel"
@@ -351,6 +339,18 @@ export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
             onClick={selectMonthView}
           >
             Month
+          </button>
+          <button
+            type="button"
+            role="tab"
+            id="history-tab-week"
+            aria-selected={granularity === "week"}
+            aria-controls="history-calendar-panel"
+            className="history-view-tab"
+            data-on={granularity === "week"}
+            onClick={selectWeekView}
+          >
+            Week
           </button>
         </div>
       </header>
@@ -838,14 +838,15 @@ export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
                 : ""}
             </p>
           </div>
-          <input
-            className="search"
-            type="search"
-            placeholder="Filter recipes…"
-            value={pickQ}
-            onChange={(e) => setPickQ(e.target.value)}
-            style={{ margin: "0 1rem 0.5rem" }}
-          />
+          <div className="planner-sheet-search">
+            <input
+              className="search"
+              type="search"
+              placeholder="Filter recipes…"
+              value={pickQ}
+              onChange={(e) => setPickQ(e.target.value)}
+            />
+          </div>
           <div className="planner-sheet-body" style={{ paddingTop: 0 }}>
             {filteredRecipes.map((r) => (
               <button

@@ -1,5 +1,6 @@
 import * as React from "react";
 import type { Recipe } from "./types";
+import { recipeCookModePath } from "./listTabSearch";
 import {
   isMealPlanDateKey,
   loadMealPlan,
@@ -18,6 +19,8 @@ import {
   markRecipeSourcePlan,
   markRecipeSourcePlanMany,
 } from "./planShoppingAuthority";
+import type { CookHistoryByDate } from "./cookHistoryStorage";
+import { isDaySlotCooked, isUnassignedSlotCooked } from "./mealPlannerCookUi";
 import { reconcilePlanRecipeSlotCount } from "./mealPlanSlotSync";
 
 export function recipeToPlannedMeal(r: Recipe): PlannedMeal {
@@ -28,11 +31,223 @@ export function recipeToPlannedMeal(r: Recipe): PlannedMeal {
   };
 }
 
+/**
+ * One {@link removeMealAt} step as a pure transform (mirror / unassigned rules preserved).
+ * Does not call {@link markRecipeSourcePlan}.
+ */
+function planAfterRemoveMealAt(
+  prev: MealPlanByDate,
+  dateKey: string,
+  index: number,
+): MealPlanByDate | null {
+  const row = prev[dateKey];
+  const removed = row?.[index];
+  if (!removed) {
+    return null;
+  }
+  const uk = MEAL_PLAN_UNASSIGNED_KEY;
+
+  const next: MealPlanByDate = { ...prev };
+  const cur = [...(next[dateKey] ?? [])];
+  cur.splice(index, 1);
+
+  if (
+    dateKey === uk &&
+    removed.scheduledForDay &&
+    removed.planSlotRef &&
+    isMealPlanDateKey(removed.scheduledForDay)
+  ) {
+    const d = removed.scheduledForDay;
+    const drow = [...(next[d] ?? [])];
+    const di = drow.findIndex((x) => x.planSlotRef === removed.planSlotRef);
+    if (di >= 0) {
+      drow.splice(di, 1);
+      if (drow.length === 0) {
+        delete next[d];
+      } else {
+        next[d] = sortMealsMainBeforeSide(drow);
+      }
+    }
+  }
+
+  if (dateKey !== uk && removed.planSlotRef) {
+    const urow = [...(next[uk] ?? [])];
+    const ui = urow.findIndex((x) => x.planSlotRef === removed.planSlotRef);
+    if (ui >= 0) {
+      const orig = urow[ui];
+      urow[ui] = {
+        id: orig.id,
+        title: orig.title,
+        kind: orig.kind,
+        planSlotRef: orig.planSlotRef,
+        portionCount: orig.portionCount,
+      };
+      next[uk] = sortMealsMainBeforeSide(urow);
+    }
+  }
+
+  if (cur.length === 0) {
+    delete next[dateKey];
+  } else {
+    next[dateKey] = sortMealsMainBeforeSide(cur);
+  }
+  return next;
+}
+
+/** Calendar cell that mirrors an unassigned chip (same {@link PlannedMeal.planSlotRef}). */
+function isCalendarMirrorRow(plan: MealPlanByDate, dayKey: string, mealIndex: number): boolean {
+  const meals = plan[dayKey];
+  if (!meals) {
+    return false;
+  }
+  const m = meals[mealIndex];
+  if (!m?.planSlotRef) {
+    return false;
+  }
+  const uk = MEAL_PLAN_UNASSIGNED_KEY;
+  return (plan[uk] ?? []).some(
+    (u) => u.planSlotRef === m.planSlotRef && u.scheduledForDay === dayKey,
+  );
+}
+
+/** Remove every plan row (unassigned + calendar, including mirrors) for this recipe id. */
+function removeAllPlanSlotsForRecipeFromPlan(
+  prev: MealPlanByDate,
+  recipeId: string,
+): MealPlanByDate {
+  let work = prev;
+  const uk = MEAL_PLAN_UNASSIGNED_KEY;
+  let guard = 0;
+  while (guard++ < 400) {
+    let removedSomething = false;
+
+    const urow = work[uk] ?? [];
+    for (let i = urow.length - 1; i >= 0; i--) {
+      if (urow[i].id === recipeId) {
+        const n = planAfterRemoveMealAt(work, uk, i);
+        if (n) {
+          work = n;
+          removedSomething = true;
+        }
+        break;
+      }
+    }
+    if (removedSomething) {
+      continue;
+    }
+
+    const dayKeys = Object.keys(work).filter(isMealPlanDateKey).sort();
+    outer: for (const k of dayKeys) {
+      const drow = work[k] ?? [];
+      for (let pass = 0; pass < 2; pass++) {
+        for (let i = drow.length - 1; i >= 0; i--) {
+          if (drow[i].id !== recipeId) {
+            continue;
+          }
+          if (pass === 0 && isCalendarMirrorRow(work, k, i)) {
+            continue;
+          }
+          const n = planAfterRemoveMealAt(work, k, i);
+          if (n) {
+            work = n;
+            removedSomething = true;
+            break outer;
+          }
+        }
+      }
+    }
+    if (!removedSomething) {
+      break;
+    }
+  }
+  return normalizePlanMainBeforeSide(work);
+}
+
+/**
+ * Remove plan rows for this recipe only where the slot is not logged as cooked.
+ * Keeps cooked rows (e.g. “Cooked recently”) so history-linked slots stay on the plan.
+ */
+function removeUncookedPlanSlotsForRecipeFromPlan(
+  prev: MealPlanByDate,
+  recipeId: string,
+  history: CookHistoryByDate,
+  weekKeys: string[],
+): MealPlanByDate {
+  let work = prev;
+  const uk = MEAL_PLAN_UNASSIGNED_KEY;
+  let guard = 0;
+  while (guard++ < 400) {
+    let removedSomething = false;
+
+    const urow = work[uk] ?? [];
+    for (let i = urow.length - 1; i >= 0; i--) {
+      const slot = urow[i];
+      if (!slot || slot.id !== recipeId) {
+        continue;
+      }
+      if (isUnassignedSlotCooked(history, weekKeys, urow, i, recipeId)) {
+        continue;
+      }
+      const n = planAfterRemoveMealAt(work, uk, i);
+      if (n) {
+        work = n;
+        removedSomething = true;
+      }
+      break;
+    }
+    if (removedSomething) {
+      continue;
+    }
+
+    const dayKeys = Object.keys(work).filter(isMealPlanDateKey).sort();
+    outer: for (const k of dayKeys) {
+      const drow = work[k] ?? [];
+      for (let pass = 0; pass < 2; pass++) {
+        for (let i = drow.length - 1; i >= 0; i--) {
+          const slot = drow[i];
+          if (!slot || slot.id !== recipeId) {
+            continue;
+          }
+          if (pass === 0 && isCalendarMirrorRow(work, k, i)) {
+            continue;
+          }
+          if (isDaySlotCooked(history, k, drow, i, recipeId)) {
+            continue;
+          }
+          const n = planAfterRemoveMealAt(work, k, i);
+          if (n) {
+            work = n;
+            removedSomething = true;
+            break outer;
+          }
+        }
+      }
+    }
+    if (!removedSomething) {
+      break;
+    }
+  }
+  return normalizePlanMainBeforeSide(work);
+}
+
 type MealPlanCtx = {
   plan: MealPlanByDate;
   unassignedKey: typeof MEAL_PLAN_UNASSIGNED_KEY;
   addPlannedMealsToKey: (key: string, entries: PlannedMeal[]) => void;
   addRecipeToPlanKey: (key: string, recipe: Recipe) => void;
+  /**
+   * Adds a plan row with a fresh slot ref, then returns the cook-mode URL for that slot
+   * (unassigned or a specific day).
+   */
+  addRecipeToPlanKeyThenCookPath: (key: string, recipe: Recipe) => string;
+  /** Removes every occurrence of this recipe from the meal plan (all days + unassigned). */
+  removeAllPlanSlotsForRecipe: (recipeId: string) => void;
+  /** Removes only slots not logged as cooked (same notion as shopping / recipe list “uncooked”). */
+  removeUncookedPlanSlotsForRecipe: (
+    recipeId: string,
+    history: CookHistoryByDate,
+    weekKeys: string[],
+  ) => void;
   removeMealAt: (dateKey: string, index: number) => void;
   moveMealToDay: (fromKey: string, fromIndex: number, toKey: string) => void;
   /** Keep unassigned chip; add mirror on calendar and show date on chip. */
@@ -91,58 +306,44 @@ export function MealPlanProvider({ children }: { children: React.ReactNode }) {
     [addPlannedMealsToKey],
   );
 
+  const addRecipeToPlanKeyThenCookPath = React.useCallback(
+    (key: string, recipe: Recipe) => {
+      const base = recipeToPlannedMeal(recipe);
+      const slot = newPlanSlotRef();
+      const meal: PlannedMeal = { ...base, planSlotRef: slot };
+      addPlannedMealsToKey(key, [meal]);
+      return recipeCookModePath(recipe.id, key, slot);
+    },
+    [addPlannedMealsToKey],
+  );
+
   const removeMealAt = React.useCallback((dateKey: string, index: number) => {
     setPlan((prev) => {
-      const row = prev[dateKey];
-      const removed = row?.[index];
+      const removed = prev[dateKey]?.[index];
       if (!removed) {
         return prev;
       }
       markRecipeSourcePlan(removed.id);
-      const uk = MEAL_PLAN_UNASSIGNED_KEY;
-
-      const next: MealPlanByDate = { ...prev };
-        const cur = [...(next[dateKey] ?? [])];
-        cur.splice(index, 1);
-
-        if (dateKey === uk && removed.scheduledForDay && removed.planSlotRef && isMealPlanDateKey(removed.scheduledForDay)) {
-          const d = removed.scheduledForDay;
-          const drow = [...(next[d] ?? [])];
-          const di = drow.findIndex((x) => x.planSlotRef === removed.planSlotRef);
-          if (di >= 0) {
-            drow.splice(di, 1);
-            if (drow.length === 0) {
-              delete next[d];
-            } else {
-              next[d] = sortMealsMainBeforeSide(drow);
-            }
-          }
-        }
-
-        if (dateKey !== uk && removed.planSlotRef) {
-          const urow = [...(next[uk] ?? [])];
-          const ui = urow.findIndex((x) => x.planSlotRef === removed.planSlotRef);
-          if (ui >= 0) {
-            const orig = urow[ui];
-            urow[ui] = {
-              id: orig.id,
-              title: orig.title,
-              kind: orig.kind,
-              planSlotRef: orig.planSlotRef,
-              portionCount: orig.portionCount,
-            };
-            next[uk] = sortMealsMainBeforeSide(urow);
-          }
-        }
-
-        if (cur.length === 0) {
-          delete next[dateKey];
-        } else {
-          next[dateKey] = sortMealsMainBeforeSide(cur);
-        }
-        return next;
-      });
+      return planAfterRemoveMealAt(prev, dateKey, index) ?? prev;
+    });
   }, []);
+
+  const removeAllPlanSlotsForRecipe = React.useCallback((recipeId: string) => {
+    setPlan((prev) => {
+      markRecipeSourcePlan(recipeId);
+      return removeAllPlanSlotsForRecipeFromPlan(prev, recipeId);
+    });
+  }, []);
+
+  const removeUncookedPlanSlotsForRecipe = React.useCallback(
+    (recipeId: string, history: CookHistoryByDate, weekKeys: string[]) => {
+      setPlan((prev) => {
+        markRecipeSourcePlan(recipeId);
+        return removeUncookedPlanSlotsForRecipeFromPlan(prev, recipeId, history, weekKeys);
+      });
+    },
+    [],
+  );
 
   const moveMealToDay = React.useCallback((fromKey: string, fromIndex: number, toKey: string) => {
     setPlan((prev) => {
@@ -453,6 +654,9 @@ export function MealPlanProvider({ children }: { children: React.ReactNode }) {
       unassignedKey: MEAL_PLAN_UNASSIGNED_KEY,
       addPlannedMealsToKey,
       addRecipeToPlanKey,
+      addRecipeToPlanKeyThenCookPath,
+      removeAllPlanSlotsForRecipe,
+      removeUncookedPlanSlotsForRecipe,
       removeMealAt,
       moveMealToDay,
       assignUnassignedToCalendarDay,
@@ -467,6 +671,9 @@ export function MealPlanProvider({ children }: { children: React.ReactNode }) {
       plan,
       addPlannedMealsToKey,
       addRecipeToPlanKey,
+      addRecipeToPlanKeyThenCookPath,
+      removeAllPlanSlotsForRecipe,
+      removeUncookedPlanSlotsForRecipe,
       removeMealAt,
       moveMealToDay,
       assignUnassignedToCalendarDay,

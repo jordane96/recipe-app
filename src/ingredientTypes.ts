@@ -37,6 +37,16 @@ export interface RecommendedSideRef {
   label?: string;
 }
 
+/** One instruction line; string form is legacy. */
+export type RecipeInstructionStep =
+  | string
+  | {
+      text: string;
+      durationSeconds?: number;
+      /** Display-only labels for this step (e.g. composite “sauce”); not tied to shopping IDs. */
+      stepIngredients?: string[];
+    };
+
 export interface Recipe {
   id: string;
   title: string;
@@ -48,7 +58,9 @@ export interface Recipe {
   ingredientSections: IngredientSection[];
   /** Curated links to course:side recipes (from recommendedSides.mjs). */
   recommendedSides?: RecommendedSideRef[];
-  instructions?: string[];
+  instructions?: RecipeInstructionStep[];
+  /** Optional total active cook time for cook-mode header (minutes). */
+  totalCookTimeMinutes?: number;
   sourceUrl?: string;
   notes?: string;
 }

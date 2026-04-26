@@ -9,7 +9,13 @@ import {
   type IngredientBreakdown,
 } from "./shoppingMerge";
 import type { IngredientDef, Recipe } from "./types";
-import { ADD_TO_PLAN_QUERY, recipeDetailPath, urlParamToPlanKey } from "./listTabSearch";
+import {
+  ADD_TO_PLAN_QUERY,
+  recipeDetailPath,
+  recipesShopMenuBuildPath,
+  urlParamToPlanKey,
+} from "./listTabSearch";
+import { iso, startOfWeekMonday } from "./mealPlanDates";
 import {
   recipeSegment,
   SEGMENT_LABEL,
@@ -17,12 +23,6 @@ import {
   segmentRank,
   type RecipeSegment,
 } from "./recipeCourse";
-import { useMealPlan } from "./MealPlanContext";
-import {
-  shoppingListShouldFollowPlan,
-  usePlanShoppingAuthorityVersion,
-} from "./planShoppingAuthority";
-import { shoppingDiscrepancies } from "./mealPlanShopping";
 import { useShoppingList } from "./ShoppingListContext";
 
 function altConversionsForItem(item: CombinedShoppingItem): string | null {
@@ -112,51 +112,34 @@ export function ShoppingListPage({
   ingredients: IngredientDef[];
 }) {
   const [searchParams] = useSearchParams();
-  const planPreserve =
-    urlParamToPlanKey(searchParams.get(ADD_TO_PLAN_QUERY)) != null ? searchParams : undefined;
+  const weekStartIso = React.useMemo(() => iso(startOfWeekMonday(new Date())), []);
+  /** Recipe links carry shop+menu build params so detail uses “add to selection,” not a direct menu add. */
+  const planPreserveForRecipeLinks = React.useMemo(() => {
+    if (urlParamToPlanKey(searchParams.get(ADD_TO_PLAN_QUERY)) != null) {
+      return searchParams;
+    }
+    const href = recipesShopMenuBuildPath(weekStartIso);
+    const qi = href.indexOf("?");
+    if (qi < 0) {
+      return new URLSearchParams();
+    }
+    return new URLSearchParams(href.slice(qi + 1));
+  }, [searchParams, weekStartIso]);
+  const shopMenuBuildListHref = React.useMemo(
+    () => recipesShopMenuBuildPath(weekStartIso),
+    [weekStartIso],
+  );
 
-  const { plan, syncPlanRecipeSlotsToShoppingCount } = useMealPlan();
   const {
     selectedIds,
     addToList,
     removeFromList,
     removeAllSlotsForRecipe,
-    syncRecipeSlotsToCount,
     isPurchased,
     togglePurchased,
     setPurchasedBatch,
     prunePurchasedToValidLines,
   } = useShoppingList();
-
-  const discrepancies = React.useMemo(
-    () => shoppingDiscrepancies(plan, selectedIds),
-    [plan, selectedIds],
-  );
-  const discrepancyByRecipeId = React.useMemo(() => {
-    const m = new Map<string, (typeof discrepancies)[number]>();
-    for (const d of discrepancies) {
-      m.set(d.recipeId, d);
-    }
-    return m;
-  }, [discrepancies]);
-  const missingFromList = React.useMemo(
-    () => discrepancies.filter((d) => d.actual === 0 && d.expected > 0),
-    [discrepancies],
-  );
-
-  const authVersion = usePlanShoppingAuthorityVersion();
-  const planLeadingMismatches = React.useMemo(() => {
-    void authVersion;
-    return discrepancies.filter((d) => shoppingListShouldFollowPlan(d.recipeId));
-  }, [discrepancies, authVersion]);
-
-  const planLeadingSig = planLeadingMismatches
-    .map((d) => `${d.recipeId}:${d.expected}:${d.actual}`)
-    .join("|");
-  const [dismissPlanLeadingBanner, setDismissPlanLeadingBanner] = React.useState(false);
-  React.useEffect(() => {
-    setDismissPlanLeadingBanner(false);
-  }, [planLeadingSig]);
 
   const selectedSlots = React.useMemo(() => {
     return selectedIds
@@ -232,102 +215,19 @@ export function ShoppingListPage({
         </Link>
       </header>
 
-      {planLeadingMismatches.length > 0 && !dismissPlanLeadingBanner ? (
-        <div className="shopping-sync-banner" role="status">
-          <p className="shopping-sync-banner-text">
-            Your <strong>meal plan</strong> was updated last and doesn&apos;t match this list. Update the
-            list to match the plan?
-          </p>
-          <div className="shopping-sync-banner-actions">
-            <button
-              type="button"
-              className="btn-primary shopping-sync-banner-primary"
-              onClick={() => {
-                for (const d of planLeadingMismatches) {
-                  syncRecipeSlotsToCount(d.recipeId, d.expected);
-                }
-                setDismissPlanLeadingBanner(true);
-              }}
-            >
-              Update shopping list
-            </button>
-            <Link className="btn-secondary shopping-sync-banner-secondary" to="/">
-              Open meal plan
-            </Link>
-            <button
-              type="button"
-              className="btn-ghost shopping-sync-banner-dismiss"
-              onClick={() => setDismissPlanLeadingBanner(true)}
-            >
-              Dismiss
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      {missingFromList.length > 0 ? (
-        <section className="detail-section shopping-discrepancy-missing" aria-label="Planned but not on list">
-          <h2 className="shopping-discrepancy-missing-title">Planned, not on your list</h2>
-          <ul className="selected-recipes">
-            {missingFromList.map((d) => {
-              const r = recipeById.get(d.recipeId);
-              if (!r) {
-                return null;
-              }
-              return (
-                <li key={d.recipeId} className="selected-recipe-row shopping-discrepancy-missing-row">
-                  <div className="selected-recipe-main">
-                    <div className="selected-recipe-primary">
-                      <Link
-                        to={recipeDetailPath(
-                          r.id,
-                          recipeSegment(r) === "side",
-                          planPreserve,
-                          true,
-                        )}
-                        className="selected-recipe-link"
-                      >
-                        {r.title}
-                        <span className="selected-recipe-count"> × {d.expected}</span>
-                      </Link>
-                    </div>
-                    <span className="shopping-discrepancy-missing-plan muted">On meal plan</span>
-                  </div>
-                  <div className="selected-recipe-actions">
-                    {shoppingListShouldFollowPlan(d.recipeId) ? (
-                      <button
-                        type="button"
-                        className="btn-secondary btn-compact selected-recipe-resync-btn"
-                        aria-label={`Add ${d.expected} ${r.title} to shopping list to match plan`}
-                        onClick={() => syncRecipeSlotsToCount(d.recipeId, d.expected)}
-                      >
-                        Add to list
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="btn-secondary btn-compact selected-recipe-resync-btn"
-                        aria-label={`Remove ${r.title} from meal plan to match shopping list (0 on list)`}
-                        onClick={() =>
-                          syncPlanRecipeSlotsToShoppingCount(d.recipeId, 0, {
-                            title: r.title,
-                            kind: recipeSegment(r) === "side" ? "side" : "main",
-                          })
-                        }
-                      >
-                        Update plan
-                      </button>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      ) : null}
-
       {selectedRecipes.length === 0 ? (
-        <p className="empty">Your shopping list is empty, add some meals!</p>
+        <>
+          <p className="empty">Your shopping list is empty, browse recipes to add.</p>
+          <div className="shopping-list-empty-cta cta-panel">
+            <Link
+              to={shopMenuBuildListHref}
+              className="btn-primary btn-cta-wide"
+              aria-label="Browse recipes to add to your shopping list and menu"
+            >
+              Browse recipes
+            </Link>
+          </div>
+        </>
       ) : null}
 
       {selectedRecipes.length > 0 ? (
@@ -347,13 +247,10 @@ export function ShoppingListPage({
                   </h3>
                   <ul className="selected-recipes">
                     {list.map(({ recipe: r, count }) => {
-                      const disc = discrepancyByRecipeId.get(r.id);
                       return (
                       <li
                         key={r.id}
-                        className={`selected-recipe-row selected-recipe-row--slot${
-                          disc ? " selected-recipe-row--discrepancy" : ""
-                        }`}
+                        className="selected-recipe-row selected-recipe-row--slot"
                       >
                         <div className="selected-recipe-row-top">
                           <div className="selected-recipe-check-cell">
@@ -368,7 +265,7 @@ export function ShoppingListPage({
                             to={recipeDetailPath(
                               r.id,
                               recipeSegment(r) === "side",
-                              planPreserve,
+                              planPreserveForRecipeLinks,
                               true,
                             )}
                             className="selected-recipe-link"
@@ -409,36 +306,6 @@ export function ShoppingListPage({
                             </button>
                           </div>
                         </div>
-                        {disc ? (
-                          <div className="shopping-discrepancy-callout selected-recipe-discrepancy-below">
-                            {disc.expected} portion{disc.expected === 1 ? "" : "s"} in plan, but{" "}
-                            {disc.actual} on list.{" "}
-                            {shoppingListShouldFollowPlan(r.id) ? (
-                              <button
-                                type="button"
-                                className="shopping-discrepancy-resync-link"
-                                aria-label={`Update shopping list for ${r.title} to match plan (${disc.expected} portion${disc.expected === 1 ? "" : "s"} in plan, ${disc.actual} on list)`}
-                                onClick={() => syncRecipeSlotsToCount(r.id, disc.expected)}
-                              >
-                                Update list
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                className="shopping-discrepancy-resync-link"
-                                aria-label={`Update meal plan for ${r.title} to match shopping list (${disc.actual} on list)`}
-                                onClick={() =>
-                                  syncPlanRecipeSlotsToShoppingCount(r.id, disc.actual, {
-                                    title: r.title,
-                                    kind: recipeSegment(r) === "side" ? "side" : "main",
-                                  })
-                                }
-                              >
-                                Update plan
-                              </button>
-                            )}
-                          </div>
-                        ) : null}
                       </li>
                     );
                     })}

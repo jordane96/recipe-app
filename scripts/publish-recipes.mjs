@@ -1,68 +1,73 @@
+/**
+ * Publishes `public/ingredients.json` and `public/recipes.json`.
+ *
+ * Canonical recipe source: `data/recipes.v2.json` (version 2, full Recipe shape).
+ * Legacy v1 + SECTIONS merge is only used by `migrate-legacy-to-recipes-v2.mjs`.
+ */
+
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { INGREDIENTS, UNITS } from "./ingredientLibrary.mjs";
-import { RECOMMENDED_SIDES } from "./recommendedSides.mjs";
-import { SECTIONS } from "./recipeIngredientSections.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
-const legacyPath = join(root, "data/legacy-recipes-v1.json");
-const legacy = JSON.parse(readFileSync(legacyPath, "utf8"));
+const sourcePath = join(root, "data/recipes.v2.json");
 
-const libIds = new Set(INGREDIENTS.map((i) => i.id));
+const bundle = JSON.parse(readFileSync(sourcePath, "utf8"));
 
-for (const r of legacy.recipes) {
-  if (!(r.id in SECTIONS)) {
-    throw new Error(`recipeIngredientSections.mjs missing key: ${r.id}`);
-  }
+if (bundle.version !== 2 || !Array.isArray(bundle.recipes)) {
+  throw new Error(`${sourcePath} must be { version: 2, recipes: Recipe[] }`);
 }
 
-for (const [rid, secs] of Object.entries(SECTIONS)) {
-  for (const sec of secs) {
+const libIds = new Set(INGREDIENTS.map((i) => i.id));
+const seenIds = new Set();
+
+for (const r of bundle.recipes) {
+  if (typeof r.id !== "string" || !r.id.trim()) {
+    throw new Error("Every recipe must have a non-empty string id");
+  }
+  if (seenIds.has(r.id)) {
+    throw new Error(`Duplicate recipe id: ${r.id}`);
+  }
+  seenIds.add(r.id);
+
+  if (!Array.isArray(r.ingredientSections)) {
+    throw new Error(`Recipe "${r.id}" must have ingredientSections[]`);
+  }
+  for (const sec of r.ingredientSections) {
+    if (!Array.isArray(sec.lines)) {
+      throw new Error(`Recipe "${r.id}" section "${sec.name}" must have lines[]`);
+    }
     for (const line of sec.lines) {
       if (!libIds.has(line.ingredientId)) {
-        throw new Error(`Unknown ingredientId "${line.ingredientId}" in ${rid}`);
+        throw new Error(`Unknown ingredientId "${line.ingredientId}" in recipe "${r.id}"`);
       }
     }
   }
-}
 
-const legacyById = Object.fromEntries(legacy.recipes.map((r) => [r.id, r]));
-
-for (const mainId of Object.keys(RECOMMENDED_SIDES)) {
-  if (!(mainId in SECTIONS)) {
-    throw new Error(`recommendedSides.mjs: unknown main recipe id "${mainId}"`);
+  for (const ref of r.recommendedSides ?? []) {
+    if (typeof ref.recipeId !== "string" || !ref.recipeId.trim()) {
+      throw new Error(`Recipe "${r.id}" has recommendedSides entry without recipeId`);
+    }
   }
 }
 
-for (const [mainId, entries] of Object.entries(RECOMMENDED_SIDES)) {
-  for (const e of entries) {
-    const target = legacyById[e.recipeId];
+const byId = Object.fromEntries(bundle.recipes.map((r) => [r.id, r]));
+
+for (const r of bundle.recipes) {
+  for (const ref of r.recommendedSides ?? []) {
+    const target = byId[ref.recipeId];
     if (!target) {
-      throw new Error(
-        `recommendedSides.mjs: unknown side recipe id "${e.recipeId}" (from "${mainId}")`,
-      );
+      throw new Error(`recommendedSides on "${r.id}": unknown recipeId "${ref.recipeId}"`);
     }
     if (target.course !== "side") {
       throw new Error(
-        `recommendedSides.mjs: "${e.recipeId}" must have course "side" in legacy (referenced from "${mainId}")`,
+        `recommendedSides on "${r.id}": "${ref.recipeId}" must have course "side" (got ${JSON.stringify(target.course)})`,
       );
     }
   }
 }
-
-const recipes = legacy.recipes.map((r) => {
-  const { sections: _s, ...rest } = r;
-  const recommendedSides = RECOMMENDED_SIDES[r.id]
-    ? structuredClone(RECOMMENDED_SIDES[r.id])
-    : undefined;
-  return {
-    ...rest,
-    ingredientSections: structuredClone(SECTIONS[r.id]),
-    ...(recommendedSides ? { recommendedSides } : {}),
-  };
-});
 
 writeFileSync(
   join(root, "public/ingredients.json"),
@@ -70,6 +75,6 @@ writeFileSync(
 );
 writeFileSync(
   join(root, "public/recipes.json"),
-  JSON.stringify({ version: 2, recipes }, null, 2),
+  JSON.stringify({ version: 2, recipes: structuredClone(bundle.recipes) }, null, 2),
 );
-console.log("Wrote public/ingredients.json and public/recipes.json (v2 + recommendedSides).");
+console.log(`Wrote public/ingredients.json and public/recipes.json from ${sourcePath} (${bundle.recipes.length} recipes).`);

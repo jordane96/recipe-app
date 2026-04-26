@@ -67,6 +67,11 @@ type Ctx = {
   /** Replace the list with exactly these ids (bulk replace). */
   replaceSelectedIds: (ids: string[]) => void;
   /**
+   * Meal plan "Shop ingredients": replace the list with this snapshot, clear plan/shop
+   * count authority, and clear purchased (new run from the menu).
+   */
+  pushFromMenu: (ids: string[]) => void;
+  /**
    * Set how many shopping slots this recipe has: removes all occurrences of recipeId,
    * then appends targetCount copies at the end (other recipes keep relative order).
    */
@@ -160,6 +165,12 @@ export function ShoppingListProvider({ children }: { children: React.ReactNode }
     });
   }, []);
 
+  const pushFromMenu = React.useCallback((ids: string[]) => {
+    resetAllCountSources();
+    setPurchased([]);
+    setSelectedIds([...ids]);
+  }, []);
+
   const syncRecipeSlotsToCount = React.useCallback((recipeId: string, targetCount: number) => {
     const n = Math.max(0, Math.min(999, Math.floor(Number(targetCount))));
     setSelectedIds((prev) => {
@@ -240,6 +251,7 @@ export function ShoppingListProvider({ children }: { children: React.ReactNode }
       removeAllSlotsForRecipe,
       hydrateShoppingIfEmpty,
       replaceSelectedIds,
+      pushFromMenu,
       syncRecipeSlotsToCount,
       clearList,
       purchasedKeys: purchasedSet,
@@ -258,6 +270,7 @@ export function ShoppingListProvider({ children }: { children: React.ReactNode }
     removeAllSlotsForRecipe,
     hydrateShoppingIfEmpty,
     replaceSelectedIds,
+    pushFromMenu,
     syncRecipeSlotsToCount,
     clearList,
     purchasedSet,
