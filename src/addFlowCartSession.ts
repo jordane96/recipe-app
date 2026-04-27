@@ -2,7 +2,6 @@ import {
   ADD_TO_PLAN_QUERY,
   COOK_ON_ADD_QUERY,
   COOK_ON_ADD_VALUE,
-  PLAN_PHASE_QUERY,
   PLAN_WEEK_START_QUERY,
   readShopMenuBuild,
   urlParamToPlanKey,
@@ -13,7 +12,9 @@ const ADD_FLOW_CART_V1 = "recipeAddFlowCartV1:";
 const ACTIVE_ADD_FLOW_META_KEY = "recipeAddFlowActiveKeyMetaV1";
 
 /**
- * Key for the recipe-list "cart" in sessionStorage (same shape as the URL add-to-plan context).
+ * Key for the recipe-list "cart" in sessionStorage (aligned with the URL add-to-plan context).
+ * Intentionally does **not** include `planPhase` (Mains vs Sides tab) so one cart is shared when
+ * switching tabs; each recipe is still treated as main/side from its data on commit.
  * Exported for use with `useSearchParams` on the recipe list and detail.
  */
 export function addFlowCartSessionKey(sp: URLSearchParams): string | null {
@@ -22,10 +23,9 @@ export function addFlowCartSessionKey(sp: URLSearchParams): string | null {
     return null;
   }
   const w = sp.get(PLAN_WEEK_START_QUERY) ?? "";
-  const ph = sp.get(PLAN_PHASE_QUERY) ?? "";
   const cook = sp.get(COOK_ON_ADD_QUERY) === COOK_ON_ADD_VALUE ? "1" : "0";
   const shop = readShopMenuBuild(sp) ? "1" : "0";
-  return `${ADD_FLOW_CART_V1}${atp}:${w}:${ph}:${cook}:${shop}`;
+  return `${ADD_FLOW_CART_V1}${atp}:${w}:${cook}:${shop}`;
 }
 
 /**

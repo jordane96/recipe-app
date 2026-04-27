@@ -306,6 +306,11 @@ export function RecipeDetail({
               return (
                 <li key={i}>
                   <span className="recipe-step-text">{n.text}</span>
+                  {n.note ? (
+                    <span className="recipe-step-note" role="note">
+                      <span className="recipe-step-note-lead">Note:</span> {n.note}
+                    </span>
+                  ) : null}
                   {n.stepIngredients && n.stepIngredients.length > 0 ? (
                     <ul className="recipe-step-ingredients" aria-label="For this step">
                       {n.stepIngredients.map((label, j) => (

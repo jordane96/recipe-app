@@ -45,6 +45,8 @@ export type RecipeInstructionStep =
       durationSeconds?: number;
       /** Display-only labels for this step (e.g. composite “sauce”); not tied to shopping IDs. */
       stepIngredients?: string[];
+      /** Optional tip/context under the main step line (detail + cook mode; not used for recipe list search). */
+      note?: string;
     };
 
 export interface Recipe {

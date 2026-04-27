@@ -1322,7 +1322,10 @@
       "title": "Beef tortilla melts",
       "type": "recipe",
       "instructions": [
-        "Slice pepper in small strips",
+        {
+          "text": "Slice pepper in small strips",
+          "note": "This is a sample note"
+        },
         "Microwave sour cream and cream cheese plus Cholula and 1 tsp water for 30 sec, then stir to combine",
         "Saute pepper for 2-3 minutes (med heat)",
         "Add beef to pepper and cook for 4-6 min (until browned), drain grease",

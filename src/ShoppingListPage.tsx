@@ -298,11 +298,16 @@ export function ShoppingListPage({
                           <div className="selected-recipe-actions">
                             <button
                               type="button"
-                              className="btn-remove"
-                              aria-label={`Remove ${r.title} from shopping list (${count} portion${count === 1 ? "" : "s"})`}
+                              className="btn-remove selected-recipe-remove-btn"
+                              title={`Remove ${r.title} from shopping list (${count} portion${
+                                count === 1 ? "" : "s"
+                              })`}
+                              aria-label={`Remove ${r.title} from shopping list (${count} portion${
+                                count === 1 ? "" : "s"
+                              })`}
                               onClick={() => removeAllSlotsForRecipe(r.id)}
                             >
-                              Remove
+                              ×
                             </button>
                           </div>
                         </div>

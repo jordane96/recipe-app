@@ -37,6 +37,7 @@ import {
 import { normalizeInstructions } from "./recipeInstructions";
 import { useCookHistory } from "./CookHistoryContext";
 import { recipeToPlannedMeal } from "./MealPlanContext";
+import { useToast } from "./ToastContext";
 
 const SWIPE_PX = 56;
 
@@ -152,6 +153,7 @@ export function RecipeCookModePanel({
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  const { showToast } = useToast();
   const { logCooked } = useCookHistory();
   const byId = React.useMemo(() => ingredientMap(ingredients), [ingredients]);
 
@@ -312,31 +314,22 @@ export function RecipeCookModePanel({
     }));
   }, [hereHref, cookProgressListRev, recipe.id, cookDate, cookSlotRef]);
 
-  const dockSessions = React.useMemo(() => {
+  /** Per–non-current session: running/paused step timer readout (same as former bottom dock). */
+  const sessionPillsWithTimers = React.useMemo(() => {
     const now = Date.now();
-    const out: { key: string; href: string; title: string; timerText: string }[] = [];
-    for (const p of sessionPills) {
+    return sessionPills.map((p) => {
       if (p.current) {
-        continue;
+        return { ...p, timerText: null as string | null };
       }
       const slot = p.slotRef.length > 0 ? p.slotRef : null;
       const ui = loadCookUi(p.recipeId, p.cookDate, slot);
       const step = ui?.activeStepIndex ?? 0;
       const clock = readStepClockPersistIfAny(p.recipeId, p.cookDate, slot, step);
-      if (clock == null) {
-        continue;
+      if (clock == null || (clock.phase !== "running" && clock.phase !== "paused")) {
+        return { ...p, timerText: null };
       }
-      if (clock.phase !== "running" && clock.phase !== "paused") {
-        continue;
-      }
-      out.push({
-        key: p.key,
-        href: p.href,
-        title: p.title,
-        timerText: formatMSS(displaySecondsForClock(clock, now)),
-      });
-    }
-    return out;
+      return { ...p, timerText: formatMSS(displaySecondsForClock(clock, now)) };
+    });
   }, [sessionPills, dockTick]);
 
   const switchToCookSession = (targetHref: string) => {
@@ -550,6 +543,7 @@ export function RecipeCookModePanel({
   const isConfirmStep = activeStepIndex === 0;
   const showSessionInBanner = !isConfirmStep && activeStepIndex >= 1 && sessionTotalPersist != null;
   const stepText = cookSteps[activeStepIndex]?.text ?? "";
+  const stepNote = !isConfirmStep ? cookSteps[activeStepIndex]?.note : undefined;
   /** Recipe instruction steps only (excludes leading confirm step) — drives “Step 1 of N” labels. */
   const nCookSteps = Math.max(1, nSteps - 1);
   /** 1-based index among cook steps; equals `activeStepIndex` once past confirm. */
@@ -560,24 +554,39 @@ export function RecipeCookModePanel({
 
   const sessionPillsRow = (
     <div className="cook-mode-v2-pills" role="group" aria-label="Active recipes">
-      {sessionPills.map((p) => (
-        <button
-          key={p.key}
-          type="button"
-          aria-pressed={p.current}
-          className={`cook-mode-v2-pill${p.current ? " cook-mode-v2-pill--selected" : ""}`}
-          onClick={() => switchToCookSession(p.href)}
-        >
-          {p.current ? (
-            <>
-              <span className="cook-mode-v2-pill-dot" aria-hidden />
+      {sessionPillsWithTimers.map((p) => {
+        const showOtherTimer = !p.current && p.timerText != null;
+        return (
+          <button
+            key={p.key}
+            type="button"
+            aria-pressed={p.current}
+            className={`cook-mode-v2-pill${p.current ? " cook-mode-v2-pill--selected" : ""}${
+              showOtherTimer ? " cook-mode-v2-pill--with-timer" : ""
+            }`}
+            onClick={() => switchToCookSession(p.href)}
+          >
+            {p.current ? (
+              <>
+                <span className="cook-mode-v2-pill-dot" aria-hidden />
+                <span className="cook-mode-v2-pill-label">{p.title}</span>
+              </>
+            ) : showOtherTimer ? (
+              <>
+                <span className="cook-mode-v2-pill-label">{p.title}</span>
+                <span
+                  className="cook-mode-v2-pill-timer"
+                  aria-label={`Step timer for ${p.title}: ${p.timerText}`}
+                >
+                  {p.timerText}
+                </span>
+              </>
+            ) : (
               <span className="cook-mode-v2-pill-label">{p.title}</span>
-            </>
-          ) : (
-            <span className="cook-mode-v2-pill-label">{p.title}</span>
-          )}
-        </button>
-      ))}
+            )}
+          </button>
+        );
+      })}
       <Link to="/" className="cook-mode-v2-pill cook-mode-v2-pill--add">
         + Add
       </Link>
@@ -687,6 +696,21 @@ export function RecipeCookModePanel({
 
               <div className="cook-mode-v2-cook-body">
             <p className="cook-mode-v2-step-text">{stepText}</p>
+            {stepNote ? (
+              <p className="cook-mode-v2-step-note" role="note">
+                <span className="cook-mode-v2-step-note-lead">Note:</span> {stepNote}
+              </p>
+            ) : null}
+            <div className="cook-mode-v2-step-edit-wrap">
+              <button
+                type="button"
+                className="cook-mode-v2-step-edit"
+                onClick={() => showToast("Add note experience TBD")}
+                aria-label="Add a note to this step (coming soon)"
+              >
+                Add note
+              </button>
+            </div>
             <div className="cook-mode-v2-step-rule" aria-hidden />
 
             {stepIngredientChips != null && stepIngredientChips.length > 0 ? (
@@ -886,28 +910,6 @@ export function RecipeCookModePanel({
           </>
         )}
       </article>
-
-      {dockSessions.length > 0 ? (
-        <aside className="cook-mode-v2-dock" aria-label="Other active cooks">
-          <p className="cook-mode-v2-dock-label">Also running</p>
-          <div className="cook-mode-v2-dock-cards">
-            {dockSessions.map((p) => (
-              <button
-                key={p.key}
-                type="button"
-                className="cook-mode-v2-dock-card"
-                onClick={() => switchToCookSession(p.href)}
-              >
-                <span className="cook-mode-v2-dock-card-title">{p.title}</span>
-                <span className="cook-mode-v2-dock-card-timer" aria-label={`Step timer ${p.timerText}`}>
-                  {p.timerText}
-                </span>
-                <span className="cook-mode-v2-dock-card-sub">Tap to switch</span>
-              </button>
-            ))}
-          </div>
-        </aside>
-      ) : null}
 
     </div>
   );

@@ -4,6 +4,7 @@ export type NormalizedInstructionStep = {
   text: string;
   durationSeconds?: number;
   stepIngredients?: string[];
+  note?: string;
 };
 
 function normalizeStepIngredientStrings(raw: unknown): string[] | undefined {
@@ -29,12 +30,16 @@ export function normalizeInstructionStep(step: RecipeInstructionStep): Normalize
       ? Math.floor(step.durationSeconds)
       : undefined;
   const stepIngredients = normalizeStepIngredientStrings(step.stepIngredients);
+  const noteRaw = typeof step.note === "string" ? step.note.trim() : "";
   const base: NormalizedInstructionStep = { text };
   if (durationSeconds != null) {
     base.durationSeconds = durationSeconds;
   }
   if (stepIngredients != null) {
     base.stepIngredients = stepIngredients;
+  }
+  if (noteRaw.length > 0) {
+    base.note = noteRaw;
   }
   return base;
 }
@@ -48,6 +53,7 @@ export function normalizeInstructions(
   return instructions.map((s) => normalizeInstructionStep(s));
 }
 
+/** Primary step line only — recipe list search uses this, not `note`. */
 export function instructionStepText(step: RecipeInstructionStep): string {
   return normalizeInstructionStep(step).text;
 }

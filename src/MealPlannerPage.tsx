@@ -71,7 +71,6 @@ export function MealPlannerPage({
   const historyDateKeys = React.useMemo(() => sortedHistoryDateKeys(history), [history]);
 
   const unassignedMeals = plan[unassignedKey] ?? [];
-  const hasUnassignedMeals = unassignedMeals.length > 0;
 
   /** Unassigned pool rows: not-yet-cooked, or cooked in the last 7 days (see `unassignedSlotShownInPlannerWeek`). */
   const unassignedPlanIndicesForVisibleWeek = React.useMemo(() => {
@@ -509,45 +508,61 @@ export function MealPlannerPage({
 
   return (
     <div className="planner-page">
-      {hasUnassignedMeals ? (
-        <section
-          className="planner-unassigned"
-          aria-labelledby={
-            unassignedCookedDisplayOrder.length > 0
-              ? "planner-this-week-menu-heading planner-cooked-recently-heading"
-              : "planner-this-week-menu-heading"
-          }
+      <section
+        className="planner-unassigned"
+        aria-labelledby={
+          unassignedCookedDisplayOrder.length > 0
+            ? "planner-this-week-menu-heading planner-cooked-recently-heading"
+            : "planner-this-week-menu-heading"
+        }
+      >
+        <div
+          className={`planner-unassigned-drop day-card${
+            dropTargetKey === unassignedKey ? " day-card--drop-target" : ""
+          }`}
+          onDragOver={(e) => handleDayDragOver(e, unassignedKey)}
+          onDrop={(e) => handleDayDrop(e, unassignedKey)}
         >
-          <div
-            className={`planner-unassigned-drop day-card${
-              dropTargetKey === unassignedKey ? " day-card--drop-target" : ""
-            }`}
-            onDragOver={(e) => handleDayDragOver(e, unassignedKey)}
-            onDrop={(e) => handleDayDrop(e, unassignedKey)}
-          >
-            <div className="day-card-drop-area">
-              <div
-                className="day-card-header"
-                onDragOver={(e) => handleDayDragOver(e, unassignedKey)}
-                onDrop={(e) => handleDayDrop(e, unassignedKey)}
-              >
-                <div className="day-head" id="planner-this-week-menu-heading">
-                  This week&apos;s menu
-                </div>
+          <div className="day-card-drop-area">
+            <div
+              className="day-card-header"
+              onDragOver={(e) => handleDayDragOver(e, unassignedKey)}
+              onDrop={(e) => handleDayDrop(e, unassignedKey)}
+            >
+              <div className="day-head" id="planner-this-week-menu-heading">
+                This week&apos;s menu
               </div>
+            </div>
+            {unassignedUncookedDisplayOrder.length > 0 ? (
               <ul className="meal-chips">
                 {unassignedUncookedDisplayOrder.map((planIdx) => renderUnassignedPoolRow(planIdx))}
               </ul>
-              <div className="add-meal add-meal--this-week">
-                <button
-                  type="button"
-                  onClick={() => openPicker(unassignedKey)}
-                  onDragOver={(e) => handleDayDragOver(e, unassignedKey)}
-                  onDrop={(e) => handleDayDrop(e, unassignedKey)}
-                >
-                  + Add meal
-                </button>
-              </div>
+            ) : null}
+            {unassignedUncookedDisplayOrder.length === 0 ? (
+              <p className="planner-pool-empty-intro">
+                Nothing in your menu yet. Add meals to your menu to get started!
+              </p>
+            ) : null}
+            <div
+              className={`add-meal add-meal--this-week${
+                unassignedUncookedDisplayOrder.length === 0 ? " add-meal--this-week-empty" : ""
+              }`}
+            >
+              <button
+                type="button"
+                className={
+                  unassignedUncookedDisplayOrder.length === 0
+                    ? "btn-primary btn-cta-wide"
+                    : undefined
+                }
+                onClick={() => openPicker(unassignedKey)}
+                onDragOver={(e) => handleDayDragOver(e, unassignedKey)}
+                onDrop={(e) => handleDayDrop(e, unassignedKey)}
+              >
+                + Add meal
+              </button>
+            </div>
+            {unassignedUncookedDisplayOrder.length > 0 ? (
               <div className="planner-unassigned-cook-cta">
                 <button
                   type="button"
@@ -576,61 +591,26 @@ export function MealPlannerPage({
                   Shop ingredients
                 </button>
               </div>
-              {unassignedCookedDisplayOrder.length > 0 ? (
-                <div className="planner-unassigned-cooked-section">
-                  <div
-                    className="day-card-header"
-                    onDragOver={(e) => handleDayDragOver(e, unassignedKey)}
-                    onDrop={(e) => handleDayDrop(e, unassignedKey)}
-                  >
-                    <div className="day-head" id="planner-cooked-recently-heading">
-                      Cooked recently
-                    </div>
+            ) : null}
+            {unassignedCookedDisplayOrder.length > 0 ? (
+              <div className="planner-unassigned-cooked-section">
+                <div
+                  className="day-card-header"
+                  onDragOver={(e) => handleDayDragOver(e, unassignedKey)}
+                  onDrop={(e) => handleDayDrop(e, unassignedKey)}
+                >
+                  <div className="day-head" id="planner-cooked-recently-heading">
+                    Cooked recently
                   </div>
-                  <ul className="meal-chips">
-                    {unassignedCookedDisplayOrder.map((planIdx) => renderUnassignedPoolRow(planIdx))}
-                  </ul>
                 </div>
-              ) : null}
-            </div>
+                <ul className="meal-chips">
+                  {unassignedCookedDisplayOrder.map((planIdx) => renderUnassignedPoolRow(planIdx))}
+                </ul>
+              </div>
+            ) : null}
           </div>
-        </section>
-      ) : (
-        <section
-          className={`planner-unassigned-inline${
-            dropTargetKey === unassignedKey ? " planner-unassigned-inline--drop-target" : ""
-          }`}
-          aria-label="Add meals for the week to this list"
-          onDragOver={(e) => handleDayDragOver(e, unassignedKey)}
-          onDrop={(e) => handleDayDrop(e, unassignedKey)}
-        >
-          <button
-            type="button"
-            className="btn-primary btn-cta-wide planner-unassigned-inline-btn"
-            onClick={() => openPicker(unassignedKey)}
-          >
-            Add meals for the week
-          </button>
-        </section>
-      )}
-
-      {!hasUnassignedMeals ? (
-        <div className="planner-week-actions">
-          <button
-            type="button"
-            className="btn-secondary"
-            disabled={!hasShopableSelection}
-            aria-label={
-              !hasShopableSelection
-                ? "Shop ingredients — add meals above, select them, then use this (replaces your shopping list when used)"
-                : "Shop ingredients — replace shopping list with selected meals and open list"
-            }
-            onClick={handleMenuShopIngredients}
-          >
-            Shop ingredients
-          </button>
         </div>
-      ) : null}
+      </section>
     </div>
   );
 }
