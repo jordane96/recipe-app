@@ -69,6 +69,11 @@ export interface Recipe {
   tags?: string[];
   /** Structured shopping + display */
   ingredientSections: IngredientSection[];
+  /**
+   * Editor-only / local draft: ingredients created in “Add ingredient” that are not in the
+   * global `ingredients.json`. Merged with the bundle when resolving lines on the edit screen.
+   */
+  customIngredientDefs?: IngredientDef[];
   /** Curated links to course:side recipes (from recommendedSides.mjs). */
   recommendedSides?: RecommendedSideRef[];
   instructions?: RecipeInstructionStep[];

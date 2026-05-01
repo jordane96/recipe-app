@@ -3,10 +3,12 @@ import { Link, useLocation, useNavigate, useSearchParams } from "react-router-do
 import type { IngredientDef, Recipe } from "./types";
 import { formatIngredientLine, ingredientMap } from "./ingredientDisplay";
 import {
+  EDIT_RECIPE_STEP_QUERY,
   readFromHistory,
   readFromShopping,
   readSidesListTab,
   recipeDetailPath,
+  recipeEditPath,
   stripCookModeParams,
 } from "./listTabSearch";
 import {
@@ -37,7 +39,6 @@ import {
 import { normalizeInstructions } from "./recipeInstructions";
 import { useCookHistory } from "./CookHistoryContext";
 import { recipeToPlannedMeal } from "./MealPlanContext";
-import { useToast } from "./ToastContext";
 
 const SWIPE_PX = 56;
 
@@ -150,7 +151,6 @@ export function RecipeCookModePanel({
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { showToast } = useToast();
   const { logCooked } = useCookHistory();
   const byId = React.useMemo(() => ingredientMap(ingredients), [ingredients]);
 
@@ -181,6 +181,21 @@ export function RecipeCookModePanel({
     readFromHistory(searchParams),
     { cookDate, cookSlotRef },
   );
+
+  const openEditRecipeForCurrentStep = React.useCallback(() => {
+    const stripped = stripCookModeParams(searchParams);
+    const cookReturn = { cookDate, cookSlotRef };
+    const base = recipeEditPath(
+      recipe.id,
+      readSidesListTab(searchParams),
+      stripped,
+      cookReturn,
+    );
+    const recipeStepIndex = activeStepIndex >= 1 ? activeStepIndex - 1 : 0;
+    const u = new URL(base, window.location.origin);
+    u.searchParams.set(EDIT_RECIPE_STEP_QUERY, String(recipeStepIndex));
+    navigate(`${u.pathname}${u.search}`);
+  }, [activeStepIndex, cookDate, cookSlotRef, navigate, recipe.id, searchParams]);
 
   React.useLayoutEffect(() => {
     const loaded = loadCookUi(recipe.id, cookDate, cookSlotRef);
@@ -725,11 +740,11 @@ export function RecipeCookModePanel({
                 <button
                   type="button"
                   className="cook-mode-v2-step-edit"
-                  onClick={() => showToast("Add note experience TBD")}
-                  aria-label="Add a note to this step (coming soon)"
+                  onClick={openEditRecipeForCurrentStep}
+                  aria-label="Edit or add a note for this step in the recipe editor"
                   {...isolateNestedTouchFromSwipePaneProps}
                 >
-                  Add note
+                  Edit or add note
                 </button>
               </div>
             </section>

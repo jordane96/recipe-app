@@ -374,7 +374,7 @@
           "name": "Main",
           "lines": [
             {
-              "ingredientId": "ground-beef",
+              "ingredientId": "ground-beef-80",
               "amount": 2,
               "unit": "lb"
             },
@@ -994,7 +994,7 @@
           "name": "Main",
           "lines": [
             {
-              "ingredientId": "ground-beef",
+              "ingredientId": "ground-beef-90",
               "amount": 16,
               "unit": "oz",
               "note": "85–90% lean"
@@ -1342,7 +1342,7 @@
           "name": "Main",
           "lines": [
             {
-              "ingredientId": "ground-beef",
+              "ingredientId": "ground-beef-80",
               "amount": 10,
               "unit": "oz"
             },

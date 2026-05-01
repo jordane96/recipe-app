@@ -18,13 +18,13 @@ npm run data:publish
 
 That validates ingredient IDs and `recommendedSides` links, then writes `public/ingredients.json` and `public/recipes.json`.
 
-**Legacy / recovery:** `data/legacy-recipes-v1.json` plus `scripts/recipeIngredientSections.mjs` and `scripts/recommendedSides.mjs` are no longer used by `data:publish`. To **rebuild** `data/recipes.v2.json` from those sources (this **overwrites** hand-edited v2 data):
+**Legacy / recovery:** `data/legacy-recipes-v1.json` plus `scripts/[OLD]recipeIngredientSections.mjs` and `scripts/recommendedSides.mjs` are no longer used by `data:publish`. To **rebuild** `data/recipes.v2.json` from those sources (this **overwrites** hand-edited v2 data):
 
 ```bash
 npm run data:migrate-legacy-to-v2
 ```
 
-Then merge any edits you need before publishing again. `scripts/apply-qualitative-overrides-to-sections.mjs` still updates `recipeIngredientSections.mjs`; after using it, run `data:migrate-legacy-to-v2` if you want that merged into v2, or copy changed sections into `recipes.v2.json` manually.
+Then merge any edits you need before publishing again. `scripts/apply-qualitative-overrides-to-sections.mjs` still updates `[OLD]recipeIngredientSections.mjs`; after using it, run `data:migrate-legacy-to-v2` if you want that merged into v2, or copy changed sections into `recipes.v2.json` manually.
 
 ## Local dev
 

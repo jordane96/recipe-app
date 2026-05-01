@@ -1,6 +1,6 @@
 # Ingredient library audit
 
-Working notes for `scripts/ingredientLibrary.mjs` and structured rows in `scripts/recipeIngredientSections.mjs`.
+Working notes for `scripts/ingredientLibrary.mjs` and structured rows in `scripts/[OLD]recipeIngredientSections.mjs`.
 
 ---
 
@@ -30,7 +30,7 @@ After edits, run `npm run data:publish` and sync `recipes/recipes.json` if you u
 From repo root:
 
 ```bash
-node --input-type=module -e "import { SECTIONS } from './recipe-app/scripts/recipeIngredientSections.mjs'; const rows=[]; for (const [rid, secs] of Object.entries(SECTIONS)) { for (const s of secs) { for (const L of s.lines) { if (L.amount==null||L.unit==null) rows.push({recipe:rid, section:s.name, id:L.ingredientId, note:L.note||''}); } } } rows.sort((a,b)=>a.id.localeCompare(b.id)||a.recipe.localeCompare(b.recipe)); console.log(JSON.stringify(rows,null,2));"
+node --input-type=module -e "import { SECTIONS } from './recipe-app/scripts/[OLD]recipeIngredientSections.mjs'; const rows=[]; for (const [rid, secs] of Object.entries(SECTIONS)) { for (const s of secs) { for (const L of s.lines) { if (L.amount==null||L.unit==null) rows.push({recipe:rid, section:s.name, id:L.ingredientId, note:L.note||''}); } } } rows.sort((a,b)=>a.id.localeCompare(b.id)||a.recipe.localeCompare(b.recipe)); console.log(JSON.stringify(rows,null,2));"
 ```
 
 ### Current qualitative rows (snapshot)

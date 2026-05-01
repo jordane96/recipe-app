@@ -13,7 +13,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { INGREDIENTS } from "./ingredientLibrary.mjs";
 import { RECOMMENDED_SIDES } from "./recommendedSides.mjs";
-import { SECTIONS } from "./recipeIngredientSections.mjs";
+import { SECTIONS } from "./[OLD]recipeIngredientSections.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
@@ -26,7 +26,7 @@ const libIds = new Set(INGREDIENTS.map((i) => i.id));
 
 for (const r of legacy.recipes) {
   if (!(r.id in SECTIONS)) {
-    throw new Error(`recipeIngredientSections.mjs missing key: ${r.id}`);
+    throw new Error(`[OLD]recipeIngredientSections.mjs missing key: ${r.id}`);
   }
 }
 

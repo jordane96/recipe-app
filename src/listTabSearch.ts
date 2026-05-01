@@ -116,6 +116,9 @@ export const COOK_MODE_QUERY = "cook";
 export const COOK_DATE_QUERY = "cookDate";
 export const COOK_SLOT_REF_QUERY = "slotRef";
 
+/** Recipe editor: 0-based instruction index — scroll/focus that step’s note, then strip from URL. */
+export const EDIT_RECIPE_STEP_QUERY = "editStep";
+
 /** Navigate from planner “Cook now” — `dateIso` must be a valid plan date key. */
 export function recipeCookModePath(
   recipeId: string,
@@ -402,6 +405,23 @@ export function recipeDetailBackPath(
 /** When set, user opened full recipe from cook mode; `cook=1` is not set, so this is not active cook mode. */
 export type RecipeDetailCookViewContext = { cookDate: string; cookSlotRef: string | null };
 
+/** When `from=cook` + valid `cookDate`, use as `recipeDetailPath` cook return context after editing. */
+export function readRecipeDetailCookReturnContext(
+  searchParams: URLSearchParams,
+): RecipeDetailCookViewContext | undefined {
+  if (!readFromCookMode(searchParams)) {
+    return undefined;
+  }
+  const rawDate = searchParams.get(COOK_DATE_QUERY);
+  const cookDate = rawDate && isMealPlanDateKey(rawDate) ? rawDate : undefined;
+  if (!cookDate) {
+    return undefined;
+  }
+  const ref = searchParams.get(COOK_SLOT_REF_QUERY);
+  const cookSlotRef = ref && ref.length > 0 ? ref : null;
+  return { cookDate, cookSlotRef };
+}
+
 export function recipeDetailPath(
   recipeId: string,
   sidesTab: boolean,
@@ -443,11 +463,12 @@ export function recipeDetailPath(
   return `/recipe/${recipeId}${s ? `?${s}` : ""}`;
 }
 
-/** Same query preservation as `recipeDetailPath`, for the edit placeholder route. */
+/** Same query preservation as `recipeDetailPath`, for the recipe editor route. */
 export function recipeEditPath(
   recipeId: string,
   sidesTab: boolean,
   preserveParams?: URLSearchParams,
+  cookViewFromSession?: RecipeDetailCookViewContext,
 ): string {
   const q = new URLSearchParams();
   if (preserveParams) {
@@ -458,6 +479,15 @@ export function recipeEditPath(
     copyFromShoppingParam(preserveParams, q);
     copyFromHistoryParam(preserveParams, q);
     copyFromPlannerParam(preserveParams, q);
+  }
+  if (cookViewFromSession) {
+    q.set(FROM_QUERY, FROM_COOK_MODE_VALUE);
+    q.set(COOK_DATE_QUERY, cookViewFromSession.cookDate);
+    if (cookViewFromSession.cookSlotRef) {
+      q.set(COOK_SLOT_REF_QUERY, cookViewFromSession.cookSlotRef);
+    } else {
+      q.delete(COOK_SLOT_REF_QUERY);
+    }
   }
   if (!q.has(ADD_TO_PLAN_QUERY) && sidesTab) {
     q.set(LIST_TAB_QUERY, LIST_TAB_SIDE_VALUE);

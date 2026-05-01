@@ -1,6 +1,6 @@
 /**
  * Merge qualitative override export (same shape as localStorage) into
- * scripts/recipeIngredientSections.mjs, then run: npm run data:publish
+ * scripts/[OLD]recipeIngredientSections.mjs, then run: npm run data:publish
  *
  * Usage: node scripts/apply-qualitative-overrides-to-sections.mjs <path-to-export.json>
  */
@@ -9,7 +9,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const SECTIONS_FILE = join(__dirname, "recipeIngredientSections.mjs");
+const SECTIONS_FILE = join(__dirname, "[OLD]recipeIngredientSections.mjs");
 
 const exportPath = process.argv[2];
 if (!exportPath) {
@@ -106,11 +106,11 @@ export const SECTIONS = `;
 if (applied === 0) {
   const n = Object.keys(overrides).length;
   if (n === 0) {
-    console.log("Export file has no keys; recipeIngredientSections.mjs not modified.");
+    console.log("Export file has no keys; [OLD]recipeIngredientSections.mjs not modified.");
     process.exit(0);
   }
   console.error(
-    "No matching lines were updated; recipeIngredientSections.mjs not modified.",
+    "No matching lines were updated; [OLD]recipeIngredientSections.mjs not modified.",
   );
   process.exit(1);
 }
@@ -118,7 +118,7 @@ if (applied === 0) {
 const body = JSON.stringify(next, null, 2);
 writeFileSync(SECTIONS_FILE, `${header}${body};\n`, "utf8");
 
-console.log(`Wrote ${applied} line(s) into recipeIngredientSections.mjs`);
+console.log(`Wrote ${applied} line(s) into [OLD]recipeIngredientSections.mjs`);
 if (skipped.length) {
   console.log(`Skipped ${skipped.length} entr(y/ies):`);
   for (const s of skipped.slice(0, 30)) {

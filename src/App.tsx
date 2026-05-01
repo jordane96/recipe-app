@@ -13,7 +13,7 @@ import { MealPlannerPage } from "./MealPlannerPage";
 import type { IngredientDef, IngredientsFile, Recipe } from "./types";
 import { RecipeDetail } from "./RecipeDetail";
 import { AddRecipePlaceholderPage } from "./AddRecipePlaceholderPage";
-import { EditRecipePlaceholderPage } from "./EditRecipePlaceholderPage";
+import { EditRecipePage } from "./EditRecipePage";
 import { RecipeList } from "./RecipeList";
 import { MealPlanProvider } from "./MealPlanContext";
 import { ShoppingListProvider, useShoppingList } from "./ShoppingListContext";
@@ -28,7 +28,11 @@ import {
   getFirstActiveCookSessionHref,
   getCookProgressSessions,
 } from "./cookProgressSession";
-import { readCookModeParams, shoppingListPath } from "./listTabSearch";
+import {
+  EDIT_RECIPE_STEP_QUERY,
+  readCookModeParams,
+  shoppingListPath,
+} from "./listTabSearch";
 import {
   clearActiveAddFlowSessionStorage,
   isAddFlowBuilderLocation,
@@ -129,7 +133,11 @@ export default function App() {
           <MealPlanProvider>
             <CookHistoryProvider>
               <ToastProvider>
-                <AppLayout recipes={recipes} ingredients={ingredients} />
+                <AppLayout
+                  recipes={recipes}
+                  ingredients={ingredients}
+                  ingredientsFile={ingredientsFile}
+                />
               </ToastProvider>
             </CookHistoryProvider>
           </MealPlanProvider>
@@ -142,9 +150,11 @@ export default function App() {
 function AppLayout({
   recipes,
   ingredients,
+  ingredientsFile,
 }: {
   recipes: Recipe[];
   ingredients: IngredientDef[];
+  ingredientsFile: IngredientsFile;
 }) {
   const { pathname, search } = useLocation();
   const { count } = useShoppingList();
@@ -171,6 +181,9 @@ function AppLayout({
   );
   const cookingNowNavTo = cookNowHref ?? "/cooking-now";
 
+  /** Last seen location for scroll-to-top: skip reset when edit page only drops `editStep` (deep-link cleanup). */
+  const scrollSnapPrevRef = React.useRef<{ pathname: string; search: string } | null>(null);
+
   const isCookingNowView = React.useMemo(() => {
     if (pathname === "/cooking-now") {
       return true;
@@ -185,6 +198,32 @@ function AppLayout({
 
   /** Snap to top on every in-app navigation (HashRouter does not scroll the window). */
   React.useEffect(() => {
+    const prev = scrollSnapPrevRef.current;
+    scrollSnapPrevRef.current = { pathname, search };
+
+    if (!prev || prev.pathname !== pathname) {
+      window.scrollTo(0, 0);
+      return;
+    }
+    if (prev.search === search) {
+      return;
+    }
+    const onRecipeEdit = /^\/recipe\/[^/]+\/edit$/.test(pathname);
+    if (onRecipeEdit) {
+      const before = new URLSearchParams(
+        prev.search.startsWith("?") ? prev.search.slice(1) : prev.search,
+      );
+      const after = new URLSearchParams(
+        search.startsWith("?") ? search.slice(1) : search,
+      );
+      if (before.has(EDIT_RECIPE_STEP_QUERY) && !after.has(EDIT_RECIPE_STEP_QUERY)) {
+        const stripped = new URLSearchParams(before);
+        stripped.delete(EDIT_RECIPE_STEP_QUERY);
+        if (stripped.toString() === after.toString()) {
+          return;
+        }
+      }
+    }
     window.scrollTo(0, 0);
   }, [pathname, search]);
 
@@ -347,7 +386,16 @@ function AppLayout({
           element={<AddRecipePlaceholderPage />}
         />
         <Route path="/recipes" element={<RecipeList recipes={recipes} ingredients={ingredients} />} />
-        <Route path="/recipe/:id/edit" element={<EditRecipePlaceholderPage />} />
+        <Route
+          path="/recipe/:id/edit"
+          element={
+            <EditRecipePage
+              recipes={recipes}
+              ingredients={ingredients}
+              ingredientsFile={ingredientsFile}
+            />
+          }
+        />
         <Route
           path="/recipe/:id"
           element={<RecipeDetail recipes={recipes} ingredients={ingredients} />}

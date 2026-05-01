@@ -797,22 +797,6 @@ export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
             </button>
           </section>
         )
-      ) : !selectedIso ? (
-        <p className="muted history-hint">
-          {granularity === "month" ? (
-            <>
-              Select a day on the calendar. A dot means there is something on the menu and/or logged:
-              cream = menu only (not logged yet), mint = at least one meal logged.{" "}
-            </>
-          ) : (
-            <>
-              Week view matches the meal planner. Future days: <strong>+ Plan meal</strong> opens
-              recipes to schedule that day. Today and past days: <strong>+ Log meal</strong> adds a
-              cook log.{" "}
-            </>
-          )}
-          Use <strong>Week</strong> or <strong>Month</strong> to change the view.
-        </p>
       ) : null}
 
       <div

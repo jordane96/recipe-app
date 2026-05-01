@@ -71,7 +71,7 @@ for (const r of bundle.recipes) {
 
 writeFileSync(
   join(root, "public/ingredients.json"),
-  JSON.stringify({ version: 1, units: UNITS, ingredients: INGREDIENTS }, null, 2),
+  JSON.stringify({ version: 2, units: UNITS, ingredients: INGREDIENTS }, null, 2),
 );
 writeFileSync(
   join(root, "public/recipes.json"),
