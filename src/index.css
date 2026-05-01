@@ -905,7 +905,7 @@ a {
   box-sizing: border-box;
   width: calc(100% + 2rem);
   max-width: none;
-  margin: 0 -1rem -1.15rem -1rem;
+  margin: 0 -1rem -0.65rem -1rem;
   padding: 6px 10px 6px;
   border-radius: 0 0 17.5px 17.5px;
   overflow: hidden;
@@ -1168,7 +1168,7 @@ button.cook-mode-v2-meal-banner--in-chrome,
   flex-direction: column;
   background: #fffcf8;
   border-color: #e7e2dc;
-  padding: 1rem 1rem 1.15rem;
+  padding: 1rem 1rem 0.65rem;
   /* Stable card height between steps; short steps show cream space above the footer */
   min-height: min(650px, calc(100dvh - 10.5rem));
 }
@@ -1218,9 +1218,20 @@ button.cook-mode-v2-meal-banner--in-chrome,
   box-sizing: border-box;
 }
 
+/* Cook step body: recipe → ingredients → timer */
+.cook-mode-v2-pane-section {
+  margin: 0;
+}
+
+.cook-mode-v2-pane-section + .cook-mode-v2-pane-section {
+  margin-top: 0.65rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid #e7e2dc;
+}
+
 .cook-mode-v2-step-rule {
   height: 1px;
-  margin: 0.65rem 0 0.75rem;
+  margin: 0.65rem 0 0;
   background: #e7e2dc;
   border: none;
 }
@@ -1307,21 +1318,23 @@ button.cook-mode-v2-meal-banner--in-chrome,
   color: #1c1917;
 }
 
+/* Title + rule + list: vertical rhythm comes from the rule only so space above/below the line matches */
+.cook-mode-v2-main-card--confirm
+  .cook-mode-v2-confirm-scroll:has(.cook-mode-v2-confirm-ing-rule-line)
+  .cook-mode-v2-confirm-title {
+    margin-bottom: 0;
+  }
+
 .cook-mode-v2-confirm-ing {
   margin-bottom: 0.2rem;
 }
 
-.cook-mode-v2-confirm-ing-label {
-  font-size: 0.625rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--cook-teal);
-  margin-bottom: 0.5rem;
-}
-
-.cook-mode-v2-confirm-chip-row {
-  gap: 0.4rem;
+/* Between confirm title and ingredient list (aligned with confirm content inset) */
+.cook-mode-v2-confirm-ing-rule-line {
+  height: 1px;
+  margin: 0.75rem 1.15rem;
+  background: #e7e2dc;
+  border: none;
 }
 
 .cook-mode-v2-confirm-divider {
@@ -1536,15 +1549,62 @@ button.cook-mode-v2-meal-banner--in-chrome,
 }
 
 .cook-mode-v2-ing-block {
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
 }
 
-.cook-mode-v2-ing-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
+.cook-mode-v2-ing-head-outer {
+  margin: 0;
+  font: inherit;
+}
+
+.cook-mode-v2-ing-head-toggle {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.3rem;
+  width: 100%;
+  min-height: 2rem;
+  margin: 0;
+  padding: 0.15rem 0.25rem 0.15rem 0;
+  border: none;
+  background: transparent;
+  color: var(--cook-teal);
+  cursor: pointer;
+  border-radius: 6px;
+  font-family: var(--font-cook);
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cook-mode-v2-ing-head-toggle:hover {
+  background: var(--accent-soft);
+}
+
+.cook-mode-v2-ing-head-toggle:focus-visible {
+  outline: 2px solid var(--cook-teal);
+  outline-offset: 2px;
+}
+
+.cook-mode-v2-ing-head-toggle .cook-mode-v2-ing-heading {
+  margin-bottom: 0;
+}
+
+.cook-mode-v2-ing-toggle-arrow {
+  font-size: 0.65rem;
+  line-height: 1;
+  font-weight: 700;
+}
+
+.cook-mode-v2-ing-heading {
+  margin: 0 0 0.5rem;
+  font-family: var(--font-cook);
+  font-size: 10px;
+  line-height: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cook-teal);
 }
 
 /* Figma: 10px / 12lh, extrabold caps */
@@ -1609,7 +1669,7 @@ button.cook-mode-v2-meal-banner--in-chrome,
 }
 
 .cook-mode-v2-ing-expanded {
-  margin-top: 0.65rem;
+  margin-top: 0.35rem;
   font-size: var(--fs-ui);
 }
 
@@ -1620,13 +1680,17 @@ button.cook-mode-v2-meal-banner--in-chrome,
   color: var(--text);
 }
 
+.cook-mode-v2-ing-expanded > div:first-child .cook-mode-v2-ing-sec-name {
+  margin-top: 0.2rem;
+}
+
 .cook-mode-v2-ing-list {
   margin: 0.25rem 0 0;
   padding-left: 1.1rem;
 }
 
 .cook-mode-v2-timer {
-  margin-bottom: 1rem;
+  margin: 0;
 }
 
 /* Step timer row — Figma Cook Mode — Exploration */
@@ -1791,7 +1855,7 @@ button.cook-mode-v2-meal-banner--in-chrome,
 
 .cook-mode-v2-last-step-cta {
   margin-top: 0.85rem;
-  margin-bottom: 30px;
+  margin-bottom: 1rem;
 }
 
 .cook-mode-v2-card-footer {

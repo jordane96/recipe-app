@@ -287,7 +287,7 @@ function lineToBucket(
     };
   }
 
-  const k = def.kind as IngredientKind;
+  const k = def.unit as IngredientKind;
   if (k === "volume") {
     const tsp = toVolumeBase(line.amount, line.unit);
     if (Number.isNaN(tsp)) {

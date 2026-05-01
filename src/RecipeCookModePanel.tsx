@@ -41,6 +41,19 @@ import { useToast } from "./ToastContext";
 
 const SWIPE_PX = 56;
 
+/**
+ * Swipe handlers on `<article>` bubble from nested buttons; touch-start updates state there and can
+ * cancel the subsequent click on mobile. Stop propagation so taps hit only the nested control.
+ */
+const isolateNestedTouchFromSwipePaneProps = {
+  onTouchStart: (e: React.TouchEvent) => {
+    e.stopPropagation();
+  },
+  onTouchEnd: (e: React.TouchEvent) => {
+    e.stopPropagation();
+  },
+} as const;
+
 /** Prepended as step 1 in cook mode only. */
 const COOK_MODE_INGREDIENTS_CONFIRM_STEP = "Confirm you have all necessary ingredients";
 
@@ -87,22 +100,6 @@ function PausePlayGlyph({
         <path fill="currentColor" d="M8 5v14l11-7L8 5z" />
       )}
     </svg>
-  );
-}
-
-/** Figma chip: name (semibold) · qty (medium, muted) when label contains middot. */
-function CookChipLabel({ label }: { label: string }) {
-  const m = label.match(/^(.+?)(\s*[·•]\s*)(.+)$/);
-  if (!m) {
-    return <>{label}</>;
-  }
-  const [, name, sep, qty] = m;
-  return (
-    <>
-      <span className="cook-mode-v2-chip-name">{name}</span>
-      <span className="cook-mode-v2-chip-sep">{sep}</span>
-      <span className="cook-mode-v2-chip-qty">{qty}</span>
-    </>
   );
 }
 
@@ -164,7 +161,6 @@ export function RecipeCookModePanel({
 
   const nSteps = cookSteps.length;
 
-  const [ingredientsExpanded, setIngredientsExpanded] = React.useState(false);
   const [activeStepIndex, setActiveStepIndex] = React.useState(() =>
     initialActiveStepIndexFromStorage(recipe, cookDate, cookSlotRef),
   );
@@ -173,6 +169,7 @@ export function RecipeCookModePanel({
   const [cookProgressListRev, setCookProgressListRev] = React.useState(0);
   /** Persisted session total clock (Total time) + pause state. */
   const [sessionTotalPersist, setSessionTotalPersist] = React.useState<CookSessionTotalPersist | null>(null);
+  const [cookIngredientsOpen, setCookIngredientsOpen] = React.useState(true);
 
   const hereHref = `${location.pathname}${location.search}`;
 
@@ -353,14 +350,9 @@ export function RecipeCookModePanel({
     return out;
   }, [recipe.ingredientSections, byId]);
 
-  /** Step-scoped labels when author provided `stepIngredients`; otherwise cook mode falls back to full recipe chips. */
-  const stepIngredientChips = React.useMemo(() => {
-    const labels = cookSteps[activeStepIndex]?.stepIngredients;
-    if (!labels?.length) {
-      return null;
-    }
-    return labels.map((label, i) => ({ key: `step-ing-${i}-${label}`, label }));
-  }, [cookSteps, activeStepIndex]);
+  React.useEffect(() => {
+    setCookIngredientsOpen(true);
+  }, [activeStepIndex]);
 
   const goStep = (delta: number) => {
     setActiveStepIndex((i) => Math.min(Math.max(0, i + delta), Math.max(0, nSteps - 1)));
@@ -635,33 +627,56 @@ export function RecipeCookModePanel({
               </div>
               <h1 className="cook-mode-v2-confirm-title">{COOK_MODE_INGREDIENTS_CONFIRM_STEP}</h1>
               {flatIngredientChips.length > 0 ? (
-                <section className="cook-mode-v2-confirm-ing" aria-label="Ingredients for this recipe">
-                  <div className="cook-mode-v2-confirm-ing-label">Ingredients for this recipe</div>
-                  <div className="cook-mode-v2-chip-row cook-mode-v2-confirm-chip-row">
-                    {flatIngredientChips.map((c) => (
-                      <span key={c.key} className="cook-mode-v2-chip">
-                        <CookChipLabel label={c.label} />
-                      </span>
-                    ))}
-                  </div>
-                </section>
+                <>
+                  <div className="cook-mode-v2-confirm-ing-rule-line" aria-hidden />
+                  <section
+                    className="cook-mode-v2-ing-block cook-mode-v2-confirm-ing"
+                    aria-labelledby={`cook-ingredients-heading-confirm-${recipe.id}`}
+                  >
+                    <h2 className="cook-mode-v2-ing-heading" id={`cook-ingredients-heading-confirm-${recipe.id}`}>
+                      Ingredients
+                    </h2>
+                    <div className="cook-mode-v2-ing-expanded muted">
+                      {recipe.ingredientSections?.map((sec) => (
+                        <div key={sec.name}>
+                          <strong className="cook-mode-v2-ing-sec-name">{sec.name}</strong>
+                          <ul className="cook-mode-v2-ing-list">
+                            {sec.lines.map((line, i) => (
+                              <li key={`${line.ingredientId}-${i}`}>{formatIngredientLine(line, byId)}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                </>
               ) : null}
             </div>
             <div className="cook-mode-v2-confirm-footer">
               <div className="cook-mode-v2-confirm-divider" aria-hidden />
-              <div className="cook-mode-v2-confirm-actions">
+                <div className="cook-mode-v2-confirm-actions">
                 <button
                   type="button"
                   className="cook-mode-v2-confirm-btn cook-mode-v2-confirm-btn--primary"
                   onClick={() => goStep(1)}
+                  {...isolateNestedTouchFromSwipePaneProps}
                 >
                   Start cooking
                 </button>
-                <Link to={fullRecipeHref} className="cook-mode-v2-confirm-btn cook-mode-v2-confirm-btn--outline">
+                <Link
+                  to={fullRecipeHref}
+                  className="cook-mode-v2-confirm-btn cook-mode-v2-confirm-btn--outline"
+                  {...isolateNestedTouchFromSwipePaneProps}
+                >
                   View recipe
                 </Link>
               </div>
-              <button type="button" className="cook-mode-v2-confirm-cancel" onClick={onCancelCooking}>
+              <button
+                type="button"
+                className="cook-mode-v2-confirm-cancel"
+                onClick={onCancelCooking}
+                {...isolateNestedTouchFromSwipePaneProps}
+              >
                 Cancel cooking
               </button>
             </div>
@@ -679,6 +694,7 @@ export function RecipeCookModePanel({
                     aria-label={
                       sessionTotalPersist!.pauseBeganAt == null ? "Pause cook session clock" : "Resume cook session clock"
                     }
+                    {...isolateNestedTouchFromSwipePaneProps}
                   >
                     <span className="cook-mode-v2-meal-banner-spacer" aria-hidden />
                     <span className="cook-mode-v2-meal-banner-title">{recipe.title}</span>
@@ -695,81 +711,59 @@ export function RecipeCookModePanel({
               </div>
 
               <div className="cook-mode-v2-cook-body">
-            <p className="cook-mode-v2-step-text">{stepText}</p>
-            {stepNote ? (
-              <p className="cook-mode-v2-step-note" role="note">
-                <span className="cook-mode-v2-step-note-lead">Note:</span> {stepNote}
-              </p>
-            ) : null}
-            <div className="cook-mode-v2-step-edit-wrap">
-              <button
-                type="button"
-                className="cook-mode-v2-step-edit"
-                onClick={() => showToast("Add note experience TBD")}
-                aria-label="Add a note to this step (coming soon)"
-              >
-                Add note
-              </button>
-            </div>
-            <div className="cook-mode-v2-step-rule" aria-hidden />
+            <section
+              className="cook-mode-v2-pane-section cook-mode-v2-pane-section--recipe"
+              aria-label="Step instructions"
+            >
+              <p className="cook-mode-v2-step-text">{stepText}</p>
+              {stepNote ? (
+                <p className="cook-mode-v2-step-note" role="note">
+                  <span className="cook-mode-v2-step-note-lead">Note:</span> {stepNote}
+                </p>
+              ) : null}
+              <div className="cook-mode-v2-step-edit-wrap">
+                <button
+                  type="button"
+                  className="cook-mode-v2-step-edit"
+                  onClick={() => showToast("Add note experience TBD")}
+                  aria-label="Add a note to this step (coming soon)"
+                  {...isolateNestedTouchFromSwipePaneProps}
+                >
+                  Add note
+                </button>
+              </div>
+            </section>
 
-            {stepIngredientChips != null && stepIngredientChips.length > 0 ? (
-              <section className="cook-mode-v2-ing-block" aria-label="Ingredients for this step">
-                <div className="cook-mode-v2-ing-head">
-                  <span className="cook-mode-v2-ing-label">Ingredients for this step</span>
-                  {flatIngredientChips.length > 0 ? (
-                    <button
-                      type="button"
-                      className="cook-mode-v2-view-all"
-                      onClick={() => setIngredientsExpanded((e) => !e)}
-                    >
-                      {ingredientsExpanded ? "Hide" : "View all"}
-                    </button>
-                  ) : null}
-                </div>
-                <div className="cook-mode-v2-chip-row">
-                  {stepIngredientChips.map((c) => (
-                    <span key={c.key} className="cook-mode-v2-chip">
-                      <CookChipLabel label={c.label} />
-                    </span>
-                  ))}
-                </div>
-                {ingredientsExpanded && flatIngredientChips.length > 0 ? (
-                  <div className="cook-mode-v2-ing-expanded muted">
-                    {recipe.ingredientSections?.map((sec) => (
-                      <div key={sec.name}>
-                        <strong className="cook-mode-v2-ing-sec-name">{sec.name}</strong>
-                        <ul className="cook-mode-v2-ing-list">
-                          {sec.lines.map((line, i) => (
-                            <li key={`${line.ingredientId}-${i}`}>{formatIngredientLine(line, byId)}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-              </section>
-            ) : flatIngredientChips.length > 0 ? (
-              <section className="cook-mode-v2-ing-block" aria-label="All recipe ingredients">
-                <div className="cook-mode-v2-ing-head">
-                  <span className="cook-mode-v2-ing-label">All ingredients</span>
+            {flatIngredientChips.length > 0 ? (
+              <section
+                className="cook-mode-v2-pane-section cook-mode-v2-pane-section--ingredients cook-mode-v2-ing-block"
+                aria-labelledby={`cook-ingredients-heading-${recipe.id}`}
+              >
+                <h2 className="cook-mode-v2-ing-head-outer">
                   <button
                     type="button"
-                    className="cook-mode-v2-view-all"
-                    onClick={() => setIngredientsExpanded((e) => !e)}
+                    className="cook-mode-v2-ing-head-toggle"
+                    id={`cook-ingredients-toggle-${recipe.id}`}
+                    onClick={() => setCookIngredientsOpen((v) => !v)}
+                    aria-expanded={cookIngredientsOpen}
+                    aria-controls={`cook-ingredients-panel-${recipe.id}`}
+                    {...isolateNestedTouchFromSwipePaneProps}
                   >
-                    {ingredientsExpanded ? "Hide" : "View all"}
-                  </button>
-                </div>
-                <div className="cook-mode-v2-chip-row">
-                  {flatIngredientChips.slice(0, 4).map((c) => (
-                    <span key={c.key} className="cook-mode-v2-chip">
-                      <CookChipLabel label={c.label} />
+                    <span className="cook-mode-v2-ing-heading" id={`cook-ingredients-heading-${recipe.id}`}>
+                      Ingredients
                     </span>
-                  ))}
-                </div>
-                {ingredientsExpanded ? (
-                  <div className="cook-mode-v2-ing-expanded muted">
+                    <span className="cook-mode-v2-ing-toggle-arrow" aria-hidden>
+                      {cookIngredientsOpen ? "▼" : "▶"}
+                    </span>
+                  </button>
+                </h2>
+                {cookIngredientsOpen ? (
+                  <div
+                    id={`cook-ingredients-panel-${recipe.id}`}
+                    className="cook-mode-v2-ing-expanded muted"
+                    role="region"
+                    aria-labelledby={`cook-ingredients-heading-${recipe.id}`}
+                  >
                     {recipe.ingredientSections?.map((sec) => (
                       <div key={sec.name}>
                         <strong className="cook-mode-v2-ing-sec-name">{sec.name}</strong>
@@ -786,9 +780,8 @@ export function RecipeCookModePanel({
             ) : null}
 
             {clock && durationForActive > 0 ? (
-              <>
-                <div className="cook-mode-v2-step-rule cook-mode-v2-step-rule--before-timer" aria-hidden />
-                <section className="cook-mode-v2-timer" aria-label="Step timer">
+              <section className="cook-mode-v2-pane-section cook-mode-v2-pane-section--timer" aria-label="Step timer">
+                <div className="cook-mode-v2-timer">
                   <div className="cook-mode-v2-timer-layout">
                     <button
                       type="button"
@@ -803,6 +796,7 @@ export function RecipeCookModePanel({
                               ? "Restart step timer"
                               : "Start step timer"
                       }
+                      {...isolateNestedTouchFromSwipePaneProps}
                     >
                       <span className="cook-mode-v2-timer-main-digits-wrap">
                         <span className="cook-mode-v2-timer-main-digits">{formatMSS(displaySeconds)}</span>
@@ -821,6 +815,7 @@ export function RecipeCookModePanel({
                         className="cook-mode-v2-timer-adjust"
                         onClick={onAdd30Sec}
                         aria-label="Add 30 seconds to step timer"
+                        {...isolateNestedTouchFromSwipePaneProps}
                       >
                         + 30 sec
                       </button>
@@ -829,13 +824,14 @@ export function RecipeCookModePanel({
                         className="cook-mode-v2-timer-adjust"
                         onClick={onSubtract30Sec}
                         aria-label="Subtract 30 seconds from step timer"
+                        {...isolateNestedTouchFromSwipePaneProps}
                       >
                         - 30 sec
                       </button>
                     </div>
                   </div>
-                </section>
-              </>
+                </div>
+              </section>
             ) : null}
 
             {isLastCookStep ? (
@@ -844,6 +840,7 @@ export function RecipeCookModePanel({
                   type="button"
                   className="cook-mode-v2-confirm-btn cook-mode-v2-confirm-btn--primary"
                   onClick={onItsReady}
+                  {...isolateNestedTouchFromSwipePaneProps}
                 >
                   {"It's ready"}
                 </button>
@@ -860,6 +857,7 @@ export function RecipeCookModePanel({
                   aria-label="Previous step"
                   disabled={activeStepIndex <= 0}
                   onClick={() => goStep(-1)}
+                  {...isolateNestedTouchFromSwipePaneProps}
                 >
                   <span className="cook-mode-v2-nav-arrow" aria-hidden>
                     ←
@@ -884,6 +882,7 @@ export function RecipeCookModePanel({
                           className={`cook-mode-v2-dot${current ? " cook-mode-v2-dot--active" : ""}${done ? " cook-mode-v2-dot--completed" : ""}`}
                           aria-label={`Go to step ${displayStep}`}
                           onClick={() => setActiveStepIndex(i)}
+                          {...isolateNestedTouchFromSwipePaneProps}
                         />
                       );
                     })}
@@ -895,6 +894,7 @@ export function RecipeCookModePanel({
                   aria-label="Next step"
                   disabled={activeStepIndex >= nSteps - 1}
                   onClick={() => goStep(1)}
+                  {...isolateNestedTouchFromSwipePaneProps}
                 >
                   <span className="cook-mode-v2-nav-arrow" aria-hidden>
                     →
@@ -902,7 +902,12 @@ export function RecipeCookModePanel({
                 </button>
               </div>
               <div className="cook-mode-v2-cook-bottom">
-                <button type="button" className="cook-mode-v2-confirm-cancel cook-mode-v2-footer-cancel" onClick={onCancelCooking}>
+                <button
+                  type="button"
+                  className="cook-mode-v2-confirm-cancel cook-mode-v2-footer-cancel"
+                  onClick={onCancelCooking}
+                  {...isolateNestedTouchFromSwipePaneProps}
+                >
                   Cancel cooking
                 </button>
               </div>

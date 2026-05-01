@@ -14,10 +14,21 @@ export interface IngredientSection {
 
 export type IngredientKind = "volume" | "weight" | "count" | "other";
 
+export type IngredientCategory =
+  | "produce"
+  | "proteins"
+  | "dairy"
+  | "pantry"
+  | "spices"
+  | "oils-sauces"
+  | "baking"
+  | "other";
+
 export interface IngredientDef {
   id: string;
   name: string;
-  kind: IngredientKind;
+  unit: IngredientKind;
+  category: IngredientCategory;
 }
 
 export interface IngredientsFile {

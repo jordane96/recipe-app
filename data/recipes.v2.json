@@ -10,7 +10,8 @@
           "text": "Butterfly chicken and pound (optional)",
           "stepIngredients": [
             "Chicken breast"
-          ]
+          ],
+          "note": "This is a sample note v2"
         },
         {
           "text": "Coat in olive oil and rub/spices",
@@ -21,10 +22,11 @@
         },
         {
           "text": "Air Fry 10-13 minutes at 350",
-          "durationSeconds": 660,
+          "durationSeconds": 600,
           "stepIngredients": [
             "Coated chicken"
-          ]
+          ],
+          "Note": "This is another test note"
         }
       ],
       "sourceUrl": "https://therecipecritic.com/air-fryer-chicken-breast/",
@@ -1324,7 +1326,7 @@
       "instructions": [
         {
           "text": "Slice pepper in small strips",
-          "note": "This is a sample note"
+          "note": "This is a sample note v2"
         },
         "Microwave sour cream and cream cheese plus Cholula and 1 tsp water for 30 sec, then stir to combine",
         "Saute pepper for 2-3 minutes (med heat)",
@@ -1408,7 +1410,7 @@
       ],
       "ingredientSections": [
         {
-          "name": "Ingredients",
+          "name": "Main",
           "lines": [
             {
               "ingredientId": "ground-turkey-93",
