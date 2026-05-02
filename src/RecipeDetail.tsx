@@ -8,6 +8,7 @@ import {
   readFromHistory,
   readFromPlanner,
   readFromShopping,
+  readFromShoppingListItem,
   readPlanPhaseSide,
   readPlannerMenuCookContext,
   readSidesListTab,
@@ -74,6 +75,7 @@ export function RecipeDetail({
   const [searchParams] = useSearchParams();
   const fromSidesList = readSidesListTab(searchParams);
   const fromShopping = readFromShopping(searchParams);
+  const fromShoppingListItem = readFromShoppingListItem(searchParams);
   const fromHistory = readFromHistory(searchParams);
   const fromPlanner = readFromPlanner(searchParams);
   const plannerMenuCtx = readPlannerMenuCookContext(searchParams);
@@ -81,7 +83,9 @@ export function RecipeDetail({
   const inPlanFlow = planKey != null;
   const listSidesTab = inPlanFlow ? readPlanPhaseSide(searchParams) : fromSidesList;
   const preserve =
-    inPlanFlow || fromShopping || fromHistory || fromPlanner ? searchParams : undefined;
+    inPlanFlow || fromShopping || fromShoppingListItem || fromHistory || fromPlanner
+      ? searchParams
+      : undefined;
   const pickExperience = readRecipeListPickExperience(searchParams);
   const isShopMenuBuildFlow = pickExperience === "shop";
   const isCookNowPickFlow = pickExperience === "cook";
@@ -164,7 +168,7 @@ export function RecipeDetail({
       <>
         <div className="top-bar">
           <Link
-            to={recipeDetailBackPath(id ?? "", listSidesTab, preserve, fromShopping, fromHistory, searchParams)}
+            to={recipeDetailBackPath(id ?? "", listSidesTab, preserve, fromHistory, searchParams)}
             className="back-btn"
           >
             Back
@@ -345,7 +349,13 @@ export function RecipeDetail({
       <div
         className="recipe-list-cart-bar"
         role="region"
-        aria-label={fromPlanner && plannerMenuCtx ? "Cook now and navigation" : "Add to menu and navigation"}
+        aria-label={
+          fromPlanner && plannerMenuCtx
+            ? "Cook now and navigation"
+            : fromShoppingListItem && !fromPlanner
+              ? "Navigation"
+              : "Add to menu and navigation"
+        }
       >
         <div className="recipe-list-cart-bar-inner">
           {fromPlanner && plannerMenuCtx ? (
@@ -365,7 +375,6 @@ export function RecipeDetail({
                   recipe.id,
                   listSidesTab,
                   preserve,
-                  fromShopping,
                   fromHistory,
                   searchParams,
                 )}
@@ -380,7 +389,6 @@ export function RecipeDetail({
                 recipe.id,
                 listSidesTab,
                 preserve,
-                fromShopping,
                 fromHistory,
                 searchParams,
               )}
@@ -390,19 +398,20 @@ export function RecipeDetail({
             </Link>
           ) : (
             <>
-              <button
-                type="button"
-                className="btn-primary btn-cta-wide"
-                onClick={() => addTargetToPlan(recipe)}
-              >
-                {addToCartSelectionLabel}
-              </button>
+              {!fromShoppingListItem ? (
+                <button
+                  type="button"
+                  className="btn-primary btn-cta-wide"
+                  onClick={() => addTargetToPlan(recipe)}
+                >
+                  {addToCartSelectionLabel}
+                </button>
+              ) : null}
               <Link
                 to={recipeDetailBackPath(
                   recipe.id,
                   listSidesTab,
                   preserve,
-                  fromShopping,
                   fromHistory,
                   searchParams,
                 )}

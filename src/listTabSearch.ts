@@ -96,11 +96,16 @@ export function recipeDetailAddCtaLabel(sp: URLSearchParams): string {
 }
 
 /**
- * `from=shopping` on recipe detail: Back goes to `/shopping` unless
- * `isRecipeListCartBuildFlow` (shop+menu or cook-now pick), then Back goes to `/recipes` with the same cart query.
+ * `from=shopping` on recipe detail: Back always goes to `/shopping` (with preserved add-to-plan / shop-build query when present).
+ * Pick-flow cart params may match `isRecipeListCartBuildFlow`, but we still prefer `/shopping` when the user opened detail from the shopping list.
  */
 export const FROM_QUERY = "from";
 export const FROM_SHOPPING_VALUE = "shopping";
+/**
+ * Recipe opened from a row on `/shopping` (already on the list). Same Back as `from=shopping`,
+ * but recipe detail omits the redundant “add to shopping list” primary CTA.
+ */
+export const FROM_SHOPPING_LIST_ITEM_VALUE = "shopping-item";
 /** Recipe opened from Calendar — Back returns to `/history`. */
 export const FROM_HISTORY_VALUE = "history";
 /** “View recipe” from cook mode — Back returns to cook mode for the same session. */
@@ -164,6 +169,15 @@ export function readFromShopping(searchParams: URLSearchParams): boolean {
   return searchParams.get(FROM_QUERY) === FROM_SHOPPING_VALUE;
 }
 
+export function readFromShoppingListItem(searchParams: URLSearchParams): boolean {
+  return searchParams.get(FROM_QUERY) === FROM_SHOPPING_LIST_ITEM_VALUE;
+}
+
+/** Back target is `/shopping` for browse-from-shopping or for an in-list recipe row. */
+export function readNavigateBackToShoppingList(searchParams: URLSearchParams): boolean {
+  return readFromShopping(searchParams) || readFromShoppingListItem(searchParams);
+}
+
 export function readFromHistory(searchParams: URLSearchParams): boolean {
   return searchParams.get(FROM_QUERY) === FROM_HISTORY_VALUE;
 }
@@ -173,8 +187,9 @@ export function readFromCookMode(searchParams: URLSearchParams): boolean {
 }
 
 function copyFromShoppingParam(from: URLSearchParams, to: URLSearchParams): void {
-  if (from.get(FROM_QUERY) === FROM_SHOPPING_VALUE) {
-    to.set(FROM_QUERY, FROM_SHOPPING_VALUE);
+  const v = from.get(FROM_QUERY);
+  if (v === FROM_SHOPPING_VALUE || v === FROM_SHOPPING_LIST_ITEM_VALUE) {
+    to.set(FROM_QUERY, v);
   }
 }
 
@@ -308,6 +323,25 @@ export function recipesShopMenuBuildPath(weekStartIso: string): string {
   return `/recipes?${q.toString()}`;
 }
 
+/**
+ * From `/shopping`: open the recipe list to add more items, with Back returning to shopping.
+ * If the shopping URL already has `addToPlan=…` (and related flow params), those are preserved and
+ * `from=shopping` is set; otherwise same as {@link recipesShopMenuBuildPath} for the week.
+ */
+export function recipesAddItemsFromShoppingPath(
+  shoppingUrlParams: URLSearchParams,
+  weekStartIso: string,
+): string {
+  const atp = shoppingUrlParams.get(ADD_TO_PLAN_QUERY);
+  if (atp && urlParamToPlanKey(atp)) {
+    const q = new URLSearchParams();
+    copyAddToPlanFlowParamsForList(shoppingUrlParams, q);
+    q.set(FROM_QUERY, FROM_SHOPPING_VALUE);
+    return `/recipes?${q.toString()}`;
+  }
+  return recipesShopMenuBuildPath(weekStartIso);
+}
+
 function copyAddToPlanParams(from: URLSearchParams, to: URLSearchParams): void {
   const atp = from.get(ADD_TO_PLAN_QUERY);
   if (!atp || !urlParamToPlanKey(atp)) {
@@ -372,7 +406,6 @@ export function recipeDetailBackPath(
   recipeId: string,
   sidesTab: boolean,
   preserveParams: URLSearchParams | undefined,
-  fromShopping: boolean,
   fromHistory: boolean,
   searchParams: URLSearchParams,
 ): string {
@@ -393,11 +426,8 @@ export function recipeDetailBackPath(
   if (fromHistory) {
     return "/history";
   }
-  if (fromShopping) {
-    if (isRecipeListCartBuildFlow(searchParams)) {
-      return homeListPath(sidesTab, preserveParams ?? searchParams);
-    }
-    return shoppingListPath(sidesTab, preserveParams);
+  if (readNavigateBackToShoppingList(searchParams)) {
+    return shoppingListPath(sidesTab, preserveParams ?? searchParams);
   }
   return homeListPath(sidesTab, preserveParams);
 }
@@ -428,6 +458,7 @@ export function recipeDetailPath(
   preserveParams?: URLSearchParams,
   fromShopping?: boolean,
   fromHistory?: boolean,
+  fromShoppingListItem?: boolean,
   cookViewFromSession?: RecipeDetailCookViewContext,
 ): string {
   const q = new URLSearchParams();
@@ -449,11 +480,12 @@ export function recipeDetailPath(
       q.delete(COOK_SLOT_REF_QUERY);
     }
   } else {
-    if (fromShopping) {
-      q.set(FROM_QUERY, FROM_SHOPPING_VALUE);
-    }
     if (fromHistory) {
       q.set(FROM_QUERY, FROM_HISTORY_VALUE);
+    } else if (fromShoppingListItem) {
+      q.set(FROM_QUERY, FROM_SHOPPING_LIST_ITEM_VALUE);
+    } else if (fromShopping) {
+      q.set(FROM_QUERY, FROM_SHOPPING_VALUE);
     }
   }
   if (!q.has(ADD_TO_PLAN_QUERY) && sidesTab) {

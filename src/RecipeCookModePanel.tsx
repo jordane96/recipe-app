@@ -1,14 +1,13 @@
 import * as React from "react";
+import { flushSync } from "react-dom";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import type { IngredientDef, Recipe } from "./types";
 import { formatIngredientLine, ingredientMap } from "./ingredientDisplay";
 import {
   EDIT_RECIPE_STEP_QUERY,
-  readFromHistory,
-  readFromShopping,
   readSidesListTab,
-  recipeDetailPath,
   recipeEditPath,
+  recipesAddMealForCookingPath,
   stripCookModeParams,
 } from "./listTabSearch";
 import {
@@ -36,9 +35,11 @@ import {
   type CookSessionTotalPersist,
   type StepClockPersist,
 } from "./cookModeSessionStorage";
+import { iso, startOfWeekMonday } from "./mealPlanDates";
 import { normalizeInstructions } from "./recipeInstructions";
 import { useCookHistory } from "./CookHistoryContext";
-import { recipeToPlannedMeal } from "./MealPlanContext";
+import { recipeToPlannedMeal, useMealPlan } from "./MealPlanContext";
+import { isMealPlanDateKey, type MealPlanByDate } from "./mealPlanStorage";
 
 const SWIPE_PX = 56;
 
@@ -55,8 +56,11 @@ const isolateNestedTouchFromSwipePaneProps = {
   },
 } as const;
 
-/** Prepended as step 1 in cook mode only. */
+/** Prepended as step 1 in cook mode only (internal step label). */
 const COOK_MODE_INGREDIENTS_CONFIRM_STEP = "Confirm you have all necessary ingredients";
+
+/** Visible heading on the confirm card before “Start cooking”. */
+const COOK_MODE_CONFIRM_OVERVIEW_TITLE = "Recipe overview";
 
 function formatMSS(totalSeconds: number): string {
   const m = Math.floor(totalSeconds / 60);
@@ -114,6 +118,101 @@ function sessionsMatch(
   return e.recipeId === recipeId && e.cookDate === cookDate && e.slotRef === slot;
 }
 
+/**
+ * URL may omit `cookSlotRef`; cook-progress may store an empty slotRef. Without matching
+ * `planSlotRef` on the cook log, slot-based “cooked” UI fails.
+ *
+ * Order matters: **pool (“This week’s menu”) before calendar**. Same recipe can appear on today’s
+ * calendar and in the pool with different `planSlotRef`s — taking calendar first logged the wrong
+ * ref and the menu chip never matched.
+ */
+function resolvePlanSlotRefForCookLog(
+  plan: MealPlanByDate,
+  unassignedKey: string,
+  ensureCalendarSlotRef: (dateKey: string, planIndex: number) => string | undefined,
+  ensureUnassignedSlotRef: (unassignedIndex: number) => string | undefined,
+  recipeId: string,
+  cookDate: string,
+  cookSlotRef: string | null,
+): string | null {
+  if (cookSlotRef && cookSlotRef.length > 0) {
+    return cookSlotRef;
+  }
+  const forDay = getCookProgressSessions().filter(
+    (e) => e.recipeId === recipeId && e.cookDate === cookDate,
+  );
+  const withSlot = forDay.filter((e) => e.slotRef.length > 0);
+  if (withSlot.length === 1) {
+    return withSlot[0].slotRef;
+  }
+  if (withSlot.length > 1) {
+    return [...withSlot].sort((a, b) => a.slotRef.localeCompare(b.slotRef))[0].slotRef;
+  }
+
+  const pool = plan[unassignedKey] ?? [];
+
+  for (let i = 0; i < pool.length; i++) {
+    const m = pool[i]!;
+    if (m.id !== recipeId || !m.planSlotRef) {
+      continue;
+    }
+    if (m.scheduledForDay === cookDate) {
+      return m.planSlotRef;
+    }
+  }
+  for (let i = 0; i < pool.length; i++) {
+    const m = pool[i]!;
+    if (m.id === recipeId && m.planSlotRef) {
+      return m.planSlotRef;
+    }
+  }
+
+  const scheduledIdx: number[] = [];
+  for (let i = 0; i < pool.length; i++) {
+    const m = pool[i]!;
+    if (m.id === recipeId && m.scheduledForDay === cookDate) {
+      scheduledIdx.push(i);
+    }
+  }
+  if (scheduledIdx.length >= 1) {
+    const ref = ensureUnassignedSlotRef(scheduledIdx[0]!);
+    if (ref && ref.length > 0) {
+      return ref;
+    }
+  }
+
+  const poolRecipeIdx: number[] = [];
+  for (let i = 0; i < pool.length; i++) {
+    if (pool[i]!.id === recipeId) {
+      poolRecipeIdx.push(i);
+    }
+  }
+  if (poolRecipeIdx.length === 1) {
+    const ref = ensureUnassignedSlotRef(poolRecipeIdx[0]!);
+    if (ref && ref.length > 0) {
+      return ref;
+    }
+  }
+
+  if (isMealPlanDateKey(cookDate)) {
+    const dayMeals = plan[cookDate] ?? [];
+    const indices: number[] = [];
+    for (let i = 0; i < dayMeals.length; i++) {
+      if (dayMeals[i]!.id === recipeId) {
+        indices.push(i);
+      }
+    }
+    if (indices.length >= 1) {
+      const ref = ensureCalendarSlotRef(cookDate, indices[0]!);
+      if (ref && ref.length > 0) {
+        return ref;
+      }
+    }
+  }
+
+  return null;
+}
+
 /** First paint must match persisted step so the save effect cannot overwrite storage with 0 before layout runs. */
 function initialActiveStepIndexFromStorage(
   recipe: Recipe,
@@ -152,7 +251,19 @@ export function RecipeCookModePanel({
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { logCooked } = useCookHistory();
+  const {
+    plan,
+    unassignedKey,
+    ensureCalendarSlotRef,
+    ensureUnassignedSlotRef,
+  } = useMealPlan();
   const byId = React.useMemo(() => ingredientMap(ingredients), [ingredients]);
+
+  /** Same target as “Browse recipes” on the empty Cooking now page — list with add-to-menu + cook on add. */
+  const addRecipeToCookListHref = React.useMemo(
+    () => recipesAddMealForCookingPath(iso(startOfWeekMonday(new Date()))),
+    [],
+  );
 
   const cookSteps = React.useMemo(() => {
     const rest = normalizeInstructions(recipe.instructions);
@@ -169,18 +280,12 @@ export function RecipeCookModePanel({
   const [cookProgressListRev, setCookProgressListRev] = React.useState(0);
   /** Persisted session total clock (Total time) + pause state. */
   const [sessionTotalPersist, setSessionTotalPersist] = React.useState<CookSessionTotalPersist | null>(null);
-  const [cookIngredientsOpen, setCookIngredientsOpen] = React.useState(true);
+  const [cookIngredientsOpen, setCookIngredientsOpen] = React.useState(false);
+  const [celebrationOpen, setCelebrationOpen] = React.useState(false);
+  const celebrationExitTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const celebrationExitOnceRef = React.useRef(false);
 
   const hereHref = `${location.pathname}${location.search}`;
-
-  const fullRecipeHref = recipeDetailPath(
-    recipe.id,
-    readSidesListTab(searchParams),
-    stripCookModeParams(searchParams),
-    readFromShopping(searchParams),
-    readFromHistory(searchParams),
-    { cookDate, cookSlotRef },
-  );
 
   const openEditRecipeForCurrentStep = React.useCallback(() => {
     const stripped = stripCookModeParams(searchParams);
@@ -365,10 +470,6 @@ export function RecipeCookModePanel({
     return out;
   }, [recipe.ingredientSections, byId]);
 
-  React.useEffect(() => {
-    setCookIngredientsOpen(true);
-  }, [activeStepIndex]);
-
   const goStep = (delta: number) => {
     setActiveStepIndex((i) => Math.min(Math.max(0, i + delta), Math.max(0, nSteps - 1)));
   };
@@ -487,16 +588,50 @@ export function RecipeCookModePanel({
     persistClock({ ...clock, totalSeconds: Math.max(30, clock.totalSeconds - 30) });
   };
 
-  const clearCookSessionState = () => {
+  const clearCookSessionState = React.useCallback(() => {
     clearCookModeForRecipeDate(recipe.id, cookDate);
     removeCookProgressSession(recipe.id, cookDate, cookSlotRef);
-  };
+  }, [recipe.id, cookDate, cookSlotRef]);
 
-  /** “It’s ready!” — log the meal, then return to the planner home. */
-  const exitCookModeToMenu = () => {
+  /** After celebration (or skip), clear session and return to the planner home. */
+  const exitCookModeToMenu = React.useCallback(() => {
     clearCookSessionState();
     navigate("/");
-  };
+  }, [clearCookSessionState, navigate]);
+
+  const finishCelebrationAndExit = React.useCallback(() => {
+    if (celebrationExitOnceRef.current) {
+      return;
+    }
+    celebrationExitOnceRef.current = true;
+    if (celebrationExitTimerRef.current != null) {
+      clearTimeout(celebrationExitTimerRef.current);
+      celebrationExitTimerRef.current = null;
+    }
+    setCelebrationOpen(false);
+    exitCookModeToMenu();
+  }, [exitCookModeToMenu]);
+
+  React.useEffect(() => {
+    if (!celebrationOpen) {
+      return;
+    }
+    const ms =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? 1400
+        : 4500;
+    celebrationExitTimerRef.current = window.setTimeout(() => {
+      celebrationExitTimerRef.current = null;
+      finishCelebrationAndExit();
+    }, ms);
+    return () => {
+      if (celebrationExitTimerRef.current != null) {
+        clearTimeout(celebrationExitTimerRef.current);
+        celebrationExitTimerRef.current = null;
+      }
+    };
+  }, [celebrationOpen, finishCelebrationAndExit]);
 
   /** Cancel this cook session: go to another in-progress session, or the “nothing cooking” page. */
   const onCancelCooking = () => {
@@ -509,13 +644,30 @@ export function RecipeCookModePanel({
     }
   };
 
+  /** Log cooked, then full-screen celebration before returning home. */
   const onItsReady = () => {
+    if (celebrationOpen) {
+      return;
+    }
+    celebrationExitOnceRef.current = false;
     const meal = recipeToPlannedMeal(recipe);
-    logCooked(cookDate, {
-      ...meal,
-      ...(cookSlotRef && cookSlotRef.length > 0 ? { planSlotRef: cookSlotRef } : {}),
+    const slotForLog = resolvePlanSlotRefForCookLog(
+      plan,
+      unassignedKey,
+      ensureCalendarSlotRef,
+      ensureUnassignedSlotRef,
+      recipe.id,
+      cookDate,
+      cookSlotRef,
+    );
+    /** Commit cook history synchronously before the celebration re-render so log + cap logic aren’t lost to batching. */
+    flushSync(() => {
+      logCooked(cookDate, {
+        ...meal,
+        ...(slotForLog ? { planSlotRef: slotForLog } : {}),
+      });
     });
-    exitCookModeToMenu();
+    setCelebrationOpen(true);
   };
 
   const onTouchStart = (e: React.TouchEvent) => {
@@ -559,6 +711,9 @@ export function RecipeCookModePanel({
     !isConfirmStep && nCookSteps > 0 ? Math.min(1, activeStepIndex / nCookSteps) : 0;
   const isLastCookStep = activeStepIndex >= 1 && activeStepIndex === nSteps - 1;
 
+  /** Recipe steps only (no synthetic confirm row) — shown on the ingredients confirm screen. */
+  const recipeInstructionSteps = cookSteps.slice(1);
+
   const sessionPillsRow = (
     <div className="cook-mode-v2-pills" role="group" aria-label="Active recipes">
       {sessionPillsWithTimers.map((p) => {
@@ -594,7 +749,11 @@ export function RecipeCookModePanel({
           </button>
         );
       })}
-      <Link to="/" className="cook-mode-v2-pill cook-mode-v2-pill--add">
+      <Link
+        to={addRecipeToCookListHref}
+        className="cook-mode-v2-pill cook-mode-v2-pill--add"
+        aria-label="Browse recipes to choose a meal to cook"
+      >
         + Add
       </Link>
     </div>
@@ -625,7 +784,7 @@ export function RecipeCookModePanel({
         aria-roledescription={isConfirmStep ? undefined : "slide"}
         aria-label={
           isConfirmStep
-            ? "Confirm ingredients before cooking"
+            ? COOK_MODE_CONFIRM_OVERVIEW_TITLE
             : `Step ${displayedCookStep} of ${nCookSteps}`
         }
       >
@@ -640,7 +799,7 @@ export function RecipeCookModePanel({
                   <span className="cook-mode-v2-meal-banner-title cook-mode-v2-meal-banner-title--solo">{recipe.title}</span>
                 </div>
               </div>
-              <h1 className="cook-mode-v2-confirm-title">{COOK_MODE_INGREDIENTS_CONFIRM_STEP}</h1>
+              <h1 className="cook-mode-v2-confirm-title">{COOK_MODE_CONFIRM_OVERVIEW_TITLE}</h1>
               {flatIngredientChips.length > 0 ? (
                 <>
                   <div className="cook-mode-v2-confirm-ing-rule-line" aria-hidden />
@@ -666,6 +825,31 @@ export function RecipeCookModePanel({
                   </section>
                 </>
               ) : null}
+              {recipeInstructionSteps.length > 0 ? (
+                <>
+                  <div className="cook-mode-v2-confirm-ing-rule-line" aria-hidden />
+                  <section
+                    className="cook-mode-v2-confirm-instructions"
+                    aria-labelledby={`cook-instructions-heading-confirm-${recipe.id}`}
+                  >
+                    <h2 className="cook-mode-v2-ing-heading" id={`cook-instructions-heading-confirm-${recipe.id}`}>
+                      Instructions
+                    </h2>
+                    <ol className="cook-mode-v2-confirm-steps-list">
+                      {recipeInstructionSteps.map((step, i) => (
+                        <li key={i} className="cook-mode-v2-confirm-step">
+                          <p className="cook-mode-v2-step-text">{step.text}</p>
+                          {step.note ? (
+                            <p className="cook-mode-v2-step-note" role="note">
+                              <span className="cook-mode-v2-step-note-lead">Note:</span> {step.note}
+                            </p>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ol>
+                  </section>
+                </>
+              ) : null}
             </div>
             <div className="cook-mode-v2-confirm-footer">
               <div className="cook-mode-v2-confirm-divider" aria-hidden />
@@ -678,13 +862,16 @@ export function RecipeCookModePanel({
                 >
                   Start cooking
                 </button>
-                <Link
-                  to={fullRecipeHref}
+                <button
+                  type="button"
                   className="cook-mode-v2-confirm-btn cook-mode-v2-confirm-btn--outline"
+                  onClick={onItsReady}
+                  disabled={celebrationOpen}
+                  aria-label="Mark this meal as cooked and return to the menu"
                   {...isolateNestedTouchFromSwipePaneProps}
                 >
-                  View recipe
-                </Link>
+                  {"It's ready"}
+                </button>
               </div>
               <button
                 type="button"
@@ -855,6 +1042,7 @@ export function RecipeCookModePanel({
                   type="button"
                   className="cook-mode-v2-confirm-btn cook-mode-v2-confirm-btn--primary"
                   onClick={onItsReady}
+                  disabled={celebrationOpen}
                   {...isolateNestedTouchFromSwipePaneProps}
                 >
                   {"It's ready"}
@@ -931,6 +1119,37 @@ export function RecipeCookModePanel({
         )}
       </article>
 
+      {celebrationOpen ? (
+        <div
+          className="cook-mode-v2-celebration"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="cook-celebration-title"
+          aria-describedby="cook-celebration-desc"
+        >
+          <div className="cook-mode-v2-celebration-backdrop" aria-hidden />
+          <div className="cook-mode-v2-celebration-card" aria-live="polite">
+            <span className="cook-mode-v2-celebration-emoji" aria-hidden>
+              🎉
+            </span>
+            <h2 id="cook-celebration-title" className="cook-mode-v2-celebration-heading">
+              Nice work!
+            </h2>
+            <p id="cook-celebration-desc" className="cook-mode-v2-celebration-recipe">
+              {recipe.title}
+            </p>
+            <p className="cook-mode-v2-celebration-logged">Marked as cooked</p>
+            <button
+              type="button"
+              className="cook-mode-v2-celebration-cta btn-primary btn-cta-wide"
+              onClick={finishCelebrationAndExit}
+            >
+              Continue
+            </button>
+            <p className="cook-mode-v2-celebration-hint">Returning to your menu automatically…</p>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -8,10 +8,17 @@ import {
   type CombinedShoppingItem,
   type IngredientBreakdown,
 } from "./shoppingMerge";
-import type { IngredientDef, Recipe } from "./types";
+import {
+  type IngredientCategory,
+  type IngredientDef,
+  type Recipe,
+  grocerySectionLabel,
+  INGREDIENT_CATEGORY_ORDER,
+} from "./types";
 import {
   ADD_TO_PLAN_QUERY,
   recipeDetailPath,
+  recipesAddItemsFromShoppingPath,
   recipesShopMenuBuildPath,
   urlParamToPlanKey,
 } from "./listTabSearch";
@@ -129,6 +136,10 @@ export function ShoppingListPage({
     () => recipesShopMenuBuildPath(weekStartIso),
     [weekStartIso],
   );
+  const addItemsFromShoppingHref = React.useMemo(
+    () => recipesAddItemsFromShoppingPath(searchParams, weekStartIso),
+    [searchParams, weekStartIso],
+  );
 
   const {
     selectedIds,
@@ -184,6 +195,16 @@ export function ShoppingListPage({
     ingredients,
   );
 
+  const combinedByCategory = React.useMemo(() => {
+    const m = new Map<IngredientCategory, CombinedShoppingItem[]>();
+    for (const it of combinedItems) {
+      const list = m.get(it.category) ?? [];
+      list.push(it);
+      m.set(it.category, list);
+    }
+    return m;
+  }, [combinedItems]);
+
   const combinedLines = React.useMemo(
     () => combinedItems.map((i) => i.line),
     [combinedItems],
@@ -209,12 +230,6 @@ export function ShoppingListPage({
 
   return (
     <>
-      <header className="shopping-page-head shopping-page-head--with-cta">
-        <Link to="/place-order" className="btn-primary shopping-place-order-btn">
-          Place order
-        </Link>
-      </header>
-
       {selectedRecipes.length === 0 ? (
         <>
           <p className="empty">Your shopping list is empty, browse recipes to add.</p>
@@ -266,6 +281,8 @@ export function ShoppingListPage({
                               r.id,
                               recipeSegment(r) === "side",
                               planPreserveForRecipeLinks,
+                              false,
+                              false,
                               true,
                             )}
                             className="selected-recipe-link"
@@ -320,43 +337,84 @@ export function ShoppingListPage({
             })}
           </section>
 
+          <div
+            className="shopping-meal-list-actions"
+            role="region"
+            aria-label="Place order or add more recipes"
+          >
+            <Link to="/place-order" className="btn-primary btn-compact">
+              Place order
+            </Link>
+            <Link
+              to={addItemsFromShoppingHref}
+              className="btn-secondary btn-compact"
+              aria-label="Browse recipes to add more to your shopping list"
+            >
+              Add more
+            </Link>
+          </div>
+
           <section className="detail-section">
             <h2>Combined list</h2>
+            <p className="muted shopping-combined-intro">
+              Grouped by grocery section (same categories as ingredients in your library).
+            </p>
             {combinedItems.length === 0 ? (
               <p className="muted">
                 No mergeable ingredient rows in the selected recipes (empty or
                 qualitative only).
               </p>
             ) : (
-              <ul className="shopping-combined shopping-checklist">
-                {combinedItems.map((item, i) => {
-                  const line = item.line;
-                  const bought = isPurchased(line);
-                  const alt = altConversionsForItem(item);
-                  const visibleLabel = alt ? `${line} (${alt})` : line;
+              <>
+                {INGREDIENT_CATEGORY_ORDER.map((category) => {
+                  const sectionItems = combinedByCategory.get(category) ?? [];
+                  if (sectionItems.length === 0) {
+                    return null;
+                  }
                   return (
-                    <li key={`${line}-${i}`}>
-                      <label
-                        className={`shopping-check-row${bought ? " shopping-check-row--bought" : ""}`}
-                      >
-                        <input
-                          type="checkbox"
-                          className="shopping-check-input"
-                          checked={bought}
-                          onChange={() => togglePurchased(line)}
-                          aria-label={`Purchased: ${visibleLabel}`}
-                        />
-                        <span className="shopping-check-label">
-                          <span className="shopping-check-primary">{line}</span>
-                          {alt ? (
-                            <span className="shopping-inline-alt"> ({alt})</span>
-                          ) : null}
+                    <div key={category} className="shopping-grocery-section">
+                      <h3 className="shopping-grocery-section-heading">
+                        {grocerySectionLabel(category)}
+                        <span className="shopping-segment-count">
+                          {" "}
+                          ({sectionItems.length})
                         </span>
-                      </label>
-                    </li>
+                      </h3>
+                      <ul className="shopping-combined shopping-checklist">
+                        {sectionItems.map((item, i) => {
+                          const line = item.line;
+                          const bought = isPurchased(line);
+                          const alt = altConversionsForItem(item);
+                          const visibleLabel = alt ? `${line} (${alt})` : line;
+                          return (
+                            <li key={`${category}-${line}-${i}`}>
+                              <label
+                                className={`shopping-check-row${
+                                  bought ? " shopping-check-row--bought" : ""
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  className="shopping-check-input"
+                                  checked={bought}
+                                  onChange={() => togglePurchased(line)}
+                                  aria-label={`Purchased: ${visibleLabel}`}
+                                />
+                                <span className="shopping-check-label">
+                                  <span className="shopping-check-primary">{line}</span>
+                                  {alt ? (
+                                    <span className="shopping-inline-alt"> ({alt})</span>
+                                  ) : null}
+                                </span>
+                              </label>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
                   );
                 })}
-              </ul>
+              </>
             )}
           </section>
 

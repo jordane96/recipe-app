@@ -561,6 +561,7 @@ export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
                                       undefined,
                                       false,
                                       true,
+                                      false,
                                     )}
                                     className="history-day-meal-title"
                                   >
@@ -723,7 +724,7 @@ export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
                     }`}
                   >
                     <Link
-                      to={recipeDetailPath(meal.id, meal.kind === "side", undefined, false, true)}
+                      to={recipeDetailPath(meal.id, meal.kind === "side", undefined, false, true, false)}
                       className="history-day-meal-title"
                     >
                       {meal.title}
@@ -755,7 +756,7 @@ export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
               ).map(({ meal, logIndex }) => (
                 <li key={`${selectedIso}-log-${logIndex}-${meal.id}`} className="history-day-meal-row">
                   <Link
-                    to={recipeDetailPath(meal.id, meal.kind === "side", undefined, false, true)}
+                    to={recipeDetailPath(meal.id, meal.kind === "side", undefined, false, true, false)}
                     className="history-day-meal-title"
                   >
                     {meal.title}

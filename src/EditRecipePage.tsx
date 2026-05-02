@@ -10,6 +10,10 @@ import type {
   RecipeIngredientLine,
   RecipeInstructionStep,
 } from "./types";
+import {
+  grocerySectionLabel as categoryLabel,
+  INGREDIENT_CATEGORY_ORDER as CATEGORY_ORDER,
+} from "./types";
 import { ingredientMap } from "./ingredientDisplay";
 import {
   ADD_TO_PLAN_QUERY,
@@ -17,6 +21,7 @@ import {
   readFromHistory,
   readFromPlanner,
   readFromShopping,
+  readFromShoppingListItem,
   readPlanPhaseSide,
   readRecipeDetailCookReturnContext,
   readSidesListTab,
@@ -32,17 +37,6 @@ import { StringSearchCombobox } from "./StringSearchCombobox";
 const DRAFT_PREFIX = "recipeApp.editDraft.v1:";
 
 const ADD_MODAL_UNIT_KINDS: IngredientKind[] = ["volume", "weight", "count"];
-
-const CATEGORY_ORDER: IngredientCategory[] = [
-  "produce",
-  "proteins",
-  "dairy",
-  "pantry",
-  "spices",
-  "oils-sauces",
-  "baking",
-  "other",
-];
 
 function kindLabel(k: IngredientKind): string {
   switch (k) {
@@ -65,20 +59,6 @@ function labelToKind(label: string): IngredientKind | null {
     Other: "other",
   };
   return m[label] ?? null;
-}
-
-function categoryLabel(c: IngredientCategory): string {
-  const labels: Record<IngredientCategory, string> = {
-    produce: "Produce",
-    proteins: "Protein",
-    dairy: "Dairy",
-    pantry: "Pantry",
-    spices: "Spices",
-    "oils-sauces": "Oils-sauces",
-    baking: "Baking",
-    other: "Other",
-  };
-  return labels[c];
 }
 
 function labelToCategory(label: string): IngredientCategory | null {
@@ -269,6 +249,7 @@ export function EditRecipePage({
 
   const fromSidesList = readSidesListTab(searchParams);
   const fromShopping = readFromShopping(searchParams);
+  const fromShoppingListItem = readFromShoppingListItem(searchParams);
   const fromHistory = readFromHistory(searchParams);
   const fromPlanner = readFromPlanner(searchParams);
   const planKey = urlParamToPlanKey(searchParams.get(ADD_TO_PLAN_QUERY));
@@ -376,7 +357,7 @@ export function EditRecipePage({
     id != null && id !== ""
       ? cookReturn
         ? recipeCookModePath(id, cookReturn.cookDate, cookReturn.cookSlotRef)
-        : recipeDetailPath(id, listSidesTab, preserve, fromShopping, fromHistory, undefined)
+        : recipeDetailPath(id, listSidesTab, preserve, fromShopping, fromHistory, fromShoppingListItem)
       : "/recipes";
 
   /** Deep-link from cook mode (`?editStep=N`): scroll to that step and focus the step card (green ring). */
@@ -602,6 +583,33 @@ export function EditRecipePage({
     });
   };
 
+  /** Inserts a blank step immediately after `index` (timer UI drafts shift so they stay on the same step). */
+  const insertStepAfter = (index: number) => {
+    setDraft((d) => {
+      if (!d) {
+        return d;
+      }
+      const list = [...ensureInstructions(d)];
+      list.splice(index + 1, 0, { text: "" });
+      return { ...d, instructions: list };
+    });
+    setTimerDraft((m) => {
+      if (Object.keys(m).length === 0) {
+        return m;
+      }
+      const next: Record<number, TimerDraftFields> = {};
+      for (const [kStr, v] of Object.entries(m)) {
+        const k = Number(kStr);
+        if (Number.isFinite(k) && k > index) {
+          next[k + 1] = v;
+        } else {
+          next[k] = v;
+        }
+      }
+      return next;
+    });
+  };
+
   const moveStep = (index: number, dir: -1 | 1) => {
     setDraft((d) => {
       if (!d) {
@@ -717,89 +725,112 @@ export function EditRecipePage({
               return (
                 <div
                   key={`${sec.name}-${secIndex}-${lineIndex}-${line.ingredientId}`}
-                  className={`edit-recipe-ing-row${comboOpen || unitOpen ? " edit-recipe-ing-row--open" : ""}`}
+                  className="edit-recipe-ing-block"
                 >
-                  <IngredientSearchCombobox
-                    valueId={line.ingredientId}
-                    options={sortedIngredientOptions}
-                    unknownLabel={
-                      line.ingredientId
-                        ? `Unknown (${line.ingredientId})`
-                        : "Select ingredient"
-                    }
-                    isOpen={comboOpen}
-                    onRequestOpen={() => {
-                      setUnitPickerKey(null);
-                      setIngredientPickerKey(rowKey);
-                    }}
-                    onRequestClose={() =>
-                      setIngredientPickerKey((k) => (k === rowKey ? null : k))
-                    }
-                    onSelect={(nid) => {
-                      const d2 = byId.get(nid);
-                      const firstU = d2 ? unitChoices(d2, ingredientsFile.units)[0] ?? null : null;
-                      updateLine(secIndex, lineIndex, {
-                        ingredientId: nid,
-                        amount: firstU == null ? null : 1,
-                        unit: firstU,
-                      });
-                    }}
-                    aria-label={`Ingredient ${lineIndex + 1}`}
-                  />
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    className="edit-recipe-ing-amt"
-                    disabled={qualitative}
-                    value={
-                      qualitative
-                        ? ""
-                        : line.amount != null
-                          ? String(line.amount)
-                          : ""
-                    }
-                    onChange={(e) => {
-                      const v = e.target.value.trim();
-                      if (v === "") {
-                        updateLine(secIndex, lineIndex, { amount: null, unit: null });
-                        return;
-                      }
-                      const n = Number.parseFloat(v);
-                      if (Number.isFinite(n)) {
-                        updateLine(secIndex, lineIndex, { amount: n });
-                      }
-                    }}
-                    aria-label="Amount"
-                  />
-                  <StringSearchCombobox
-                    value={qualitative ? "" : (line.unit ?? "")}
-                    options={choices}
-                    isOpen={unitOpen}
-                    onRequestOpen={() => {
-                      setIngredientPickerKey(null);
-                      setUnitPickerKey(unitKey);
-                    }}
-                    onRequestClose={() =>
-                      setUnitPickerKey((k) => (k === unitKey ? null : k))
-                    }
-                    onSelect={(u) => {
-                      updateLine(secIndex, lineIndex, {
-                        unit: u || null,
-                        amount: line.amount ?? 1,
-                      });
-                    }}
-                    aria-label="Unit"
-                    disabled={qualitative || choices.length === 0}
-                    fallbackLabel={line.unit ?? "—"}
-                  />
-                  <button
-                    type="button"
-                    className="edit-recipe-ing-remove"
-                    onClick={() => removeLine(secIndex, lineIndex)}
-                    aria-label="Remove ingredient"
+                  <div
+                    className={`edit-recipe-ing-row${comboOpen || unitOpen ? " edit-recipe-ing-row--open" : ""}`}
                   >
-                    ×
-                  </button>
+                    <IngredientSearchCombobox
+                      valueId={line.ingredientId}
+                      options={sortedIngredientOptions}
+                      unknownLabel={
+                        line.ingredientId
+                          ? `Unknown (${line.ingredientId})`
+                          : "Select ingredient"
+                      }
+                      isOpen={comboOpen}
+                      onRequestOpen={() => {
+                        setUnitPickerKey(null);
+                        setIngredientPickerKey(rowKey);
+                      }}
+                      onRequestClose={() =>
+                        setIngredientPickerKey((k) => (k === rowKey ? null : k))
+                      }
+                      onSelect={(nid) => {
+                        const d2 = byId.get(nid);
+                        const firstU = d2 ? unitChoices(d2, ingredientsFile.units)[0] ?? null : null;
+                        updateLine(secIndex, lineIndex, {
+                          ingredientId: nid,
+                          amount: firstU == null ? null : 1,
+                          unit: firstU,
+                        });
+                      }}
+                      aria-label={`Ingredient ${lineIndex + 1}`}
+                    />
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      className="edit-recipe-ing-amt"
+                      disabled={qualitative}
+                      value={
+                        qualitative
+                          ? ""
+                          : line.amount != null
+                            ? String(line.amount)
+                            : ""
+                      }
+                      onChange={(e) => {
+                        const v = e.target.value.trim();
+                        if (v === "") {
+                          updateLine(secIndex, lineIndex, { amount: null, unit: null });
+                          return;
+                        }
+                        const n = Number.parseFloat(v);
+                        if (Number.isFinite(n)) {
+                          updateLine(secIndex, lineIndex, { amount: n });
+                        }
+                      }}
+                      aria-label="Amount"
+                    />
+                    <StringSearchCombobox
+                      value={qualitative ? "" : (line.unit ?? "")}
+                      options={choices}
+                      isOpen={unitOpen}
+                      onRequestOpen={() => {
+                        setIngredientPickerKey(null);
+                        setUnitPickerKey(unitKey);
+                      }}
+                      onRequestClose={() =>
+                        setUnitPickerKey((k) => (k === unitKey ? null : k))
+                      }
+                      onSelect={(u) => {
+                        updateLine(secIndex, lineIndex, {
+                          unit: u || null,
+                          amount: line.amount ?? 1,
+                        });
+                      }}
+                      aria-label="Unit"
+                      disabled={qualitative || choices.length === 0}
+                      fallbackLabel={line.unit ?? "—"}
+                    />
+                    <button
+                      type="button"
+                      className="edit-recipe-ing-remove"
+                      onClick={() => removeLine(secIndex, lineIndex)}
+                      aria-label="Remove ingredient"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <div className="edit-recipe-ing-note-row">
+                    <label className="edit-recipe-ing-note-label" htmlFor={`edit-recipe-ing-note-${secIndex}-${lineIndex}`}>
+                      Note
+                    </label>
+                    <textarea
+                      id={`edit-recipe-ing-note-${secIndex}-${lineIndex}`}
+                      className="edit-recipe-ing-note"
+                      value={line.note ?? ""}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        updateLine(secIndex, lineIndex, {
+                          note: v === "" ? undefined : v,
+                        });
+                      }}
+                      placeholder="e.g. prep, brand, or how it appears on the shopping list"
+                      rows={2}
+                      aria-label={`Note for ${def?.name ?? line.ingredientId ?? "ingredient"}`}
+                    />
+                  </div>
                 </div>
               );
             }),
@@ -835,6 +866,15 @@ export function EditRecipePage({
                     Step {i + 1}
                   </span>
                   <div className="edit-recipe-step-move">
+                    <button
+                      type="button"
+                      className="edit-recipe-step-move-btn edit-recipe-step-move-btn--add"
+                      onClick={() => insertStepAfter(i)}
+                      aria-label={`Add new step after step ${i + 1}`}
+                      title="Add step below"
+                    >
+                      +
+                    </button>
                     <button
                       type="button"
                       className="edit-recipe-step-move-btn"

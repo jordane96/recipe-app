@@ -41,6 +41,33 @@ export interface IngredientsFile {
   ingredients: IngredientDef[];
 }
 
+/** Store / recipe-editor order — reuse for shopping list aisle grouping. */
+export const INGREDIENT_CATEGORY_ORDER: readonly IngredientCategory[] = [
+  "produce",
+  "proteins",
+  "dairy",
+  "pantry",
+  "spices",
+  "oils-sauces",
+  "baking",
+  "other",
+] as const;
+
+/** Display label for a grocery section / ingredient category. */
+export function grocerySectionLabel(category: IngredientCategory): string {
+  const labels: Record<IngredientCategory, string> = {
+    produce: "Produce",
+    proteins: "Protein",
+    dairy: "Dairy",
+    pantry: "Pantry",
+    spices: "Spices",
+    "oils-sauces": "Oils-sauces",
+    baking: "Baking",
+    other: "Other",
+  };
+  return labels[category];
+}
+
 /** Library side recipe linked from a main (full instructions); optional shopping add. */
 export interface RecommendedSideRef {
   recipeId: string;
@@ -63,6 +90,10 @@ export type RecipeInstructionStep =
 export interface Recipe {
   id: string;
   title: string;
+  /** Library attribution (e.g. who added the recipe); optional until backfilled. */
+  createdBy?: string;
+  /** Yield in servings; `null` when unknown. */
+  servings?: number | null;
   type: "recipe" | "reference";
   /** Optional: group on recipe list & shopping (default: main for recipes, other for reference). */
   course?: "main" | "side";

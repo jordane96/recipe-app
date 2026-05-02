@@ -1,5 +1,7 @@
 export type {
+  IngredientCategory,
   IngredientDef,
+  IngredientKind,
   IngredientSection,
   IngredientsFile,
   Recipe,
@@ -9,3 +11,4 @@ export type {
   RecipeInstructionStep,
   RecommendedSideRef,
 } from "./ingredientTypes";
+export { grocerySectionLabel, INGREDIENT_CATEGORY_ORDER } from "./ingredientTypes";

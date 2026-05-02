@@ -23,39 +23,22 @@ import {
   urlParamToPlanKey,
 } from "./listTabSearch";
 import { useShoppingList } from "./ShoppingListContext";
-import { weekRangeLabel } from "./mealPlanDates";
+import { iso } from "./mealPlanDates";
 import { instructionStepText } from "./recipeInstructions";
 import { recipeSegment, SEGMENT_LABEL } from "./recipeCourse";
 import {
-  isMealPlanDateKey,
   MEAL_PLAN_UNASSIGNED_KEY,
   newPlanSlotRef,
   type MealPlanByDate,
   type PlannedMeal,
 } from "./mealPlanStorage";
 import { addCookProgressSessionsBatch } from "./cookProgressSession";
-import { iso } from "./mealPlanDates";
 import { recipeToPlannedMeal, useMealPlan } from "./MealPlanContext";
 import { useToast } from "./ToastContext";
 import { addFlowCartSessionKey, setActiveAddFlowSessionKey } from "./addFlowCartSession";
 
 /** Which top-level tab is active on the recipe list (reference items show under Mains). */
 type CourseTab = "main" | "side";
-
-function planTargetLabel(planKey: string, searchParams: URLSearchParams): string {
-  if (planKey === MEAL_PLAN_UNASSIGNED_KEY) {
-    const ws = searchParams.get(PLAN_WEEK_START_QUERY);
-    if (ws && isMealPlanDateKey(ws)) {
-      return weekRangeLabel(new Date(`${ws}T12:00:00`));
-    }
-    return "Unassigned";
-  }
-  return new Date(`${planKey}T12:00:00`).toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
-}
 
 function inCourseTab(r: Recipe, tab: CourseTab): boolean {
   const seg = recipeSegment(r);
@@ -560,56 +543,6 @@ export function RecipeList({
           </Link>
         </div>
       </div>
-
-      {inPlanFlow && planKey ? (
-        <div
-          className="recipe-add-to-plan-flow-banner"
-          role="region"
-          aria-label={
-            isShopMenuBuildFlow
-              ? "Add to shopping list"
-              : isCookNowPickFlow
-                ? "Pick meals to cook"
-                : "Adding to meal plan"
-          }
-        >
-          <div className="recipe-add-to-plan-flow-banner-toolbar">
-            <p className="recipe-add-to-plan-flow-banner-title">
-              {isShopMenuBuildFlow ? (
-                <>
-                  <strong>Pick recipes</strong> — on confirm, we add them to this week&apos;s menu and
-                  your shopping list
-                </>
-              ) : isCookNowPickFlow ? (
-                <>
-                  <strong>Pick to cook</strong> — we&apos;ll add them to this week&apos;s menu, then
-                  start the checklist
-                </>
-              ) : (
-                <>
-                  Adding for <strong>{planTargetLabel(planKey, searchParams)}</strong>
-                </>
-              )}
-            </p>
-            <div className="recipe-add-to-plan-flow-banner-actions">
-              <button
-                type="button"
-                className="recipe-add-to-plan-flow-back"
-                onClick={addFlowBack}
-                aria-label={
-                  isShopMenuBuildFlow
-                    ? "Back to shopping list"
-                    : isCookNowPickFlow
-                      ? "Back to Cooking now"
-                      : "Back to meal plan"
-                }
-              >
-                Back
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
 
       {addFlow ? courseTabs : searchInput}
       {addFlow ? searchInput : courseTabs}

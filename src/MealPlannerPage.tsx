@@ -450,7 +450,13 @@ export function MealPlannerPage({
                       m.scheduledForDay && isMealPlanDateKey(m.scheduledForDay)
                         ? m.scheduledForDay
                         : todayIso;
-                    navigate(recipeCookModePath(m.id, resumeDate, m.planSlotRef ?? null));
+                    navigate(
+                      recipeCookModePath(
+                        m.id,
+                        resumeDate,
+                        m.planSlotRef ?? ensureUnassignedSlotRef(planIdx) ?? null,
+                      ),
+                    );
                   }}
                 >
                   In progress

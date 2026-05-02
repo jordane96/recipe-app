@@ -67,7 +67,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "grilled-tri-tip",
@@ -95,7 +97,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "grilled-burger",
@@ -123,7 +127,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "grilled-hot-link",
@@ -146,7 +152,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "grilled-wings",
@@ -175,7 +183,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "grilled-carne-asada",
@@ -198,7 +208,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "grilled-chicken",
@@ -227,7 +239,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "pot-roast-keto",
@@ -249,7 +263,7 @@
               "ingredientId": "chuck-roast",
               "amount": 2,
               "unit": "lb",
-              "note": "2–4 lb"
+              "note": "2\u20134 lb"
             },
             {
               "ingredientId": "salt-and-pepper",
@@ -270,7 +284,7 @@
               "ingredientId": "beef-broth",
               "amount": 1,
               "unit": "cup",
-              "note": "½ cup per lb roast"
+              "note": "\u00bd cup per lb roast"
             },
             {
               "ingredientId": "parsley",
@@ -280,7 +294,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "taco-chicken-crock-pot",
@@ -303,7 +319,7 @@
               "ingredientId": "chicken-breast",
               "amount": 4,
               "unit": "lb",
-              "note": "4–7 lb"
+              "note": "4\u20137 lb"
             },
             {
               "ingredientId": "pace-hot-salsa",
@@ -355,7 +371,9 @@
           "recipeId": "regular-rice",
           "label": "Rice (optional side in recipe)"
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "meatballs-keto",
@@ -446,7 +464,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "sausage-pasta",
@@ -494,7 +514,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "mozzarella-crusted-chicken",
@@ -560,7 +582,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "dijon-onion-chicken",
@@ -569,7 +593,7 @@
       "instructions": [
         "Preheat oven to 425",
         "Season chicken with salt and pepper all over",
-        "Spread ½ tbsp dressing per chicken breast",
+        "Spread \u00bd tbsp dressing per chicken breast",
         "Top chicken with cheese",
         "Crush up onion, add onion on top of chicken",
         "Press chicken to adhere onion and cheese",
@@ -593,7 +617,7 @@
               "ingredientId": "fried-onion-crisps",
               "amount": 1.5,
               "unit": "handful",
-              "note": "1½ handfuls"
+              "note": "1\u00bd handfuls"
             },
             {
               "ingredientId": "monterey-jack-cheese",
@@ -623,7 +647,9 @@
           "recipeId": "garlic-bread",
           "label": "Garlic bread (also green beans in recipe)"
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "cayenne-breaded-chicken",
@@ -632,11 +658,11 @@
       "instructions": [
         "Heat oven to 425",
         "Melt 1 tbsp butter in microwave (30 sec)",
-        "Add panko, monterey jack, Frank's seasoning (but leave ½ tsp for sauce), and salt and pepper",
+        "Add panko, monterey jack, Frank's seasoning (but leave \u00bd tsp for sauce), and salt and pepper",
         "Pat dry chicken, add salt and pepper",
         "Mound top of chicken with panko mix, press firm to adhere",
         "Bake chicken 15-18 minutes",
-        "Mix sour cream with ½ tsp Frank's blend, add a bit of water to get it to drizzling consistency"
+        "Mix sour cream with \u00bd tsp Frank's blend, add a bit of water to get it to drizzling consistency"
       ],
       "ingredientSections": [
         {
@@ -676,7 +702,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "lemon-italian-chicken-spaghetti",
@@ -684,7 +712,7 @@
       "type": "recipe",
       "instructions": [
         "Boil water, wash zucchini and lemon",
-        "Trim and quarter zucchini, cut into ½ inch slices, toss in olive oil, salt, pepper, a bit of parmesan",
+        "Trim and quarter zucchini, cut into \u00bd inch slices, toss in olive oil, salt, pepper, a bit of parmesan",
         "Peel and mince garlic",
         "Zest and quarter lemon",
         "Cover chicken in italian seasoning, salt, and pepper, olive oil.",
@@ -693,7 +721,7 @@
         "Cook spaghetti 11 minutes; keep 1 cup pasta water",
         "Make sauce while cooking others (start 5 min into spaghetti)",
         "Saute garlic, lemon zest, pinch of chili flakes for 30 seconds",
-        "Add ½ cup pasta water, stock concentrate, and juice from 2 lemon wedges",
+        "Add \u00bd cup pasta water, stock concentrate, and juice from 2 lemon wedges",
         "Simmer 1-2 min",
         "Add spaghetti, sour cream, 1 tbsp butter to saucepan. Plus 1.5 tbsp parmesan",
         "Serve with chicken"
@@ -770,14 +798,16 @@
           "recipeId": "lemon-spaghetti",
           "label": "Lemon spaghetti (pasta side)"
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "chicken-pita-pockets",
       "title": "Chicken pita pockets",
       "type": "recipe",
       "instructions": [
-        "Slice cucumber into ¼ inch thick quarter moon slices",
+        "Slice cucumber into \u00bc inch thick quarter moon slices",
         "Chop chicken into small pieces",
         "Pan fry chicken for 4-6 minutes, adding garlic powder, salt, and pepper",
         "Mix cucumbers and dressing",
@@ -821,7 +851,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "miso-salmon",
@@ -880,7 +912,9 @@
           "recipeId": "fried-rice",
           "label": "Fried rice (optional in recipe)"
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "curry-peanut-chicken",
@@ -958,7 +992,7 @@
               "ingredientId": "carrots",
               "amount": null,
               "unit": null,
-              "note": "cucumber, scallions, ACV 1 tbsp — optional"
+              "note": "cucumber, scallions, ACV 1 tbsp \u2014 optional"
             }
           ]
         }
@@ -968,7 +1002,9 @@
           "recipeId": "regular-rice",
           "label": "Rice (recipe suggests cooked rice)"
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "soy-glazed-meatloaf",
@@ -986,7 +1022,7 @@
         "Add other half of glaze",
         "Alternate mushroom sauce: Roast meatloaf (no glaze or sauce).",
         "Trim and thinly slice mushroom; saute with salt and pepper 2-4 minutes (until soft).",
-        "Add stock concentrate and ¼ cup water; boil, then reduce to low simmer for 2-3 minutes.",
+        "Add stock concentrate and \u00bc cup water; boil, then reduce to low simmer for 2-3 minutes.",
         "Turn off heat, add 1.5 tbsp sour cream and 1 tbsp butter; add to meatloaf once ready."
       ],
       "ingredientSections": [
@@ -997,7 +1033,7 @@
               "ingredientId": "ground-beef-90",
               "amount": 16,
               "unit": "oz",
-              "note": "85–90% lean"
+              "note": "85\u201390% lean"
             },
             {
               "ingredientId": "egg",
@@ -1044,7 +1080,7 @@
               "ingredientId": "kinders-glaze",
               "amount": 0.5,
               "unit": "cup",
-              "note": "¼ cup before + ¼ cup after OR"
+              "note": "\u00bc cup before + \u00bc cup after OR"
             }
           ]
         },
@@ -1085,7 +1121,9 @@
           "recipeId": "sliced-potatoes",
           "label": "Roasted sliced/diced potatoes (same pan timing as meatloaf)"
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "steak-spicy-soy-sauce",
@@ -1137,9 +1175,9 @@
             },
             {
               "ingredientId": "butter",
-              "amount": 1,
-              "unit": "oz",
-              "note": "finish"
+              "amount": 2,
+              "unit": "tbsp",
+              "note": "finish (~1 oz)"
             }
           ]
         },
@@ -1160,7 +1198,9 @@
           "recipeId": "regular-rice",
           "label": "Rice (with bok choy / carrots optional)"
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "steak-jam-honey-mustard-sauce",
@@ -1171,7 +1211,7 @@
         "Pat dry steak and season with salt and pepper (a lot)",
         "Cook steak w/ drizzle olive oil on medium heat for 3-7 minutes per side (~5 min for medium); let rest for 3 min",
         "Make sauce: Heat olive oil with garlic and chili flakes for 1-2 min",
-        "Add jam, vinegar, 1 tsp dijon, ¼ cup water. Cook 2-3 min (until sauce thickens)",
+        "Add jam, vinegar, 1 tsp dijon, \u00bc cup water. Cook 2-3 min (until sauce thickens)",
         "Remove from heat, add creme fraiche and squeeze of lemon; salt and pepper to taste",
         "Thinly slice steak, top with sauce"
       ],
@@ -1194,7 +1234,7 @@
               "ingredientId": "jam",
               "amount": 2.5,
               "unit": "tbsp",
-              "note": "2–3 tbsp to taste"
+              "note": "2\u20133 tbsp to taste"
             },
             {
               "ingredientId": "creme-fraiche",
@@ -1246,7 +1286,9 @@
           "recipeId": "lemon-panko-burrata-salad",
           "label": "Salad (lemon panko burrata)"
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "chicken-katsu-curry",
@@ -1317,7 +1359,9 @@
           "recipeId": "regular-rice",
           "label": "Rice (recipe uses dry rice)"
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "beef-tortilla-melts",
@@ -1389,7 +1433,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "chili",
@@ -1405,7 +1451,7 @@
         "Add scallion whites and minced jalapeno, cook 5-7 min",
         "Add turkey and spices, cook 4-6 min",
         "Add in tomato paste, cook 1-2 minutes",
-        "Add beans (plus liquid from can), stock concentrate, and ½ cup of water. Stir. Bring to simmer and cook until thickened (8-10 min)",
+        "Add beans (plus liquid from can), stock concentrate, and \u00bd cup of water. Stir. Bring to simmer and cook until thickened (8-10 min)",
         "Serve with sour cream, scallion greens, and sliced jalapeno"
       ],
       "ingredientSections": [
@@ -1474,7 +1520,9 @@
         {
           "recipeId": "garlic-bread"
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "tortellini-tomato-soup",
@@ -1504,7 +1552,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "quesadilla-leftovers",
@@ -1545,7 +1595,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "air-fry-asparagus",
@@ -1559,7 +1611,7 @@
       "instructions": [
         "Trim woody ends.",
         "Toss with olive oil, salt, and pepper.",
-        "Air fry at 400°F for 6–8 minutes, tossing halfway through."
+        "Air fry at 400\u00b0F for 6\u20138 minutes, tossing halfway through."
       ],
       "ingredientSections": [
         {
@@ -1583,7 +1635,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "air-fry-brussels-sprouts",
@@ -1597,7 +1651,7 @@
       "instructions": [
         "Halve or quarter any very large sprouts.",
         "Toss with olive oil, salt, and pepper.",
-        "Air fry at 375°F for 10 minutes, shaking or tossing halfway through."
+        "Air fry at 375\u00b0F for 10 minutes, shaking or tossing halfway through."
       ],
       "ingredientSections": [
         {
@@ -1622,7 +1676,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "air-fry-broccoli",
@@ -1636,7 +1692,7 @@
       "instructions": [
         "Cut into medium florets.",
         "Toss with olive oil, salt, and pepper.",
-        "Air fry at 400°F for 6 minutes, tossing halfway through."
+        "Air fry at 400\u00b0F for 6 minutes, tossing halfway through."
       ],
       "ingredientSections": [
         {
@@ -1661,7 +1717,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "air-fry-squash",
@@ -1675,7 +1733,7 @@
       "instructions": [
         "Cut into uniform pieces (similar size for even cooking).",
         "Toss with olive oil, salt, and pepper.",
-        "Air fry at 400°F for 8 minutes, tossing halfway through."
+        "Air fry at 400\u00b0F for 8 minutes, tossing halfway through."
       ],
       "ingredientSections": [
         {
@@ -1700,7 +1758,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "air-fry-potatoes",
@@ -1714,7 +1774,7 @@
       "instructions": [
         "Cut into bite-size pieces.",
         "Toss with olive oil, salt, and pepper; add Italian seasoning if you like.",
-        "Air fry at 400°F for 18–20 minutes, tossing halfway through, until tender inside and crisp outside."
+        "Air fry at 400\u00b0F for 18\u201320 minutes, tossing halfway through, until tender inside and crisp outside."
       ],
       "ingredientSections": [
         {
@@ -1745,7 +1805,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "air-fry-zucchini-chips",
@@ -1759,7 +1821,7 @@
       "instructions": [
         "Slice zucchini into thin chips; pat dry if very wet.",
         "Toss with olive oil, salt, pepper, and Parmesan; add panko if using.",
-        "Air fry in a single layer until crisp, checking often so they don’t burn."
+        "Air fry in a single layer until crisp, checking often so they don\u2019t burn."
       ],
       "ingredientSections": [
         {
@@ -1796,11 +1858,13 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "saute-spinach",
-      "title": "Sautéed spinach",
+      "title": "Saut\u00e9ed spinach",
       "type": "recipe",
       "course": "side",
       "tags": [
@@ -1809,7 +1873,7 @@
       ],
       "instructions": [
         "Heat a little olive oil in a large pan over medium-high heat.",
-        "Add spinach in batches if needed; sauté until wilted.",
+        "Add spinach in batches if needed; saut\u00e9 until wilted.",
         "Season with salt and pepper."
       ],
       "ingredientSections": [
@@ -1834,7 +1898,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "regular-rice",
@@ -1847,7 +1913,9 @@
         "15 min on cook",
         "5 min natural release"
       ],
-      "ingredientSections": []
+      "ingredientSections": [],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "fried-rice",
@@ -1897,7 +1965,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "garlic-bread",
@@ -1929,7 +1999,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "mashed-potatoes",
@@ -1963,7 +2035,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "sliced-potatoes",
@@ -1971,10 +2045,10 @@
       "type": "recipe",
       "course": "side",
       "instructions": [
-        "Preheat oven to 450°F (or match the main if roasting together).",
+        "Preheat oven to 450\u00b0F (or match the main if roasting together).",
         "Slice or dice potatoes; toss with olive oil, salt, and pepper.",
         "Spread on a sheet pan in one layer.",
-        "Roast 20–25 minutes at 450°F, flipping once, until tender and browned.",
+        "Roast 20\u201325 minutes at 450\u00b0F, flipping once, until tender and browned.",
         "With soy glazed meatloaf: add potatoes to the pan with the loaf and roast about 22 minutes as in that recipe."
       ],
       "ingredientSections": [
@@ -2000,7 +2074,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "lemon-panko-burrata-salad",
@@ -2051,7 +2127,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "lemon-spaghetti",
@@ -2060,7 +2138,7 @@
       "course": "side",
       "instructions": [
         "Boil water, wash zucchini and lemon",
-        "Trim and quarter zucchini, cut into ½ inch slices, toss in olive oil, salt, pepper, a bit of parmesan",
+        "Trim and quarter zucchini, cut into \u00bd inch slices, toss in olive oil, salt, pepper, a bit of parmesan",
         "Peel and mince garlic",
         "Zest and quarter lemon",
         "Cook zucchini: Air fry zucchini 7-9 min; combine with any main going into air fryer",
@@ -2068,7 +2146,7 @@
         "Cook spaghetti 11 minutes; keep 1 cup pasta water",
         "Make sauce while cooking others (start 5 min into spaghetti)",
         "Saute garlic, lemon zest, pinch of chili flakes for 30 seconds",
-        "Add ½ cup pasta water, stock concentrate, and juice from 2 lemon wedges",
+        "Add \u00bd cup pasta water, stock concentrate, and juice from 2 lemon wedges",
         "Simmer 1-2 min",
         "Add spaghetti, sour cream, 1 tbsp butter to saucepan. Plus 1.5 tbsp parmesan",
         "Serve with main"
@@ -2124,7 +2202,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     }
   ]
 }

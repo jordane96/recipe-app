@@ -1,4 +1,11 @@
-import type { IngredientDef, IngredientKind, Recipe, RecipeIngredientLine } from "./ingredientTypes";
+import type {
+  IngredientCategory,
+  IngredientDef,
+  IngredientKind,
+  Recipe,
+  RecipeIngredientLine,
+} from "./ingredientTypes";
+import { INGREDIENT_CATEGORY_ORDER } from "./ingredientTypes";
 import { formatIngredientLine, formatQuantityDisplay, ingredientMap } from "./ingredientDisplay";
 
 const VOL_TO_TSP: Record<string, number> = {
@@ -178,6 +185,8 @@ export type CombinedShoppingItem =
       volumeTier: VolumePrimaryTier;
       /** Recipe ids that contributed to this merged line. */
       sourceRecipeIds: readonly string[];
+      /** Grocery section (from ingredient library). */
+      category: IngredientCategory;
     }
   | {
       kind: "weight";
@@ -185,12 +194,34 @@ export type CombinedShoppingItem =
       oz: number;
       weightTier: WeightPrimaryTier;
       sourceRecipeIds: readonly string[];
+      category: IngredientCategory;
     }
-  | { kind: "count"; line: string; sourceRecipeIds: readonly string[] }
-  | { kind: "raw"; line: string; sourceRecipeIds: readonly string[] };
+  | { kind: "count"; line: string; sourceRecipeIds: readonly string[]; category: IngredientCategory }
+  | {
+      kind: "raw";
+      line: string;
+      sourceRecipeIds: readonly string[];
+      /** Qualitative / unknown ingredient lines. */
+      category: IngredientCategory;
+    };
 
 function sortedIds(ids: Set<string>): string[] {
   return [...ids].sort((a, b) => a.localeCompare(b));
+}
+
+function categoryRank(category: IngredientCategory): number {
+  const i = INGREDIENT_CATEGORY_ORDER.indexOf(category);
+  return i >= 0 ? i : INGREDIENT_CATEGORY_ORDER.length;
+}
+
+function sortCombinedBySectionThenLine(items: CombinedShoppingItem[]): void {
+  items.sort((a, b) => {
+    const d = categoryRank(a.category) - categoryRank(b.category);
+    if (d !== 0) {
+      return d;
+    }
+    return a.line.localeCompare(b.line, undefined, { sensitivity: "base" });
+  });
 }
 
 /** Distinct combined-list line strings this recipe contributed to (for purchased UI). */
@@ -268,10 +299,7 @@ type Bucket =
   | { kind: "count"; name: string; ingredientId: string; amount: number; unit: string }
   | { kind: "raw"; text: string };
 
-function lineToBucket(
-  line: RecipeIngredientLine,
-  byId: Map<string, IngredientDef>,
-): Bucket | null {
+function lineToBucket(line: RecipeIngredientLine, byId: Map<string, IngredientDef>): Bucket {
   const def = byId.get(line.ingredientId);
   if (!def) {
     return {
@@ -424,7 +452,9 @@ export function buildShoppingListData(
   }
 
   const mergedItems: CombinedShoppingItem[] = [];
-  for (const { name, tsp, recipeIds } of vol.values()) {
+  for (const [ingredientId, { name, tsp, recipeIds }] of vol.entries()) {
+    const def = byId.get(ingredientId);
+    const category: IngredientCategory = def?.category ?? "other";
     const { tier, text } = volumePrimaryDisplay(tsp);
     mergedItems.push({
       kind: "volume",
@@ -432,9 +462,12 @@ export function buildShoppingListData(
       tsp,
       volumeTier: tier,
       sourceRecipeIds: sortedIds(recipeIds),
+      category,
     });
   }
-  for (const { name, oz, recipeIds } of wt.values()) {
+  for (const [ingredientId, { name, oz, recipeIds }] of wt.entries()) {
+    const def = byId.get(ingredientId);
+    const category: IngredientCategory = def?.category ?? "other";
     const { tier, text } = weightPrimaryDisplay(oz);
     mergedItems.push({
       kind: "weight",
@@ -442,19 +475,20 @@ export function buildShoppingListData(
       oz,
       weightTier: tier,
       sourceRecipeIds: sortedIds(recipeIds),
+      category,
     });
   }
-  for (const { name, amount, unit, recipeIds } of ct.values()) {
+  for (const [ckey, { name, amount, unit, recipeIds }] of ct.entries()) {
+    const ingredientId = ckey.split("::")[0]!;
+    const def = byId.get(ingredientId);
+    const category: IngredientCategory = def?.category ?? "other";
     mergedItems.push({
       kind: "count",
       line: `${name} - ${formatCount(amount, unit)}`,
       sourceRecipeIds: sortedIds(recipeIds),
+      category,
     });
   }
-
-  mergedItems.sort((a, b) =>
-    a.line.localeCompare(b.line, undefined, { sensitivity: "base" }),
-  );
 
   const rawItems: CombinedShoppingItem[] = rawOrderKeys.map((k) => {
     const ex = rawMap.get(k)!;
@@ -462,10 +496,12 @@ export function buildShoppingListData(
       kind: "raw" as const,
       line: ex.line,
       sourceRecipeIds: sortedIds(ex.recipeIds),
+      category: "other" as IngredientCategory,
     };
   });
 
   const combinedItems: CombinedShoppingItem[] = [...mergedItems, ...rawItems];
+  sortCombinedBySectionThenLine(combinedItems);
 
   const byRecipe: IngredientBreakdown[] = recipesInOrder.map((r, instanceIndex) => ({
     instanceKey: `${r.id}@${instanceIndex}`,

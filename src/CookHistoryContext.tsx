@@ -13,7 +13,7 @@ import {
   type MealPlanByDate,
 } from "./mealPlanStorage";
 
-/** Max cook-log rows per recipe on a date: matches planner slots on that day, or unassigned pool if not on the day yet. */
+/** Max cook-log rows per recipe on a date: calendar slots on `dateIso` + pool rows (mirror / extra slots). */
 function maxCookLogsForRecipeOnDate(
   plan: MealPlanByDate,
   dateIso: string,
@@ -21,6 +21,9 @@ function maxCookLogsForRecipeOnDate(
 ): number {
   const onDay = (plan[dateIso] ?? []).filter((m) => m.id === recipeId).length;
   const inPool = (plan[MEAL_PLAN_UNASSIGNED_KEY] ?? []).filter((m) => m.id === recipeId).length;
+  if (onDay > 0 && inPool > 0) {
+    return onDay + inPool;
+  }
   if (onDay > 0) {
     return onDay;
   }
@@ -38,6 +41,10 @@ const CookHistoryContext = React.createContext<CookHistoryCtx | null>(null);
 
 export function CookHistoryProvider({ children }: { children: React.ReactNode }) {
   const { plan } = useMealPlan();
+  /** Always read latest plan inside setHistory — avoid stale cap when meal plan updates in the same gesture as log (e.g. ensurePlanSlotRef + logCooked). */
+  const planRef = React.useRef(plan);
+  planRef.current = plan;
+
   const [history, setHistory] = React.useState<CookHistoryByDate>(() =>
     typeof window === "undefined" ? {} : loadCookHistory(),
   );
@@ -59,7 +66,7 @@ export function CookHistoryProvider({ children }: { children: React.ReactNode })
           }
         }
         let cur = [...row];
-        const cap = maxCookLogsForRecipeOnDate(plan, dateIso, meal.id);
+        const cap = maxCookLogsForRecipeOnDate(planRef.current, dateIso, meal.id);
         let historyCount = cur.filter((m) => m.id === meal.id).length;
         if (historyCount >= cap) {
           if (meal.planSlotRef) {
@@ -76,10 +83,11 @@ export function CookHistoryProvider({ children }: { children: React.ReactNode })
         const next = { ...prev };
         cur.push({ ...meal });
         next[dateIso] = cur;
+        saveCookHistory(next);
         return next;
       });
     },
-    [plan],
+    [],
   );
 
   const logRecipeCooked = React.useCallback(
@@ -103,6 +111,7 @@ export function CookHistoryProvider({ children }: { children: React.ReactNode })
       } else {
         next[dateIso] = cur;
       }
+      saveCookHistory(next);
       return next;
     });
   }, []);
