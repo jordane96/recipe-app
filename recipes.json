@@ -67,7 +67,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "grilled-tri-tip",
@@ -95,7 +97,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "grilled-burger",
@@ -123,7 +127,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "grilled-hot-link",
@@ -146,7 +152,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "grilled-wings",
@@ -175,7 +183,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "grilled-carne-asada",
@@ -198,7 +208,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "grilled-chicken",
@@ -227,7 +239,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "pot-roast-keto",
@@ -280,7 +294,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "taco-chicken-crock-pot",
@@ -355,7 +371,9 @@
           "recipeId": "regular-rice",
           "label": "Rice (optional side in recipe)"
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "meatballs-keto",
@@ -446,7 +464,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "sausage-pasta",
@@ -494,7 +514,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "mozzarella-crusted-chicken",
@@ -560,7 +582,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "dijon-onion-chicken",
@@ -623,7 +647,9 @@
           "recipeId": "garlic-bread",
           "label": "Garlic bread (also green beans in recipe)"
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "cayenne-breaded-chicken",
@@ -676,7 +702,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "lemon-italian-chicken-spaghetti",
@@ -770,7 +798,9 @@
           "recipeId": "lemon-spaghetti",
           "label": "Lemon spaghetti (pasta side)"
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "chicken-pita-pockets",
@@ -821,7 +851,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "miso-salmon",
@@ -880,7 +912,9 @@
           "recipeId": "fried-rice",
           "label": "Fried rice (optional in recipe)"
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "curry-peanut-chicken",
@@ -968,7 +1002,9 @@
           "recipeId": "regular-rice",
           "label": "Rice (recipe suggests cooked rice)"
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "soy-glazed-meatloaf",
@@ -1085,7 +1121,9 @@
           "recipeId": "sliced-potatoes",
           "label": "Roasted sliced/diced potatoes (same pan timing as meatloaf)"
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "steak-spicy-soy-sauce",
@@ -1137,9 +1175,9 @@
             },
             {
               "ingredientId": "butter",
-              "amount": 1,
-              "unit": "oz",
-              "note": "finish"
+              "amount": 2,
+              "unit": "tbsp",
+              "note": "finish (~1 oz)"
             }
           ]
         },
@@ -1160,7 +1198,9 @@
           "recipeId": "regular-rice",
           "label": "Rice (with bok choy / carrots optional)"
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "steak-jam-honey-mustard-sauce",
@@ -1246,7 +1286,9 @@
           "recipeId": "lemon-panko-burrata-salad",
           "label": "Salad (lemon panko burrata)"
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "chicken-katsu-curry",
@@ -1317,7 +1359,9 @@
           "recipeId": "regular-rice",
           "label": "Rice (recipe uses dry rice)"
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "beef-tortilla-melts",
@@ -1389,7 +1433,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "chili",
@@ -1474,7 +1520,9 @@
         {
           "recipeId": "garlic-bread"
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "tortellini-tomato-soup",
@@ -1504,7 +1552,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "quesadilla-leftovers",
@@ -1545,7 +1595,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "air-fry-asparagus",
@@ -1583,7 +1635,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "air-fry-brussels-sprouts",
@@ -1622,7 +1676,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "air-fry-broccoli",
@@ -1661,7 +1717,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "air-fry-squash",
@@ -1700,7 +1758,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "air-fry-potatoes",
@@ -1745,7 +1805,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "air-fry-zucchini-chips",
@@ -1796,7 +1858,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "saute-spinach",
@@ -1834,7 +1898,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "regular-rice",
@@ -1847,7 +1913,9 @@
         "15 min on cook",
         "5 min natural release"
       ],
-      "ingredientSections": []
+      "ingredientSections": [],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "fried-rice",
@@ -1897,7 +1965,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "garlic-bread",
@@ -1929,7 +1999,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "mashed-potatoes",
@@ -1963,7 +2035,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "sliced-potatoes",
@@ -2000,7 +2074,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "lemon-panko-burrata-salad",
@@ -2051,7 +2127,9 @@
             }
           ]
         }
-      ]
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
     },
     {
       "id": "lemon-spaghetti",
@@ -2123,6 +2201,178 @@
               "unit": "tbsp"
             }
           ]
+        }
+      ],
+      "createdBy": "Jordan E",
+      "servings": null
+    },
+    {
+      "id": "chicken-parmesan-allrecipes-223042",
+      "title": "Chicken Parmesan (AllRecipes #223042)",
+      "type": "recipe",
+      "tags": ["italian", "chicken", "bake"],
+      "servings": 4,
+      "sourceUrl": "https://www.allrecipes.com/recipe/223042/chicken-parmesan/",
+      "totalCookTimeMinutes": 45,
+      "notes": "Ingredient list and directions aligned to AllRecipes from user screenshots (original 1× yields 4 servings). Step 6 uses ~½ inch oil depth in the skillet; shopping line uses ½ cup as written on the recipe card.",
+      "ingredientSections": [
+        {
+          "name": "Chicken",
+          "lines": [
+            {
+              "ingredientId": "chicken-breast",
+              "amount": 28,
+              "unit": "oz",
+              "note": "4 skinless boneless chicken breast halves (~7 oz each), pounded to ½ inch"
+            },
+            {
+              "ingredientId": "salt",
+              "amount": null,
+              "unit": null,
+              "note": "to taste"
+            },
+            {
+              "ingredientId": "black-pepper",
+              "amount": null,
+              "unit": null,
+              "note": "freshly ground, to taste"
+            }
+          ]
+        },
+        {
+          "name": "Breading",
+          "lines": [
+            {
+              "ingredientId": "egg",
+              "amount": 2,
+              "unit": "each",
+              "note": "large eggs, beaten in a shallow bowl"
+            },
+            {
+              "ingredientId": "panko",
+              "amount": 1,
+              "unit": "cup",
+              "note": "or more as needed"
+            },
+            {
+              "ingredientId": "parmesan-cheese",
+              "amount": 0.5,
+              "unit": "cup",
+              "note": "freshly grated, mixed with panko (½ of ¾ cup total Parmesan)"
+            },
+            {
+              "ingredientId": "flour-all-purpose",
+              "amount": 2,
+              "unit": "tbsp",
+              "note": "sifted/strained over chicken; or more if needed"
+            }
+          ]
+        },
+        {
+          "name": "Cook",
+          "lines": [
+            {
+              "ingredientId": "olive-oil",
+              "amount": 0.5,
+              "unit": "cup",
+              "note": "for frying (or as needed); directions also call for ~½ inch depth in skillet"
+            }
+          ]
+        },
+        {
+          "name": "Topping & bake",
+          "lines": [
+            {
+              "ingredientId": "marinara-sauce",
+              "amount": 0.5,
+              "unit": "cup",
+              "note": "prepared tomato sauce — 2 tbsp per breast when assembling (4 breasts)"
+            },
+            {
+              "ingredientId": "mozzarella-cheese",
+              "amount": 0.25,
+              "unit": "cup",
+              "note": "fresh mozzarella, small cubes"
+            },
+            {
+              "ingredientId": "fresh-basil",
+              "amount": 0.25,
+              "unit": "cup",
+              "note": "chopped"
+            },
+            {
+              "ingredientId": "provolone",
+              "amount": 2,
+              "unit": "oz",
+              "note": "½ cup freshly grated (approx.; library uses weight)"
+            },
+            {
+              "ingredientId": "parmesan-cheese",
+              "amount": 0.25,
+              "unit": "cup",
+              "note": "freshly grated, remaining ¼ cup on top before bake"
+            },
+            {
+              "ingredientId": "olive-oil",
+              "amount": 2,
+              "unit": "tsp",
+              "note": "½ tsp drizzled on each breast before baking (4 breasts)"
+            }
+          ]
+        }
+      ],
+      "instructions": [
+        {
+          "text": "Preheat an oven to 450°F (230°C)."
+        },
+        {
+          "text": "Place chicken breasts between two sheets of heavy plastic (resealable freezer bags work well) on a solid, level surface. Firmly pound chicken with the smooth side of a meat mallet to a thickness of ½ inch. Season thoroughly with salt and pepper. Using a sifter or strainer, sprinkle flour over chicken breasts, evenly coating both sides. Beat eggs in a shallow bowl and set aside.",
+          "stepIngredients": [
+            "Chicken breast",
+            "Salt",
+            "Black pepper",
+            "All-purpose flour",
+            "Egg"
+          ]
+        },
+        {
+          "text": "Mix bread crumbs and ½ cup Parmesan cheese in a separate bowl; set aside. Dip a flour-coated chicken breast in beaten eggs.",
+          "stepIngredients": ["Panko breadcrumbs", "Parmesan cheese", "Egg", "Chicken breast"]
+        },
+        {
+          "text": "Transfer breast to the bread crumb mixture, pressing crumbs into both sides. Repeat for each breast.",
+          "stepIngredients": ["Panko breadcrumbs", "Parmesan cheese", "Chicken breast"]
+        },
+        {
+          "text": "Let chicken rest for 10 to 15 minutes.",
+          "durationSeconds": 600
+        },
+        {
+          "text": "Heat ½ inch olive oil in a large skillet on medium-high heat until it begins to shimmer. Cook chicken in the hot oil until golden, about 2 minutes per side. The chicken will finish cooking in the oven.",
+          "durationSeconds": 120,
+          "stepIngredients": ["Olive oil", "Chicken breast"]
+        },
+        {
+          "text": "Transfer chicken to a baking dish. Top each breast with 2 tablespoons tomato sauce.",
+          "stepIngredients": ["Marinara sauce", "Chicken breast"]
+        },
+        {
+          "text": "Layer each chicken breast with equal amounts of mozzarella cheese, fresh basil, and provolone cheese.",
+          "stepIngredients": [
+            "Mozzarella cheese",
+            "Fresh basil (chopped)",
+            "Provolone cheese",
+            "Chicken breast"
+          ]
+        },
+        {
+          "text": "Sprinkle remaining Parmesan over top and drizzle each with ½ teaspoon olive oil.",
+          "stepIngredients": ["Parmesan cheese", "Olive oil", "Chicken breast"]
+        },
+        {
+          "text": "Bake in the preheated oven until cheese is browned and bubbly and chicken breasts are no longer pink in the center, 15 to 20 minutes. An instant-read thermometer inserted into the center should read at least 165°F (74°C).",
+          "durationSeconds": 900,
+          "note": "Use a thermometer to confirm doneness."
         }
       ]
     }

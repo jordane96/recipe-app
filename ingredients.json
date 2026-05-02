@@ -713,6 +713,12 @@
       "category": "spices"
     },
     {
+      "id": "fresh-basil",
+      "name": "Fresh basil (chopped)",
+      "unit": "volume",
+      "category": "produce"
+    },
+    {
       "id": "fried-onion-crisps",
       "name": "Fried onion crisps",
       "unit": "other",
