@@ -10,6 +10,8 @@ export type IngredientSearchComboboxProps = {
   onRequestOpen: () => void;
   onRequestClose: () => void;
   onSelect: (id: string) => void;
+  /** Opens add-ingredient flow (e.g. modal) for a new or custom item; parent should close the panel first. */
+  onAddNew?: () => void;
   "aria-label"?: string;
 };
 
@@ -21,6 +23,7 @@ export function IngredientSearchCombobox({
   onRequestOpen,
   onRequestClose,
   onSelect,
+  onAddNew,
   "aria-label": ariaLabel,
 }: IngredientSearchComboboxProps) {
   const wrapRef = React.useRef<HTMLDivElement>(null);
@@ -67,6 +70,8 @@ export function IngredientSearchCombobox({
         o.id.toLowerCase().includes(q),
     );
   }, [options, query]);
+
+  const filteredList = React.useMemo(() => filtered.slice(0, 100), [filtered]);
 
   const onTriggerClick = () => {
     if (isOpen) {
@@ -117,7 +122,7 @@ export function IngredientSearchCombobox({
       </button>
       {isOpen ? (
         <div
-          className="edit-recipe-ing-combo-panel"
+          className={`edit-recipe-ing-combo-panel${onAddNew ? " edit-recipe-ing-combo-panel--with-footer" : ""}`}
           role="presentation"
           onKeyDown={onKeyDownPanel}
         >
@@ -134,7 +139,7 @@ export function IngredientSearchCombobox({
             spellCheck={false}
           />
           <ul className="edit-recipe-ing-combo-list" role="listbox">
-            {filtered.map((o) => (
+            {filteredList.map((o) => (
               <li key={o.id} className="edit-recipe-ing-combo-li" role="none">
                 <button
                   type="button"
@@ -154,6 +159,24 @@ export function IngredientSearchCombobox({
           </ul>
           {filtered.length === 0 ? (
             <div className="edit-recipe-ing-combo-empty">No matches</div>
+          ) : null}
+          {onAddNew ? (
+            <div className="edit-recipe-ing-combo-panel-footer">
+              <span className="edit-recipe-ing-combo-panel-footer-hint">
+                Don&apos;t see what you&apos;re looking for?
+              </span>
+              <button
+                type="button"
+                className="edit-recipe-ing-combo-panel-footer-add"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  onRequestClose();
+                  onAddNew();
+                }}
+              >
+                Add new
+              </button>
+            </div>
           ) : null}
         </div>
       ) : null}

@@ -212,6 +212,9 @@ export function RecipeDetail({
           ) : null}
         </h1>
       </div>
+      {recipe.description?.trim() ? (
+        <p className="recipe-detail-description">{recipe.description.trim()}</p>
+      ) : null}
       {!cookParams.cookMode && activeCookForRecipe ? (
         <div className="recipe-detail-resume-cook">
           <p className="recipe-detail-resume-cook-text">

@@ -30,7 +30,9 @@ export function normalizeInstructionStep(step: RecipeInstructionStep): Normalize
       ? Math.floor(step.durationSeconds)
       : undefined;
   const stepIngredients = normalizeStepIngredientStrings(step.stepIngredients);
-  const noteRaw = typeof step.note === "string" ? step.note.trim() : "";
+  // Keep note string as stored (no trim) so edit UIs can show trailing/leading spaces;
+  // use trim only to decide whether the note is present vs whitespace-only.
+  const noteStr = typeof step.note === "string" ? step.note : "";
   const base: NormalizedInstructionStep = { text };
   if (durationSeconds != null) {
     base.durationSeconds = durationSeconds;
@@ -38,8 +40,8 @@ export function normalizeInstructionStep(step: RecipeInstructionStep): Normalize
   if (stepIngredients != null) {
     base.stepIngredients = stepIngredients;
   }
-  if (noteRaw.length > 0) {
-    base.note = noteRaw;
+  if (noteStr.trim().length > 0) {
+    base.note = noteStr;
   }
   return base;
 }

@@ -102,6 +102,9 @@ function matches(
   if (recipe.title.toLowerCase().includes(needle)) {
     return true;
   }
+  if ((recipe.description ?? "").toLowerCase().includes(needle)) {
+    return true;
+  }
   for (const sec of recipe.ingredientSections ?? []) {
     if (sec.name.toLowerCase().includes(needle)) {
       return true;

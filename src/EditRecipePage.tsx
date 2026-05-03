@@ -31,6 +31,7 @@ import {
 } from "./listTabSearch";
 import { useToast } from "./ToastContext";
 import { normalizeInstructionStep } from "./recipeInstructions";
+import { AddIngredientLibraryCombobox } from "./AddIngredientLibraryCombobox";
 import { IngredientSearchCombobox } from "./IngredientSearchCombobox";
 import { StringSearchCombobox } from "./StringSearchCombobox";
 
@@ -68,6 +69,16 @@ function labelToCategory(label: string): IngredientCategory | null {
     }
   }
   return null;
+}
+
+/** If the typed name matches exactly one catalog row (case-insensitive), treat as that pick on confirm. */
+function singleIngredientMatchByName(options: IngredientDef[], raw: string): IngredientDef | null {
+  const t = raw.trim().toLowerCase();
+  if (!t) {
+    return null;
+  }
+  const hits = options.filter((o) => o.name.trim().toLowerCase() === t);
+  return hits.length === 1 ? hits[0]! : null;
 }
 
 function newCustomIngredientId(name: string, existingIds: Set<string>): string {
@@ -156,6 +167,45 @@ function unitChoices(
   return [...units[k]];
 }
 
+/**
+ * When the catalog marks an ingredient as measurable but a line still has missing amount/unit
+ * (e.g. after upgrading `other` → volume/weight/count), fill defaults so qty/unit controls work.
+ */
+function repairQualitativeLinesWhenMeasurable(
+  draft: Recipe,
+  defs: IngredientDef[],
+  units: IngredientsFile["units"],
+): Recipe {
+  const byId = ingredientMap(defs);
+  const secs = ensureIngredientSections(draft).map((sec) => ({
+    ...sec,
+    lines: sec.lines.map((line) => {
+      if (!line.ingredientId) {
+        return line;
+      }
+      const def = byId.get(line.ingredientId);
+      if (!def || def.unit === "other") {
+        return line;
+      }
+      const choices = unitChoices(def, units);
+      if (choices.length === 0) {
+        return line;
+      }
+      const unitOk =
+        line.unit != null && choices.includes(line.unit) ? line.unit : choices[0]!;
+      const amountOk =
+        line.amount != null && Number.isFinite(line.amount) && line.amount > 0
+          ? line.amount
+          : 1;
+      if (line.amount === amountOk && line.unit === unitOk) {
+        return line;
+      }
+      return { ...line, amount: amountOk, unit: unitOk };
+    }),
+  }));
+  return { ...draft, ingredientSections: secs };
+}
+
 function formatDuration(sec: number): string {
   const s = Math.max(0, Math.floor(sec));
   const m = Math.floor(s / 60);
@@ -209,15 +259,16 @@ function partsToStep(parts: {
   note: string;
   durationSeconds: number | undefined;
 }): RecipeInstructionStep {
-  const text = parts.text.trim();
-  const note = parts.note.trim();
+  // Do not trim `text` (or strip-only-trim `note` body) here — controlled textareas
+  // re-run this on every keystroke; trimming the end would swallow trailing spaces.
+  const text = parts.text;
   const out: {
     text: string;
     note?: string;
     durationSeconds?: number;
   } = { text };
-  if (note.length > 0) {
-    out.note = note;
+  if (parts.note.trim().length > 0) {
+    out.note = parts.note;
   }
   if (
     typeof parts.durationSeconds === "number" &&
@@ -226,7 +277,7 @@ function partsToStep(parts: {
   ) {
     out.durationSeconds = Math.floor(parts.durationSeconds);
   }
-  if (out.note == null && out.durationSeconds == null && text.length === 0) {
+  if (out.note == null && out.durationSeconds == null && text.trim().length === 0) {
     return { text: "" };
   }
   return out;
@@ -264,12 +315,26 @@ export function EditRecipePage({
 
   const [draft, setDraft] = React.useState<Recipe | null>(null);
   const [timerDraft, setTimerDraft] = React.useState<Record<number, TimerDraftFields>>({});
+  /** Step indices whose optional note editor is expanded (shown even when note is empty). */
+  const [stepNoteExpanded, setStepNoteExpanded] = React.useState<Record<number, boolean>>({});
+  /** Ingredient row keys `secIndex-lineIndex` with note editor expanded (shown even when note is empty). */
+  const [ingredientNoteExpanded, setIngredientNoteExpanded] = React.useState<Record<string, boolean>>({});
   /** Which ingredient row has the search combobox open (`secIndex-lineIndex`). */
   const [ingredientPickerKey, setIngredientPickerKey] = React.useState<string | null>(null);
   /** Which row has the unit combobox open (`u-secIndex-lineIndex`). */
   const [unitPickerKey, setUnitPickerKey] = React.useState<string | null>(null);
+  /** Avoid re-running `?editStep=` scroll/focus on every `draft` keystroke (that stole focus and ate Space). */
+  const editStepDeepLinkHandledRef = React.useRef<string | null>(null);
   const [addIngredientOpen, setAddIngredientOpen] = React.useState(false);
-  const [addIngredientName, setAddIngredientName] = React.useState("");
+  /** When set, confirming add updates this row instead of appending to the last section. */
+  const [addIngredientReplaceSlot, setAddIngredientReplaceSlot] = React.useState<{
+    secIndex: number;
+    lineIndex: number;
+  } | null>(null);
+  /** Search / free-typed name for the add-ingredient modal. */
+  const [addIngredientSearch, setAddIngredientSearch] = React.useState("");
+  /** When set, the next add uses this library or draft-custom id (measure/category follow the def). */
+  const [addIngredientPickId, setAddIngredientPickId] = React.useState<string | null>(null);
   const [addIngredientKind, setAddIngredientKind] = React.useState<IngredientKind>("volume");
   const [addIngredientCategory, setAddIngredientCategory] =
     React.useState<IngredientCategory>("produce");
@@ -280,6 +345,7 @@ export function EditRecipePage({
   const [addModalKindOpen, setAddModalKindOpen] = React.useState(false);
   const [addModalUnitOpen, setAddModalUnitOpen] = React.useState(false);
   const [addModalCatOpen, setAddModalCatOpen] = React.useState(false);
+  const [addModalIngredientListOpen, setAddModalIngredientListOpen] = React.useState(false);
 
   const effectiveIngredients = React.useMemo(
     () => [...ingredients, ...(draft?.customIngredientDefs ?? [])],
@@ -294,9 +360,19 @@ export function EditRecipePage({
   );
 
   const addModalKindOptions = React.useMemo(
-    () => ADD_MODAL_UNIT_KINDS.map(kindLabel),
+    () => [...ADD_MODAL_UNIT_KINDS.map(kindLabel), kindLabel("other")],
     [],
   );
+
+  const addModalPickedDef = React.useMemo(
+    () =>
+      addIngredientPickId != null
+        ? sortedIngredientOptions.find((o) => o.id === addIngredientPickId)
+        : undefined,
+    [addIngredientPickId, sortedIngredientOptions],
+  );
+
+  const addModalIsQualitativePick = addModalPickedDef?.unit === "other";
   const addModalCategoryOptions = React.useMemo(() => CATEGORY_ORDER.map(categoryLabel), []);
 
   const addModalConcreteUnitOptions = React.useMemo(() => {
@@ -327,8 +403,10 @@ export function EditRecipePage({
       return;
     }
     const stored = loadStoredDraft(recipe.id);
-    setDraft(stored ?? cloneRecipe(recipe));
-  }, [recipe?.id]);
+    const base = stored ?? cloneRecipe(recipe);
+    const defs = [...ingredients, ...(base.customIngredientDefs ?? [])];
+    setDraft(repairQualitativeLinesWhenMeasurable(base, defs, ingredientsFile.units));
+  }, [recipe?.id, ingredients, ingredientsFile]);
 
   React.useEffect(() => {
     if (!addIngredientOpen) {
@@ -341,6 +419,8 @@ export function EditRecipePage({
         setAddModalKindOpen(false);
         setAddModalUnitOpen(false);
         setAddModalCatOpen(false);
+        setAddIngredientPickId(null);
+        setAddIngredientSearch("");
       }
     };
     window.addEventListener("keydown", onKey);
@@ -360,7 +440,7 @@ export function EditRecipePage({
         : recipeDetailPath(id, listSidesTab, preserve, fromShopping, fromHistory, fromShoppingListItem)
       : "/recipes";
 
-  /** Deep-link from cook mode (`?editStep=N`): scroll to that step and focus the step card (green ring). */
+  /** Deep-link from cook mode (`?editStep=N`): scroll to that step and focus the instruction field once per URL. */
   React.useLayoutEffect(() => {
     if (!draft || id == null || id === "") {
       return;
@@ -368,6 +448,11 @@ export function EditRecipePage({
     const params = new URLSearchParams(location.search);
     const raw = params.get(EDIT_RECIPE_STEP_QUERY);
     if (raw == null) {
+      editStepDeepLinkHandledRef.current = null;
+      return;
+    }
+    const deepLinkSig = `${id}|${location.pathname}|${location.search}`;
+    if (editStepDeepLinkHandledRef.current === deepLinkSig) {
       return;
     }
     const idx = Number.parseInt(raw, 10);
@@ -399,9 +484,11 @@ export function EditRecipePage({
         if (canceled) {
           return;
         }
+        editStepDeepLinkHandledRef.current = deepLinkSig;
         const card = document.getElementById(`edit-recipe-step-${idx}`);
         card?.scrollIntoView({ behavior: "auto", block: "center", inline: "nearest" });
-        card?.focus({ preventScroll: true });
+        const ta = card?.querySelector<HTMLTextAreaElement>(".edit-recipe-step-text");
+        (ta ?? card)?.focus({ preventScroll: true });
         // Strip query after focus so the navigation pass doesn’t pull focus away first.
         setTimeout(() => {
           if (!canceled) {
@@ -419,6 +506,10 @@ export function EditRecipePage({
 
   const updateTitle = (title: string) => {
     setDraft((d) => (d ? { ...d, title } : d));
+  };
+
+  const updateDescription = (description: string) => {
+    setDraft((d) => (d ? { ...d, description } : d));
   };
 
   const updateLine = (
@@ -460,12 +551,49 @@ export function EditRecipePage({
       sec.lines.splice(lineIndex, 1);
       return { ...d, ingredientSections: secs };
     });
+    setIngredientNoteExpanded((m) => {
+      const next: Record<string, boolean> = {};
+      for (const [kStr, v] of Object.entries(m)) {
+        const dash = kStr.indexOf("-");
+        if (dash < 0) {
+          continue;
+        }
+        const s = Number.parseInt(kStr.slice(0, dash), 10);
+        const li = Number.parseInt(kStr.slice(dash + 1), 10);
+        if (!Number.isFinite(s) || !Number.isFinite(li)) {
+          continue;
+        }
+        if (s !== secIndex) {
+          next[kStr] = v;
+          continue;
+        }
+        if (li === lineIndex) {
+          continue;
+        }
+        if (li > lineIndex) {
+          next[`${s}-${li - 1}`] = v;
+        } else {
+          next[`${s}-${li}`] = v;
+        }
+      }
+      return next;
+    });
   };
 
-  const openAddIngredientModal = () => {
+  const openAddIngredientModal = (replaceSlot?: { secIndex: number; lineIndex: number } | null) => {
     setIngredientPickerKey(null);
     setUnitPickerKey(null);
-    setAddIngredientName("");
+    setAddIngredientReplaceSlot(replaceSlot ?? null);
+    if (replaceSlot != null && draft) {
+      const secs = ensureIngredientSections(draft);
+      const line = secs[replaceSlot.secIndex]?.lines[replaceSlot.lineIndex];
+      const pickedDef = line ? byId.get(line.ingredientId) : undefined;
+      setAddIngredientSearch(pickedDef?.name ?? "");
+      setAddIngredientPickId(null);
+    } else {
+      setAddIngredientSearch("");
+      setAddIngredientPickId(null);
+    }
     setAddIngredientKind("volume");
     setAddIngredientCategory("produce");
     setAddIngredientQuantity("1");
@@ -474,6 +602,7 @@ export function EditRecipePage({
     setAddModalKindOpen(false);
     setAddModalUnitOpen(false);
     setAddModalCatOpen(false);
+    setAddModalIngredientListOpen(false);
     setAddIngredientOpen(true);
   };
 
@@ -482,17 +611,132 @@ export function EditRecipePage({
     setAddModalKindOpen(false);
     setAddModalUnitOpen(false);
     setAddModalCatOpen(false);
+    setAddModalIngredientListOpen(false);
+    setAddIngredientPickId(null);
+    setAddIngredientSearch("");
+    setAddIngredientReplaceSlot(null);
   };
 
-  const confirmAddCustomIngredient = () => {
-    const name = addIngredientName.trim();
+  const selectAddModalIngredient = (def: IngredientDef) => {
+    setAddIngredientPickId(def.id);
+    setAddIngredientSearch(def.name);
+    setAddIngredientKind(def.unit);
+    setAddIngredientCategory(def.category);
+    if (def.unit === "other") {
+      setAddIngredientQuantity("");
+      setAddIngredientUnit("");
+    } else {
+      const list = ingredientsFile.units[def.unit] ?? [];
+      setAddIngredientUnit(list[0] ?? "each");
+      setAddIngredientQuantity("1");
+    }
+    setAddModalKindOpen(false);
+    setAddModalUnitOpen(false);
+    setAddModalCatOpen(false);
+    setAddModalIngredientListOpen(false);
+  };
+
+  const confirmAddIngredient = () => {
+    const replaceSlot = addIngredientReplaceSlot;
+    const withReplaceNote = (d: Recipe, base: RecipeIngredientLine): RecipeIngredientLine => {
+      if (!replaceSlot) {
+        return base;
+      }
+      const secs0 = ensureIngredientSections(d);
+      const prev = secs0[replaceSlot.secIndex]?.lines[replaceSlot.lineIndex];
+      const note = prev?.note;
+      if (note != null && String(note).length > 0) {
+        return { ...base, note };
+      }
+      return base;
+    };
+    const commitLine = (d: Recipe | null, baseLine: RecipeIngredientLine, customDefs?: IngredientDef[]): Recipe | null => {
+      if (!d) {
+        return d;
+      }
+      const line = withReplaceNote(d, baseLine);
+      const secs = ensureIngredientSections(d).map((s) => ({ ...s, lines: [...s.lines] }));
+      if (replaceSlot != null) {
+        const { secIndex, lineIndex } = replaceSlot;
+        const sec = secs[secIndex];
+        if (!sec || lineIndex < 0 || lineIndex >= sec.lines.length) {
+          return d;
+        }
+        sec.lines[lineIndex] = line;
+        return { ...d, ingredientSections: secs, ...(customDefs ? { customIngredientDefs: customDefs } : {}) };
+      }
+      const last = secs[secs.length - 1] ?? { name: "Main", lines: [] };
+      last.lines.push(line);
+      secs[secs.length - 1] = last;
+      return { ...d, ingredientSections: secs, ...(customDefs ? { customIngredientDefs: customDefs } : {}) };
+    };
+
+    let picked: IngredientDef | undefined;
+    if (addIngredientPickId != null) {
+      picked = sortedIngredientOptions.find((o) => o.id === addIngredientPickId);
+      if (!picked) {
+        showToast("Could not find that ingredient—select it again.");
+        return;
+      }
+    } else {
+      picked = singleIngredientMatchByName(sortedIngredientOptions, addIngredientSearch) ?? undefined;
+    }
+
+    if (picked) {
+      if (picked.unit === "other") {
+        setDraft((d) =>
+          commitLine(d, {
+            ingredientId: picked!.id,
+            amount: null,
+            unit: null,
+          }),
+        );
+        closeAddIngredientModal();
+        showToast(
+          replaceSlot ? `Updated row to “${picked.name}”.` : `Added “${picked.name}” to the recipe.`,
+        );
+        return;
+      }
+
+      const qtyRaw = addIngredientQuantity.trim();
+      if (qtyRaw === "") {
+        showToast("Enter a quantity.");
+        return;
+      }
+      const amount = Number.parseFloat(qtyRaw);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        showToast("Enter a positive number for quantity.");
+        return;
+      }
+      const unitList = ingredientsFile.units[picked.unit];
+      const firstUnit = unitList?.[0] ?? "each";
+      const lineUnit =
+        addIngredientUnit && unitList?.includes(addIngredientUnit)
+          ? addIngredientUnit
+          : firstUnit;
+
+      setDraft((d) =>
+        commitLine(d, {
+          ingredientId: picked!.id,
+          amount,
+          unit: lineUnit,
+        }),
+      );
+      closeAddIngredientModal();
+      showToast(
+        replaceSlot ? `Updated row to “${picked.name}”.` : `Added “${picked.name}” to the recipe.`,
+      );
+      return;
+    }
+
+    const name = addIngredientSearch.trim();
     if (!name) {
-      showToast("Enter an ingredient name.");
+      showToast("Pick an ingredient from the list, or type a name in the dropdown and click Add new.");
       return;
     }
     const kind = addIngredientKind;
     if (kind === "other") {
-      showToast("Choose a unit type (Volume, Weight, or Count).");
+      showToast("For a new ingredient, choose Volume, Weight, or Count—or pick an existing row above.");
       return;
     }
     const qtyRaw = addIngredientQuantity.trim();
@@ -536,18 +780,20 @@ export function EditRecipePage({
         category: addIngredientCategory,
       };
       const defs = [...(d.customIngredientDefs ?? []), def];
-      const secs = ensureIngredientSections(d).map((s) => ({ ...s, lines: [...s.lines] }));
-      const last = secs[secs.length - 1] ?? { name: "Main", lines: [] };
-      last.lines.push({
-        ingredientId: id,
-        amount,
-        unit: lineUnit,
-      });
-      secs[secs.length - 1] = last;
-      return { ...d, ingredientSections: secs, customIngredientDefs: defs };
+      return (
+        commitLine(
+          d,
+          {
+            ingredientId: id,
+            amount,
+            unit: lineUnit,
+          },
+          defs,
+        ) ?? d
+      );
     });
     closeAddIngredientModal();
-    showToast(`Added “${name}” to the recipe.`);
+    showToast(replaceSlot ? `Updated row with “${name}”.` : `Added “${name}” to the recipe.`);
   };
 
   const updateStep = (
@@ -608,15 +854,37 @@ export function EditRecipePage({
       }
       return next;
     });
+    setStepNoteExpanded((m) => {
+      if (Object.keys(m).length === 0) {
+        return m;
+      }
+      const next: Record<number, boolean> = {};
+      for (const [kStr, v] of Object.entries(m)) {
+        const k = Number(kStr);
+        if (Number.isFinite(k) && k > index) {
+          next[k + 1] = v;
+        } else {
+          next[k] = v;
+        }
+      }
+      return next;
+    });
   };
 
   const moveStep = (index: number, dir: -1 | 1) => {
+    if (!draft) {
+      return;
+    }
+    const listPre = ensureInstructions(draft);
+    const j = index + dir;
+    if (j < 0 || j >= listPre.length) {
+      return;
+    }
     setDraft((d) => {
       if (!d) {
         return d;
       }
       const list = [...ensureInstructions(d)];
-      const j = index + dir;
       if (j < 0 || j >= list.length) {
         return d;
       }
@@ -625,20 +893,59 @@ export function EditRecipePage({
       list[j] = t;
       return { ...d, instructions: list };
     });
+    setStepNoteExpanded((m) => {
+      const next: Record<number, boolean> = { ...m };
+      const ai = next[index];
+      const aj = next[j];
+      if (ai !== undefined) {
+        next[j] = ai;
+      } else {
+        delete next[j];
+      }
+      if (aj !== undefined) {
+        next[index] = aj;
+      } else {
+        delete next[index];
+      }
+      return next;
+    });
   };
 
   const removeStep = (index: number) => {
+    let resetToSingleEmpty = false;
     setDraft((d) => {
       if (!d) {
         return d;
       }
       const list = [...ensureInstructions(d)];
       if (list.length <= 1) {
+        resetToSingleEmpty = true;
         list[0] = { text: "" };
         return { ...d, instructions: list };
       }
       list.splice(index, 1);
       return { ...d, instructions: list };
+    });
+    setStepNoteExpanded((m) => {
+      if (resetToSingleEmpty) {
+        return {};
+      }
+      const next: Record<number, boolean> = {};
+      for (const [kStr, v] of Object.entries(m)) {
+        const k = Number(kStr);
+        if (!Number.isFinite(k)) {
+          continue;
+        }
+        if (k === index) {
+          continue;
+        }
+        if (k > index) {
+          next[k - 1] = v;
+        } else {
+          next[k] = v;
+        }
+      }
+      return next;
     });
   };
 
@@ -692,8 +999,6 @@ export function EditRecipePage({
 
   return (
     <div className="edit-recipe-page edit-recipe-page--bottom-cta">
-      <p className="edit-recipe-hint">Tap anywhere to edit</p>
-
       <section className="edit-recipe-section" aria-labelledby="edit-recipe-name-label">
         <h2 id="edit-recipe-name-label" className="edit-recipe-label">
           Recipe name
@@ -708,6 +1013,22 @@ export function EditRecipePage({
         />
       </section>
 
+      <section className="edit-recipe-section" aria-labelledby="edit-recipe-desc-label">
+        <h2 id="edit-recipe-desc-label" className="edit-recipe-label">
+          Recipe description
+        </h2>
+        <p className="edit-recipe-field-hint">Optional — a short summary shown at the top of the recipe page.</p>
+        <textarea
+          id="edit-recipe-description"
+          className="edit-recipe-input edit-recipe-description"
+          value={draft.description ?? ""}
+          onChange={(e) => updateDescription(e.target.value)}
+          rows={3}
+          placeholder="e.g. Crispy air-fried chicken with a simple spice rub."
+          aria-labelledby="edit-recipe-desc-label"
+        />
+      </section>
+
       <section className="edit-recipe-section" aria-labelledby="edit-recipe-ing-label">
         <h2 id="edit-recipe-ing-label" className="edit-recipe-label">
           Ingredients
@@ -717,11 +1038,14 @@ export function EditRecipePage({
             sec.lines.map((line, lineIndex) => {
               const def = byId.get(line.ingredientId);
               const choices = unitChoices(def, ingredientsFile.units);
-              const qualitative = line.amount == null || line.unit == null;
+              /** Catalog "other" = no amount/unit UI. Do not treat empty amount while editing as qualitative or the qty field locks. */
+              const catalogQualitative = def?.unit === "other";
               const rowKey = `${secIndex}-${lineIndex}`;
               const unitKey = `u-${secIndex}-${lineIndex}`;
               const comboOpen = ingredientPickerKey === rowKey;
               const unitOpen = unitPickerKey === unitKey;
+              const hasIngNote = (line.note ?? "").trim().length > 0;
+              const showIngNote = hasIngNote || ingredientNoteExpanded[rowKey] === true;
               return (
                 <div
                   key={`${sec.name}-${secIndex}-${lineIndex}-${line.ingredientId}`}
@@ -755,15 +1079,16 @@ export function EditRecipePage({
                           unit: firstU,
                         });
                       }}
+                      onAddNew={() => openAddIngredientModal({ secIndex, lineIndex })}
                       aria-label={`Ingredient ${lineIndex + 1}`}
                     />
                     <input
                       type="text"
                       inputMode="decimal"
                       className="edit-recipe-ing-amt"
-                      disabled={qualitative}
+                      disabled={catalogQualitative}
                       value={
-                        qualitative
+                        catalogQualitative
                           ? ""
                           : line.amount != null
                             ? String(line.amount)
@@ -772,7 +1097,11 @@ export function EditRecipePage({
                       onChange={(e) => {
                         const v = e.target.value.trim();
                         if (v === "") {
-                          updateLine(secIndex, lineIndex, { amount: null, unit: null });
+                          if (catalogQualitative) {
+                            updateLine(secIndex, lineIndex, { amount: null, unit: null });
+                          } else {
+                            updateLine(secIndex, lineIndex, { amount: null });
+                          }
                           return;
                         }
                         const n = Number.parseFloat(v);
@@ -783,7 +1112,7 @@ export function EditRecipePage({
                       aria-label="Amount"
                     />
                     <StringSearchCombobox
-                      value={qualitative ? "" : (line.unit ?? "")}
+                      value={catalogQualitative ? "" : (line.unit ?? "")}
                       options={choices}
                       isOpen={unitOpen}
                       onRequestOpen={() => {
@@ -800,7 +1129,7 @@ export function EditRecipePage({
                         });
                       }}
                       aria-label="Unit"
-                      disabled={qualitative || choices.length === 0}
+                      disabled={catalogQualitative || choices.length === 0}
                       fallbackLabel={line.unit ?? "—"}
                     />
                     <button
@@ -812,31 +1141,76 @@ export function EditRecipePage({
                       ×
                     </button>
                   </div>
-                  <div className="edit-recipe-ing-note-row">
-                    <label className="edit-recipe-ing-note-label" htmlFor={`edit-recipe-ing-note-${secIndex}-${lineIndex}`}>
-                      Note
-                    </label>
-                    <textarea
-                      id={`edit-recipe-ing-note-${secIndex}-${lineIndex}`}
-                      className="edit-recipe-ing-note"
-                      value={line.note ?? ""}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        updateLine(secIndex, lineIndex, {
-                          note: v === "" ? undefined : v,
-                        });
-                      }}
-                      placeholder="e.g. prep, brand, or how it appears on the shopping list"
-                      rows={2}
-                      aria-label={`Note for ${def?.name ?? line.ingredientId ?? "ingredient"}`}
-                    />
-                  </div>
+                  {showIngNote ? (
+                    <div className="edit-recipe-ing-note-row">
+                      <label
+                        className="edit-recipe-ing-note-label"
+                        htmlFor={`edit-recipe-ing-note-${secIndex}-${lineIndex}`}
+                      >
+                        Note
+                      </label>
+                      <div className="edit-recipe-ing-note-field-row">
+                        <textarea
+                          id={`edit-recipe-ing-note-${secIndex}-${lineIndex}`}
+                          className="edit-recipe-ing-note"
+                          value={line.note ?? ""}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            updateLine(secIndex, lineIndex, {
+                              note: v === "" ? undefined : v,
+                            });
+                            if (v.trim() === "") {
+                              setIngredientNoteExpanded((m) => {
+                                const n = { ...m };
+                                delete n[rowKey];
+                                return n;
+                              });
+                            }
+                          }}
+                          placeholder="e.g. prep, brand, or how it appears on the shopping list"
+                          rows={2}
+                          aria-label={`Note for ${def?.name ?? line.ingredientId ?? "ingredient"}`}
+                        />
+                        <button
+                          type="button"
+                          className="edit-recipe-ing-remove edit-recipe-ing-note-remove"
+                          aria-label="Remove note"
+                          onClick={() => {
+                            updateLine(secIndex, lineIndex, { note: undefined });
+                            setIngredientNoteExpanded((m) => {
+                              const n = { ...m };
+                              delete n[rowKey];
+                              return n;
+                            });
+                          }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+                  {!showIngNote ? (
+                    <div className="edit-recipe-ing-subactions">
+                      <button
+                        type="button"
+                        className="edit-recipe-add-sub"
+                        onClick={() => {
+                          setIngredientNoteExpanded((m) => ({ ...m, [rowKey]: true }));
+                          window.setTimeout(() => {
+                            document.getElementById(`edit-recipe-ing-note-${secIndex}-${lineIndex}`)?.focus();
+                          }, 0);
+                        }}
+                      >
+                        + Add note
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
               );
             }),
           )}
         </div>
-        <button type="button" className="edit-recipe-add-line" onClick={openAddIngredientModal}>
+        <button type="button" className="edit-recipe-add-line" onClick={() => openAddIngredientModal()}>
           + Add ingredient
         </button>
       </section>
@@ -853,6 +1227,8 @@ export function EditRecipePage({
               Number.isFinite(parts.durationSeconds) &&
               parts.durationSeconds > 0;
             const timerOpenKey = timerDraft[i] !== undefined;
+            const hasStepNote = parts.note.trim().length > 0;
+            const showStepNote = hasStepNote || stepNoteExpanded[i] === true;
             return (
               <div
                 key={`step-${i}`}
@@ -902,18 +1278,49 @@ export function EditRecipePage({
                   rows={3}
                   aria-label={`Step ${i + 1} instruction`}
                 />
-                <div className="edit-recipe-step-note-row">
-                  <span className="edit-recipe-step-note-label">Note:</span>
-                  <textarea
-                    id={`edit-recipe-step-${i}-note`}
-                    className="edit-recipe-step-note"
-                    value={parts.note}
-                    onChange={(e) => updateStep(i, { note: e.target.value })}
-                    placeholder="Optional note"
-                    aria-label={`Step ${i + 1} note`}
-                    rows={2}
-                  />
-                </div>
+                {showStepNote ? (
+                  <div className="edit-recipe-step-note-row">
+                    <label className="edit-recipe-step-note-label" htmlFor={`edit-recipe-step-${i}-note`}>
+                      Note
+                    </label>
+                    <div className="edit-recipe-step-note-field-row">
+                      <textarea
+                        id={`edit-recipe-step-${i}-note`}
+                        className="edit-recipe-step-note"
+                        value={parts.note}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          updateStep(i, { note: v });
+                          if (v.trim() === "") {
+                            setStepNoteExpanded((m) => {
+                              const n = { ...m };
+                              delete n[i];
+                              return n;
+                            });
+                          }
+                        }}
+                        placeholder="Optional note"
+                        aria-label={`Step ${i + 1} note`}
+                        rows={2}
+                      />
+                      <button
+                        type="button"
+                        className="edit-recipe-ing-remove edit-recipe-step-note-remove"
+                        aria-label="Remove step note"
+                        onClick={() => {
+                          updateStep(i, { note: "" });
+                          setStepNoteExpanded((m) => {
+                            const n = { ...m };
+                            delete n[i];
+                            return n;
+                          });
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
                 {hasTimer ? (
                   <div className="edit-recipe-step-timer">
                     <span className="edit-recipe-step-timer-label">
@@ -1034,23 +1441,39 @@ export function EditRecipePage({
                     </div>
                   </div>
                 ) : null}
-                {!hasTimer && !timerOpenKey ? (
-                  <button
-                    type="button"
-                    className="edit-recipe-add-sub"
-                    onClick={() =>
-                      setTimerDraft((m) => ({
-                        ...m,
-                        [i]: { minutes: "", seconds: "" },
-                      }))
-                    }
-                  >
-                    + Add timer
+                <div className="edit-recipe-step-subactions">
+                  {!showStepNote ? (
+                    <button
+                      type="button"
+                      className="edit-recipe-add-sub"
+                      onClick={() => {
+                        setStepNoteExpanded((m) => ({ ...m, [i]: true }));
+                        window.setTimeout(() => {
+                          document.getElementById(`edit-recipe-step-${i}-note`)?.focus();
+                        }, 0);
+                      }}
+                    >
+                      + Add note
+                    </button>
+                  ) : null}
+                  {!hasTimer && !timerOpenKey ? (
+                    <button
+                      type="button"
+                      className="edit-recipe-add-sub"
+                      onClick={() =>
+                        setTimerDraft((m) => ({
+                          ...m,
+                          [i]: { minutes: "", seconds: "" },
+                        }))
+                      }
+                    >
+                      + Add timer
+                    </button>
+                  ) : null}
+                  <button type="button" className="edit-recipe-add-sub" onClick={() => removeStep(i)}>
+                    Delete step
                   </button>
-                ) : null}
-                <button type="button" className="edit-recipe-add-sub" onClick={() => removeStep(i)}>
-                  Delete step
-                </button>
+                </div>
               </div>
             );
           })}
@@ -1088,27 +1511,44 @@ export function EditRecipePage({
             aria-labelledby="edit-recipe-add-ing-title"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 id="edit-recipe-add-ing-title" className="edit-recipe-modal-title">
-              Add ingredient
-            </h2>
+            <div className="edit-recipe-modal-body">
+              <h2 id="edit-recipe-add-ing-title" className="edit-recipe-modal-title">
+                {addIngredientReplaceSlot ? "Replace ingredient" : "Add ingredient"}
+              </h2>
 
-            <div className="edit-recipe-modal-field">
-              <label className="edit-recipe-label" htmlFor="edit-recipe-add-ing-name">
-                Ingredient name
-              </label>
-              <input
-                id="edit-recipe-add-ing-name"
-                type="text"
-                className="edit-recipe-input"
-                value={addIngredientName}
-                onChange={(e) => setAddIngredientName(e.target.value)}
-                placeholder="e.g. Oregano"
-                autoComplete="off"
-                autoFocus
-              />
-            </div>
+              <div className="edit-recipe-modal-field">
+                <label className="edit-recipe-label" htmlFor="edit-recipe-add-ing-combo-trigger">
+                  Ingredient list
+                </label>
+                <AddIngredientLibraryCombobox
+                  id="edit-recipe-add-ing-combo-trigger"
+                  options={sortedIngredientOptions}
+                  search={addIngredientSearch}
+                  onSearchChange={(v) => {
+                    setAddIngredientSearch(v);
+                    setAddIngredientPickId(null);
+                  }}
+                  pickId={addIngredientPickId}
+                  isOpen={addModalIngredientListOpen}
+                  onRequestOpen={() => {
+                    setAddModalKindOpen(false);
+                    setAddModalUnitOpen(false);
+                    setAddModalCatOpen(false);
+                    setAddModalIngredientListOpen(true);
+                  }}
+                  onRequestClose={() => setAddModalIngredientListOpen(false)}
+                  onSelectIngredient={selectAddModalIngredient}
+                  onAddNew={() => {
+                    setAddIngredientPickId(null);
+                    setAddModalKindOpen(false);
+                    setAddModalUnitOpen(false);
+                    setAddModalCatOpen(false);
+                  }}
+                  autoFocus
+                />
+              </div>
 
-            <div className="edit-recipe-modal-field">
+              <div className="edit-recipe-modal-field">
               <span className="edit-recipe-label" id="edit-recipe-add-ing-measure-lbl">
                 Measure
               </span>
@@ -1117,6 +1557,7 @@ export function EditRecipePage({
                 options={addModalKindOptions}
                 isOpen={addModalKindOpen}
                 onRequestOpen={() => {
+                  setAddModalIngredientListOpen(false);
                   setAddModalCatOpen(false);
                   setAddModalUnitOpen(false);
                   setAddModalKindOpen(true);
@@ -1124,13 +1565,21 @@ export function EditRecipePage({
                 onRequestClose={() => setAddModalKindOpen(false)}
                 onSelect={(label) => {
                   const k = labelToKind(label);
-                  if (k && k !== "other") {
-                    setAddIngredientKind(k);
-                    const list = ingredientsFile.units[k] ?? [];
-                    setAddIngredientUnit(list[0] ?? "each");
+                  if (!k) {
+                    return;
                   }
+                  setAddIngredientPickId(null);
+                  if (k === "other") {
+                    setAddIngredientKind("other");
+                    setAddIngredientUnit("");
+                    return;
+                  }
+                  setAddIngredientKind(k);
+                  const list = ingredientsFile.units[k] ?? [];
+                  setAddIngredientUnit(list[0] ?? "each");
                 }}
-                aria-label="Measure: volume, weight, or count"
+                aria-label="Measure: volume, weight, count, or other"
+                disabled={addIngredientPickId != null}
               />
             </div>
 
@@ -1143,6 +1592,7 @@ export function EditRecipePage({
                 options={addModalConcreteUnitOptions}
                 isOpen={addModalUnitOpen}
                 onRequestOpen={() => {
+                  setAddModalIngredientListOpen(false);
                   setAddModalKindOpen(false);
                   setAddModalCatOpen(false);
                   setAddModalUnitOpen(true);
@@ -1154,7 +1604,7 @@ export function EditRecipePage({
                   }
                 }}
                 aria-label="Unit (ounces, pounds, cups, etc.)"
-                disabled={addModalConcreteUnitOptions.length === 0}
+                disabled={addModalConcreteUnitOptions.length === 0 || addModalIsQualitativePick}
                 fallbackLabel={addIngredientUnit || "—"}
               />
             </div>
@@ -1173,6 +1623,7 @@ export function EditRecipePage({
                 placeholder="e.g. 2 or 0.5"
                 autoComplete="off"
                 aria-label="Quantity"
+                disabled={addModalIsQualitativePick}
               />
             </div>
 
@@ -1185,6 +1636,7 @@ export function EditRecipePage({
                 options={addModalCategoryOptions}
                 isOpen={addModalCatOpen}
                 onRequestOpen={() => {
+                  setAddModalIngredientListOpen(false);
                   setAddModalKindOpen(false);
                   setAddModalUnitOpen(false);
                   setAddModalCatOpen(true);
@@ -1197,12 +1649,14 @@ export function EditRecipePage({
                   }
                 }}
                 aria-label="Grocery category"
+                disabled={addIngredientPickId != null}
               />
             </div>
+            </div>
 
-            <div className="edit-recipe-modal-actions">
-              <button type="button" className="btn-primary btn-cta-wide" onClick={confirmAddCustomIngredient}>
-                Add to recipe
+            <div className="edit-recipe-modal-actions edit-recipe-modal-actions--sticky">
+              <button type="button" className="btn-primary btn-cta-wide" onClick={confirmAddIngredient}>
+                {addIngredientReplaceSlot ? "Replace in recipe" : "Add to recipe"}
               </button>
               <button type="button" className="btn-secondary btn-cta-wide" onClick={closeAddIngredientModal}>
                 Cancel

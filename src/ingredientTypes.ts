@@ -90,6 +90,8 @@ export type RecipeInstructionStep =
 export interface Recipe {
   id: string;
   title: string;
+  /** Short intro or blurb shown on recipe detail (optional). */
+  description?: string;
   /** Library attribution (e.g. who added the recipe); optional until backfilled. */
   createdBy?: string;
   /** Yield in servings; `null` when unknown. */
