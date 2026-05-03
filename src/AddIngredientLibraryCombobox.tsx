@@ -34,9 +34,14 @@ export function AddIngredientLibraryCombobox({
   "aria-label": ariaLabel = "Ingredient list",
 }: AddIngredientLibraryComboboxProps) {
   const wrapRef = React.useRef<HTMLDivElement>(null);
-  const searchRef = React.useRef<HTMLInputElement>(null);
-  /** Draft filter while the panel is open — does not update the trigger until commit. */
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const listId = React.useId();
+  /** True until parent `isOpen` catches up — keeps one input usable in the same tick as focus. */
+  const [desireOpen, setDesireOpen] = React.useState(false);
+  /** Filter text while the list is shown (single field = trigger + filter). */
   const [panelQuery, setPanelQuery] = React.useState("");
+
+  const effectiveOpen = isOpen || desireOpen;
 
   const selected = pickId ? options.find((o) => o.id === pickId) : undefined;
   const triggerText = selected?.name ?? (search.trim() ? search : "");
@@ -52,6 +57,12 @@ export function AddIngredientLibraryCombobox({
     );
   }, [options, panelQuery]);
 
+  React.useEffect(() => {
+    if (!isOpen) {
+      setDesireOpen(false);
+    }
+  }, [isOpen]);
+
   const prevIsOpen = React.useRef(false);
   React.useLayoutEffect(() => {
     if (isOpen && !prevIsOpen.current) {
@@ -60,15 +71,15 @@ export function AddIngredientLibraryCombobox({
     prevIsOpen.current = isOpen;
   }, [isOpen, search]);
 
-  React.useEffect(() => {
-    if (!isOpen) {
+  React.useLayoutEffect(() => {
+    if (!effectiveOpen) {
       return;
     }
     const raf = requestAnimationFrame(() => {
-      searchRef.current?.focus();
+      inputRef.current?.focus();
     });
     return () => cancelAnimationFrame(raf);
-  }, [isOpen]);
+  }, [effectiveOpen]);
 
   React.useEffect(() => {
     if (!isOpen) {
@@ -84,78 +95,101 @@ export function AddIngredientLibraryCombobox({
     return () => document.removeEventListener("mousedown", onDoc);
   }, [isOpen, onRequestClose]);
 
-  const onTriggerClick = () => {
-    if (isOpen) {
-      onRequestClose();
+  const openPanel = () => {
+    setPanelQuery(search);
+    setDesireOpen(true);
+    onRequestOpen();
+  };
+
+  const closePanel = () => {
+    setDesireOpen(false);
+    onRequestClose();
+  };
+
+  const togglePanel = () => {
+    if (effectiveOpen) {
+      closePanel();
     } else {
-      onRequestOpen();
+      openPanel();
     }
   };
 
-  const onKeyDownTrigger = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
+  const onKeyDownInput = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Escape" && effectiveOpen) {
       e.preventDefault();
-      if (!isOpen) {
-        onRequestOpen();
-      }
+      closePanel();
+      return;
     }
-    if (e.key === "Escape" && isOpen) {
+    if (e.key === "ArrowDown" && !effectiveOpen) {
       e.preventDefault();
-      onRequestClose();
+      openPanel();
     }
   };
 
   const onKeyDownPanel = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") {
       e.preventDefault();
-      onRequestClose();
+      closePanel();
     }
   };
 
   return (
     <div
       ref={wrapRef}
-      className={`edit-recipe-ing-combo edit-recipe-modal-ing-combo${isOpen ? " edit-recipe-ing-combo--open" : ""}`}
+      className={`edit-recipe-ing-combo edit-recipe-modal-ing-combo${effectiveOpen ? " edit-recipe-ing-combo--open" : ""}`}
     >
-      <button
-        id={id}
-        type="button"
-        className="edit-recipe-ing-combo-trigger"
-        aria-label={ariaLabel}
-        aria-expanded={isOpen}
-        aria-haspopup="listbox"
-        autoFocus={autoFocus}
-        onClick={onTriggerClick}
-        onKeyDown={onKeyDownTrigger}
-      >
-        <span
-          className={`edit-recipe-ing-combo-value${showPlaceholder ? " edit-recipe-ing-combo-value--placeholder" : ""}`}
+      <div className="edit-recipe-ing-combo-trigger-row">
+        <input
+          ref={inputRef}
+          id={id}
+          type="text"
+          className="edit-recipe-ing-combo-trigger-input"
+          aria-label={ariaLabel}
+          aria-expanded={effectiveOpen}
+          aria-haspopup="listbox"
+          aria-controls={effectiveOpen ? listId : undefined}
+          role="combobox"
+          autoFocus={autoFocus}
+          autoComplete="off"
+          autoCorrect="off"
+          spellCheck={false}
+          placeholder={
+            showPlaceholder && !effectiveOpen ? "Search library or add a new ingredient" : undefined
+          }
+          value={effectiveOpen ? panelQuery : triggerText}
+          onChange={(e) => {
+            if (!effectiveOpen) {
+              openPanel();
+            }
+            setPanelQuery(e.target.value);
+          }}
+          onFocus={() => {
+            if (!effectiveOpen) {
+              openPanel();
+            }
+          }}
+          onKeyDown={onKeyDownInput}
+        />
+        <button
+          type="button"
+          className="edit-recipe-ing-combo-chevron-btn"
+          aria-label={effectiveOpen ? "Close ingredient list" : "Open ingredient list"}
+          tabIndex={-1}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={togglePanel}
         >
-          {showPlaceholder ? "Search library or add a new ingredient" : triggerText}
-        </span>
-        <span className="edit-recipe-ing-combo-chevron" aria-hidden>
-          ▾
-        </span>
-      </button>
-      {isOpen ? (
+          <span className="edit-recipe-ing-combo-chevron" aria-hidden>
+            ▾
+          </span>
+        </button>
+      </div>
+      {effectiveOpen ? (
         <div
-          className="edit-recipe-ing-combo-panel edit-recipe-modal-ing-combo-panel"
+          className="edit-recipe-ing-combo-panel edit-recipe-modal-ing-combo-panel edit-recipe-ing-combo-panel--no-search"
           role="presentation"
           onKeyDown={onKeyDownPanel}
         >
-          <input
-            ref={searchRef}
-            type="search"
-            className="edit-recipe-ing-combo-search"
-            value={panelQuery}
-            onChange={(e) => setPanelQuery(e.target.value)}
-            placeholder="Search ingredients…"
-            aria-label="Filter ingredient list"
-            autoComplete="off"
-            autoCorrect="off"
-            spellCheck={false}
-          />
-          <ul className="edit-recipe-ing-combo-list" role="listbox" aria-label="Matching ingredients">
+          <ul id={listId} className="edit-recipe-ing-combo-list" role="listbox" aria-label="Matching ingredients">
             {filtered.slice(0, 100).map((o) => (
               <li key={o.id} className="edit-recipe-ing-combo-li" role="none">
                 <button
@@ -166,7 +200,7 @@ export function AddIngredientLibraryCombobox({
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
                     onSelectIngredient(o);
-                    onRequestClose();
+                    closePanel();
                   }}
                 >
                   {o.name}
@@ -186,7 +220,7 @@ export function AddIngredientLibraryCombobox({
               onClick={() => {
                 onSearchChange(panelQuery);
                 onAddNew();
-                onRequestClose();
+                closePanel();
               }}
             >
               Add new

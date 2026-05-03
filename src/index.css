@@ -5356,6 +5356,78 @@ button.history-day-card-select:focus-visible {
   outline-offset: 2px;
 }
 
+/* Single typeable field + chevron (ingredient comboboxes); list opens below without a second search box. */
+.edit-recipe-ing-combo-trigger-row {
+  display: flex;
+  width: 100%;
+  align-items: stretch;
+  min-height: 2.25rem;
+  border: 1.5px solid color-mix(in srgb, var(--accent) 40%, var(--border));
+  border-radius: 8px;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.edit-recipe-ing-combo-trigger-row:hover {
+  background: color-mix(in srgb, var(--accent-soft) 55%, #fff);
+}
+
+/* One ring around the full row (input + chevron); inner input skips the page-wide input outline so it does not stack. */
+.edit-recipe-ing-combo-trigger-row:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--border));
+  box-shadow: 0 0 0 2px var(--accent);
+  outline: none;
+}
+
+.edit-recipe-ing-combo-trigger-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  padding: 0.45rem 0.35rem 0.45rem 0.45rem;
+  border: none;
+  border-radius: 8px 0 0 8px;
+  background: transparent;
+  font-size: 0.875rem;
+  font-family: var(--font-sans);
+  color: var(--text);
+  text-align: left;
+  cursor: text;
+  line-height: 1.35;
+}
+
+.edit-recipe-ing-combo-trigger-input:focus {
+  outline: none;
+}
+
+.edit-recipe-ing-combo-trigger-input::placeholder {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.edit-recipe-ing-combo-chevron-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0 8px 8px 0;
+  background: transparent;
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.edit-recipe-ing-combo-chevron-btn:hover {
+  background: color-mix(in srgb, var(--muted) 10%, transparent);
+  color: var(--text);
+}
+
+.edit-recipe-ing-combo-chevron-btn:focus-visible {
+  outline: none;
+}
+
 .edit-recipe-ing-combo-value {
   flex: 1;
   min-width: 0;
@@ -5771,9 +5843,19 @@ button.history-day-card-select:focus-visible {
   outline-offset: 1px;
 }
 
+/* Ingredient combo: row uses box-shadow ring; skip second outline on inner text field (global rule above would stack). */
+.edit-recipe-page .edit-recipe-ing-combo-trigger-row .edit-recipe-ing-combo-trigger-input:focus,
+.edit-recipe-page .edit-recipe-ing-combo-trigger-row .edit-recipe-ing-combo-trigger-input:focus-visible {
+  outline: none;
+}
+
 .edit-recipe-page button:focus-visible:not(:disabled) {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+.edit-recipe-page .edit-recipe-ing-combo-chevron-btn:focus-visible:not(:disabled) {
+  outline: none;
 }
 
 .edit-recipe-page a:focus-visible {
