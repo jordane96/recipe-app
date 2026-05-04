@@ -76,11 +76,16 @@ function saveAddFlowIds(key: string, ids: Set<string>): void {
 function matches(
   recipe: Recipe,
   q: string,
-  tag: string | null,
+  selectedTags: ReadonlySet<string>,
   byId: Map<string, IngredientDef>,
 ): boolean {
-  if (tag && !(recipe.tags?.includes(tag))) {
-    return false;
+  if (selectedTags.size > 0) {
+    const recipeTags = recipe.tags ?? [];
+    for (const t of selectedTags) {
+      if (!recipeTags.includes(t)) {
+        return false;
+      }
+    }
   }
   if (!q.trim()) {
     return true;
@@ -132,8 +137,21 @@ export function RecipeList({
   const [searchParams, setSearchParams] = useSearchParams();
   const byId = React.useMemo(() => ingredientMap(ingredients), [ingredients]);
   const [q, setQ] = React.useState("");
-  const [tag, setTag] = React.useState<string | null>(null);
+  const [selectedTags, setSelectedTags] = React.useState<Set<string>>(() => new Set());
   const [filtersOpen, setFiltersOpen] = React.useState(false);
+
+  const toggleTag = React.useCallback((t: string) => {
+    setSelectedTags((prev) => {
+      const next = new Set(prev);
+      if (next.has(t)) {
+        next.delete(t);
+      } else {
+        next.add(t);
+      }
+      return next;
+    });
+  }, []);
+  const clearTags = React.useCallback(() => setSelectedTags(new Set()), []);
   /** Add-to-menu flow: at most one pending add per recipe (order = tap order). */
   const [addFlowSelectedIds, setAddFlowSelectedIds] = React.useState<Set<string>>(
     () => new Set(),
@@ -325,9 +343,9 @@ export function RecipeList({
   const filtered = React.useMemo(
     () =>
       recipes
-        .filter((r) => matches(r, q, tag, byId))
+        .filter((r) => matches(r, q, selectedTags, byId))
         .sort((a, b) => a.title.localeCompare(b.title)),
-    [recipes, q, tag, byId],
+    [recipes, q, selectedTags, byId],
   );
 
   const pickListAria = React.useCallback(
@@ -460,7 +478,12 @@ export function RecipeList({
             aria-controls="recipe-filters-row"
             onClick={() => setFiltersOpen((o) => !o)}
           >
-            <span>Filters{tag ? `: ${tag}` : ""}</span>
+            <span>
+              Filters
+              {selectedTags.size > 0
+                ? `: ${[...selectedTags].sort((a, b) => a.localeCompare(b)).join(", ")}`
+                : ""}
+            </span>
             <span className="recipe-filters-toggle-caret" aria-hidden>
               {filtersOpen ? "▾" : "▸"}
             </span>
@@ -475,22 +498,26 @@ export function RecipeList({
               <button
                 type="button"
                 className="tag-chip"
-                data-on={tag === null}
-                onClick={() => setTag(null)}
+                data-on={selectedTags.size === 0}
+                onClick={clearTags}
               >
                 All
               </button>
-              {tags.map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  className="tag-chip"
-                  data-on={tag === t}
-                  onClick={() => setTag(tag === t ? null : t)}
-                >
-                  {t}
-                </button>
-              ))}
+              {tags.map((t) => {
+                const on = selectedTags.has(t);
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    className="tag-chip"
+                    data-on={on}
+                    aria-pressed={on}
+                    onClick={() => toggleTag(t)}
+                  >
+                    {t}
+                  </button>
+                );
+              })}
             </div>
           ) : null}
         </>

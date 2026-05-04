@@ -224,14 +224,43 @@ function AppLayout({
     setMenuOpen(false);
   }, [pathname]);
 
-  /** Snap to top on every in-app navigation (HashRouter does not scroll the window). */
-  React.useEffect(() => {
+  /**
+   * Snap to top on every in-app navigation (HashRouter does not scroll the window).
+   *
+   * - `useLayoutEffect` so the scroll fires before the new view paints — prevents the
+   *   mobile "flash of old scroll position" on iOS Safari and Android Chrome.
+   * - Reset `documentElement.scrollTop` and `body.scrollTop` in addition to `window.scrollTo`
+   *   to cover older Safari quirks where one wins over the other.
+   * - One-frame follow-up scroll to handle the case where the new page's content paints
+   *   slightly after the route commit (URL bar collapse / async data) and drifts back.
+   */
+  React.useLayoutEffect(() => {
+    if ("scrollRestoration" in window.history) {
+      window.history.scrollRestoration = "manual";
+    }
+  }, []);
+
+  React.useLayoutEffect(() => {
     const prev = scrollSnapPrevRef.current;
     scrollSnapPrevRef.current = { pathname, search };
 
+    const snapToTop = () => {
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior });
+      if (typeof document !== "undefined") {
+        if (document.documentElement) {
+          document.documentElement.scrollTop = 0;
+        }
+        if (document.body) {
+          document.body.scrollTop = 0;
+        }
+      }
+    };
+
     if (!prev || prev.pathname !== pathname) {
-      window.scrollTo(0, 0);
-      return;
+      snapToTop();
+      // Re-snap after first paint in case mobile URL bar / async content shifts layout.
+      const raf = window.requestAnimationFrame(snapToTop);
+      return () => window.cancelAnimationFrame(raf);
     }
     if (prev.search === search) {
       return;
@@ -252,7 +281,9 @@ function AppLayout({
         }
       }
     }
-    window.scrollTo(0, 0);
+    snapToTop();
+    const raf = window.requestAnimationFrame(snapToTop);
+    return () => window.cancelAnimationFrame(raf);
   }, [pathname, search]);
 
   /** Drop add-to-plan cart in session when leaving the list/detail builder routes. */
