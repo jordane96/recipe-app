@@ -298,6 +298,7 @@ function AppLayout({
         </button>
         <span className={`app-chrome-home${isPlannerHome ? " app-chrome-home--current" : ""}`}>
           {chromeTitle}
+          <span className="app-chrome-user"> — {currentUser}</span>
         </span>
       </header>
 

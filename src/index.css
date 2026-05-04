@@ -119,6 +119,12 @@
   cursor: default;
 }
 
+.app-chrome-user {
+  font-size: var(--fs-ui);
+  color: var(--muted);
+  font-weight: 400;
+}
+
 .recipe-detail-restore-btn {
   background: none;
   border: none;
