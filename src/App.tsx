@@ -188,9 +188,13 @@ export default function App({ currentUser, onSignOut }: { currentUser: string; o
       const t = Math.round(performance.now());
       const docH = document.documentElement.scrollHeight;
       const winH = window.innerHeight;
+      const vv = window.visualViewport;
+      const vvOff = vv ? Math.round(vv.offsetTop) : -1;
+      const vvPage = vv ? Math.round(vv.pageTop) : -1;
+      const vvH = vv ? Math.round(vv.height) : -1;
       setScrollDebug((d) => [
         ...d.slice(-19),
-        `${t}ms ${label}: y=${y} doc=${docH} win=${winH}`,
+        `${t}ms ${label}: y=${y} doc=${docH} win=${winH} vvOff=${vvOff} vvPage=${vvPage} vvH=${vvH}`,
       ]);
     };
     log("App-mount");
