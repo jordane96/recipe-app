@@ -15,6 +15,7 @@
     "deploy:intuit": "npm run build && gh-pages -d dist -r https://github.intuit.com/jepstein/recipe-app-test.git"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.28.0"
