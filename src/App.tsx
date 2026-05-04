@@ -194,22 +194,35 @@ export default function App({ currentUser, onSignOut }: { currentUser: string; o
       ]);
     };
     log("App-mount");
-    const t1 = window.setTimeout(() => log("50ms"), 50);
-    const t2 = window.setTimeout(() => log("150ms"), 150);
-    const t3 = window.setTimeout(() => log("400ms"), 400);
-    const t4 = window.setTimeout(() => log("800ms"), 800);
-    const t5 = window.setTimeout(() => log("1500ms"), 1500);
-    const t6 = window.setTimeout(() => log("3000ms"), 3000);
+    [50, 150, 400, 800, 1500, 3000, 5000, 8000].forEach((ms) =>
+      window.setTimeout(() => log(`${ms}ms`), ms),
+    );
+    // Permanent listeners (debug only) — capture any scroll change for the
+    // entire session so we can see if iOS scrolls AFTER our snaps stop.
     const onScroll = () => log("scroll-evt");
     window.addEventListener("scroll", onScroll, { passive: true });
     const vv = window.visualViewport;
     const onVvResize = () => log("vv-resize");
-    if (vv) vv.addEventListener("resize", onVvResize);
-    return () => {
-      [t1, t2, t3, t4, t5, t6].forEach((t) => window.clearTimeout(t));
-      window.removeEventListener("scroll", onScroll);
-      if (vv) vv.removeEventListener("resize", onVvResize);
-    };
+    const onVvScroll = () => log("vv-scroll");
+    if (vv) {
+      vv.addEventListener("resize", onVvResize);
+      vv.addEventListener("scroll", onVvScroll);
+    }
+    // Capture initial chrome bar position relative to viewport (helps diagnose
+    // whether the title is rendered behind the sticky bar at scrollY=0).
+    window.setTimeout(() => {
+      const bar = document.querySelector(".app-chrome-bar");
+      const title = document.querySelector("#planner-this-week-menu-heading");
+      if (bar && title) {
+        const b = bar.getBoundingClientRect();
+        const tt = title.getBoundingClientRect();
+        const t = Math.round(performance.now());
+        setScrollDebug((d) => [
+          ...d.slice(-19),
+          `${t}ms layout: barBottom=${Math.round(b.bottom)} titleTop=${Math.round(tt.top)} titleH=${Math.round(tt.height)} overlap=${Math.round(b.bottom - tt.top)}`,
+        ]);
+      }
+    }, 1500);
   }, []);
 
   return (
