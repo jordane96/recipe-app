@@ -58,7 +58,7 @@ const isolateNestedTouchFromSwipePaneProps = {
 /** Prepended as step 1 in cook mode only (internal step label). */
 const COOK_MODE_INGREDIENTS_CONFIRM_STEP = "Confirm you have all necessary ingredients";
 
-/** Visible heading on the confirm card before “Start cooking”. */
+/** Visible heading on the confirm card before "Start cooking". */
 const COOK_MODE_CONFIRM_OVERVIEW_TITLE = "Recipe overview";
 
 function formatMSS(totalSeconds: number): string {
@@ -113,7 +113,7 @@ function sessionsMatch(
   cookDate: string,
   cookSlotRef: string | null,
 ): boolean {
-  const slot = cookSlotRef && cookSlotRef.length > 0 ? cookSlotRef : “”;
+  const slot = cookSlotRef && cookSlotRef.length > 0 ? cookSlotRef : "";
   return e.recipeId === recipeId && e.cookDate === cookDate && e.slotRef === slot;
 }
 
@@ -158,7 +158,7 @@ export function RecipeCookModePanel({
   const { logCooked } = useCookHistory();
   const byId = React.useMemo(() => ingredientMap(ingredients), [ingredients]);
 
-  /** Same target as “Browse recipes” on the empty Cooking now page — list with add-to-menu + cook on add. */
+  /** Same target as "Browse recipes" on the empty Cooking now page — list with add-to-menu + cook on add. */
   const addRecipeToCookListHref = React.useMemo(
     () => recipesAddMealForCookingPath(iso(startOfWeekMonday(new Date()))),
     [],
@@ -307,7 +307,7 @@ export function RecipeCookModePanel({
 
   void cookProgressListRev;
 
-  /** Re-tick every 1s so “Also running” step timers stay accurate while viewing another session */
+  /** Re-tick every 1s so "Also running" step timers stay accurate while viewing another session */
   const [dockTick, setDockTick] = React.useState(0);
   React.useEffect(() => {
     const id = window.setInterval(() => setDockTick((n) => n + 1), 1000);
@@ -532,7 +532,7 @@ export function RecipeCookModePanel({
     };
   }, [celebrationOpen, finishCelebrationAndExit]);
 
-  /** Cancel this cook session: go to another in-progress session, or the “nothing cooking” page. */
+  /** Cancel this cook session: go to another in-progress session, or the "nothing cooking" page. */
   const onCancelCooking = () => {
     clearCookSessionState();
     const next = getFirstActiveCookSessionHref();
@@ -592,7 +592,7 @@ export function RecipeCookModePanel({
   const showSessionInBanner = !isConfirmStep && activeStepIndex >= 1 && sessionTotalPersist != null;
   const stepText = cookSteps[activeStepIndex]?.text ?? "";
   const stepNote = !isConfirmStep ? cookSteps[activeStepIndex]?.note : undefined;
-  /** Recipe instruction steps only (excludes leading confirm step) — drives “Step 1 of N” labels. */
+  /** Recipe instruction steps only (excludes leading confirm step) — drives "Step 1 of N" labels. */
   const nCookSteps = Math.max(1, nSteps - 1);
   /** 1-based index among cook steps; equals `activeStepIndex` once past confirm. */
   const displayedCookStep = activeStepIndex >= 1 ? activeStepIndex : 1;
