@@ -245,7 +245,14 @@ function AppLayout({
     scrollSnapPrevRef.current = { pathname, search };
 
     const snapToTop = () => {
-      window.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior });
+      // Legacy 2-arg form: universally supported on older iOS Safari.
+      window.scrollTo(0, 0);
+      // Modern object form (some browsers honor only this for `behavior`).
+      try {
+        window.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior });
+      } catch {
+        // ignore — older browsers may throw on the options form
+      }
       if (typeof document !== "undefined") {
         if (document.documentElement) {
           document.documentElement.scrollTop = 0;
@@ -253,6 +260,17 @@ function AppLayout({
         if (document.body) {
           document.body.scrollTop = 0;
         }
+        // Some routes may have an inner scroll container (e.g. cook mode),
+        // and on certain viewports the `.app-shell` itself can be the scroller.
+        // Reset any element scrolled below 0 — cheap, safe, idempotent.
+        const candidates = document.querySelectorAll<HTMLElement>(
+          ".app-shell, [data-scroll-root]",
+        );
+        candidates.forEach((el) => {
+          if (el.scrollTop !== 0) {
+            el.scrollTop = 0;
+          }
+        });
       }
     };
 
