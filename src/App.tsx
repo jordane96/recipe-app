@@ -170,88 +170,8 @@ export default function App({ currentUser, onSignOut }: { currentUser: string; o
   const ingredients = ingredientsFile?.ingredients ?? [];
   const ready = recipes && ingredientsFile;
 
-  // TEMPORARY scroll debug — gated by ?debugScroll=1 in URL
-  const [scrollDebug, setScrollDebug] = React.useState<string[]>([]);
-  React.useEffect(() => {
-    if (typeof window === "undefined") return;
-    const showDebug =
-      window.location.hash.includes("debugScroll=1") ||
-      window.location.search.includes("debugScroll=1");
-    if (!showDebug) return;
-    const log = (label: string) => {
-      const y = Math.round(
-        window.scrollY ||
-          document.documentElement.scrollTop ||
-          document.body.scrollTop ||
-          0,
-      );
-      const t = Math.round(performance.now());
-      const docH = document.documentElement.scrollHeight;
-      const winH = window.innerHeight;
-      const vv = window.visualViewport;
-      const vvOff = vv ? Math.round(vv.offsetTop) : -1;
-      const vvPage = vv ? Math.round(vv.pageTop) : -1;
-      const vvH = vv ? Math.round(vv.height) : -1;
-      setScrollDebug((d) => [
-        ...d.slice(-19),
-        `${t}ms ${label}: y=${y} doc=${docH} win=${winH} vvOff=${vvOff} vvPage=${vvPage} vvH=${vvH}`,
-      ]);
-    };
-    log("App-mount");
-    [50, 150, 400, 800, 1500, 3000, 5000, 8000].forEach((ms) =>
-      window.setTimeout(() => log(`${ms}ms`), ms),
-    );
-    // Permanent listeners (debug only) — capture any scroll change for the
-    // entire session so we can see if iOS scrolls AFTER our snaps stop.
-    const onScroll = () => log("scroll-evt");
-    window.addEventListener("scroll", onScroll, { passive: true });
-    const vv = window.visualViewport;
-    const onVvResize = () => log("vv-resize");
-    const onVvScroll = () => log("vv-scroll");
-    if (vv) {
-      vv.addEventListener("resize", onVvResize);
-      vv.addEventListener("scroll", onVvScroll);
-    }
-    // Capture initial chrome bar position relative to viewport (helps diagnose
-    // whether the title is rendered behind the sticky bar at scrollY=0).
-    window.setTimeout(() => {
-      const bar = document.querySelector(".app-chrome-bar");
-      const title = document.querySelector("#planner-this-week-menu-heading");
-      if (bar && title) {
-        const b = bar.getBoundingClientRect();
-        const tt = title.getBoundingClientRect();
-        const t = Math.round(performance.now());
-        setScrollDebug((d) => [
-          ...d.slice(-19),
-          `${t}ms layout: barBottom=${Math.round(b.bottom)} titleTop=${Math.round(tt.top)} titleH=${Math.round(tt.height)} overlap=${Math.round(b.bottom - tt.top)}`,
-        ]);
-      }
-    }, 1500);
-  }, []);
-
   return (
     <HashRouter>
-      {scrollDebug.length > 0 ? (
-        <div
-          style={{
-            position: "fixed",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            zIndex: 99999,
-            background: "rgba(0,0,0,0.9)",
-            color: "#0f0",
-            font: "10px/1.3 monospace",
-            padding: "6px 8px",
-            maxHeight: "55vh",
-            overflowY: "auto",
-            whiteSpace: "pre-wrap",
-            pointerEvents: "auto",
-          }}
-        >
-          {scrollDebug.join("\n")}
-        </div>
-      ) : null}
       {err ? <p className="err app-shell">{err}</p> : null}
       {!ready && !err ? <p className="muted app-shell">Loading…</p> : null}
       {ready ? (

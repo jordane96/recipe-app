@@ -17,27 +17,64 @@ function Root() {
   const [user, setUser] = React.useState<string | null>(() => getSessionUser());
 
   const handleAuth = (username: string) => {
-    // Dismiss the iOS keyboard before swapping to App. If we don't, the
-    // keyboard hide animation can leave the page slightly scrolled below
-    // the sticky header on the first frame the user sees the new screen.
-    if (typeof document !== "undefined") {
-      const active = document.activeElement;
-      if (active instanceof HTMLElement) {
-        active.blur();
-      }
+    // Persist immediately so a refresh during the brief delay below doesn't lose state.
+    setSessionUser(username);
+
+    // iOS keyboard dismiss is async (~250-350ms). If we swap React trees while
+    // the keyboard is still hiding, the new screen mounts with the visual
+    // viewport partially shifted (vvOff > 0) — content appears cut off until
+    // the user manually scrolls. Blur the input, wait for the keyboard to
+    // fully hide (visualViewport.height returns to its pre-keyboard size),
+    // then commit the user-state change.
+    const commit = () => setUser(username);
+
+    if (typeof document === "undefined" || typeof window === "undefined") {
+      commit();
+      return;
     }
-    // Snap to top synchronously now, before React unmounts AuthScreen and
-    // shows the App's brief "Loading…" state. Without this, the user sees
-    // the loading screen at whatever scroll-Y the keyboard left us at.
-    if (typeof window !== "undefined") {
-      window.scrollTo(0, 0);
-      if (typeof document !== "undefined") {
+
+    const active = document.activeElement;
+    if (active instanceof HTMLElement) {
+      active.blur();
+    }
+
+    const vv = window.visualViewport;
+    if (!vv) {
+      // No visualViewport API → desktop or older browser, no keyboard concern.
+      commit();
+      return;
+    }
+
+    const startH = vv.height;
+    const layoutH = window.innerHeight;
+    // If the visual viewport is already at full layout height, no keyboard is up.
+    if (Math.abs(startH - layoutH) < 4) {
+      commit();
+      return;
+    }
+
+    let committed = false;
+    const fireOnce = () => {
+      if (committed) return;
+      committed = true;
+      vv.removeEventListener("resize", onResize);
+      window.clearTimeout(fallback);
+      // One frame after viewport settles, swap trees + reset scroll.
+      window.requestAnimationFrame(() => {
+        window.scrollTo(0, 0);
         if (document.documentElement) document.documentElement.scrollTop = 0;
         if (document.body) document.body.scrollTop = 0;
+        commit();
+      });
+    };
+    const onResize = () => {
+      if (Math.abs(vv.height - layoutH) < 4) {
+        fireOnce();
       }
-    }
-    setSessionUser(username);
-    setUser(username);
+    };
+    vv.addEventListener("resize", onResize);
+    // Fallback: if resize never fires (no actual keyboard), commit anyway.
+    const fallback = window.setTimeout(fireOnce, 500);
   };
 
   const handleSignOut = () => {
