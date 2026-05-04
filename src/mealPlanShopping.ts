@@ -1,6 +1,6 @@
 import type { CookHistoryByDate } from "./cookHistoryStorage";
 import { buildWeekKeys, startOfWeekMonday } from "./mealPlanDates";
-import { isDaySlotCooked, isUnassignedSlotCooked } from "./mealPlannerCookUi";
+import { isDaySlotCooked, isUnassignedSlotCookedAllTime } from "./mealPlannerCookUi";
 import {
   flattenPlanRecipeIdsInOrder,
   isMealPlanDateKey,
@@ -72,7 +72,7 @@ export function flattenUncookedPlanRecipeIdsInOrder(
   }
   for (let ui = 0; ui < unassigned.length; ui++) {
     const m = unassigned[ui]!;
-    if (isUnassignedSlotCooked(history, weekKeys, unassigned, ui, m.id)) {
+    if (isUnassignedSlotCookedAllTime(history, unassigned, ui, m.id)) {
       continue;
     }
     const n = portionCountOf(m);
