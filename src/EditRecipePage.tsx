@@ -287,10 +287,12 @@ export function EditRecipePage({
   recipes,
   ingredients,
   ingredientsFile,
+  onSaved,
 }: {
   recipes: Recipe[];
   ingredients: IngredientDef[];
   ingredientsFile: IngredientsFile;
+  onSaved?: (updated: Recipe) => void;
 }) {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -314,6 +316,7 @@ export function EditRecipePage({
   );
 
   const [draft, setDraft] = React.useState<Recipe | null>(null);
+  const [saving, setSaving] = React.useState(false);
   const [timerDraft, setTimerDraft] = React.useState<Record<number, TimerDraftFields>>({});
   /** Step indices whose optional note editor is expanded (shown even when note is empty). */
   const [stepNoteExpanded, setStepNoteExpanded] = React.useState<Record<number, boolean>>({});
@@ -949,19 +952,34 @@ export function EditRecipePage({
     });
   };
 
-  const onSave = () => {
-    if (!recipe || !draft) {
+  const onSave = async () => {
+    if (!recipe || !draft || saving) {
       return;
     }
     if (!draft.title.trim()) {
       showToast("Add a recipe name before saving.");
       return;
     }
-    saveStoredDraft(recipe.id, draft);
-    showToast(
-      "Draft saved on this device. The recipe screen still shows the library version until sync is wired.",
-    );
-    navigate(backTo);
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/recipes/${recipe.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(draft),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string };
+        showToast(body.error ?? "Failed to save recipe. Try again.");
+        return;
+      }
+      clearStoredDraft(recipe.id);
+      onSaved?.(draft);
+      navigate(backTo);
+    } catch {
+      showToast("Network error — check your connection and try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const onDiscard = () => {
@@ -1485,8 +1503,8 @@ export function EditRecipePage({
 
       <div className="recipe-list-cart-bar" role="region" aria-label="Save or discard edits">
         <div className="recipe-list-cart-bar-inner">
-          <button type="button" className="btn-primary btn-cta-wide" onClick={onSave}>
-            Save changes
+          <button type="button" className="btn-primary btn-cta-wide" onClick={onSave} disabled={saving}>
+            {saving ? "Saving…" : "Save changes"}
           </button>
           <button type="button" className="btn-secondary btn-cta-wide" onClick={onDiscard}>
             Discard
