@@ -14,6 +14,9 @@ export default async function handler(req, res) {
 
     const assembled = recipes.map(recipe => ({
       ...recipe,
+      owner: recipe.Owner ?? null,
+      visibility: recipe.visibility ?? 'public',
+      forkedFromRecipeId: recipe.forked_from_recipe_id ?? null,
       tags: recipe.tags ?? [],
       ingredientSections: sections
         .filter(s => s.recipe_id === recipe.id)

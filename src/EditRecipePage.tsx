@@ -288,11 +288,13 @@ export function EditRecipePage({
   ingredients,
   ingredientsFile,
   onSaved,
+  currentUser,
 }: {
   recipes: Recipe[];
   ingredients: IngredientDef[];
   ingredientsFile: IngredientsFile;
   onSaved?: (updated: Recipe) => void;
+  currentUser?: string;
 }) {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -965,16 +967,24 @@ export function EditRecipePage({
       const res = await fetch(`/api/recipes/${recipe.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(draft),
+        body: JSON.stringify({ ...draft, currentUser }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({})) as { error?: string };
         showToast(body.error ?? "Failed to save recipe. Try again.");
         return;
       }
+      const body = await res.json() as { ok: boolean; forked?: boolean; newId?: string };
       clearStoredDraft(recipe.id);
-      onSaved?.(draft);
-      navigate(backTo);
+      if (body.forked && body.newId) {
+        const forkedDraft: Recipe = { ...draft, id: body.newId, owner: currentUser, forkedFromRecipeId: recipe.id, visibility: "private" };
+        onSaved?.(forkedDraft);
+        showToast("Saved as your own copy.");
+        navigate(`/recipe/${body.newId}`);
+      } else {
+        onSaved?.(draft);
+        navigate(backTo);
+      }
     } catch {
       showToast("Network error — check your connection and try again.");
     } finally {

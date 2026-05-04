@@ -90,6 +90,12 @@ export type RecipeInstructionStep =
 export interface Recipe {
   id: string;
   title: string;
+  /** Username of the recipe owner. */
+  owner?: string;
+  /** If this is a fork, the id of the original recipe. */
+  forkedFromRecipeId?: string;
+  /** 'public' or 'private' */
+  visibility?: string;
   /** Short intro or blurb shown on recipe detail (optional). */
   description?: string;
   /** Library attribution (e.g. who added the recipe); optional until backfilled. */

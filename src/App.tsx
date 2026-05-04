@@ -115,7 +115,11 @@ export default function App({ currentUser }: { currentUser: string }) {
   }, []);
 
   const onRecipeSaved = React.useCallback((updated: Recipe) => {
-    setRawRecipes((prev) => prev ? prev.map((r) => (r.id === updated.id ? updated : r)) : prev);
+    setRawRecipes((prev) => {
+      if (!prev) return prev;
+      const exists = prev.some((r) => r.id === updated.id);
+      return exists ? prev.map((r) => (r.id === updated.id ? updated : r)) : [...prev, updated];
+    });
   }, []);
 
   const recipes = React.useMemo(() => {
@@ -142,6 +146,7 @@ export default function App({ currentUser }: { currentUser: string }) {
                   ingredients={ingredients}
                   ingredientsFile={ingredientsFile}
                   onRecipeSaved={onRecipeSaved}
+                  currentUser={currentUser}
                 />
               </ToastProvider>
             </CookHistoryProvider>
@@ -157,11 +162,13 @@ function AppLayout({
   ingredients,
   ingredientsFile,
   onRecipeSaved,
+  currentUser,
 }: {
   recipes: Recipe[];
   ingredients: IngredientDef[];
   ingredientsFile: IngredientsFile;
   onRecipeSaved: (updated: Recipe) => void;
+  currentUser: string;
 }) {
   const { pathname, search } = useLocation();
   const { count } = useShoppingList();
@@ -401,6 +408,7 @@ function AppLayout({
               ingredients={ingredients}
               ingredientsFile={ingredientsFile}
               onSaved={onRecipeSaved}
+              currentUser={currentUser}
             />
           }
         />
