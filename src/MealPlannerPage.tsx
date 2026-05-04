@@ -292,7 +292,7 @@ export function MealPlannerPage({
       return;
     }
     pushFromMenu(flat);
-    navigate(shoppingListPath(false));
+    navigate(shoppingListPath());
   }, [hasShopableSelection, history, navigate, pushFromMenu, unassignedCookSelect, unassignedMeals]);
 
   const toggleUnassignedCookSelectAt = React.useCallback((idx: number) => {

@@ -78,7 +78,7 @@ function appChromeTitle(pathname: string, search: string): string {
   return appChromeSectionTitle(pathname);
 }
 
-export default function App({ currentUser }: { currentUser: string }) {
+export default function App({ currentUser, onSignOut }: { currentUser: string; onSignOut?: () => void }) {
   const [rawRecipes, setRawRecipes] = React.useState<Recipe[] | null>(null);
   const [ingredientsFile, setIngredientsFile] = React.useState<IngredientsFile | null>(
     null,
@@ -158,6 +158,7 @@ export default function App({ currentUser }: { currentUser: string }) {
                   ingredientsFile={ingredientsFile}
                   onRecipeSaved={onRecipeSaved}
                   currentUser={currentUser}
+                  onSignOut={onSignOut}
                 />
               </ToastProvider>
             </CookHistoryProvider>
@@ -174,12 +175,14 @@ function AppLayout({
   ingredientsFile,
   onRecipeSaved,
   currentUser,
+  onSignOut,
 }: {
   recipes: Recipe[];
   ingredients: IngredientDef[];
   ingredientsFile: IngredientsFile;
   onRecipeSaved: (updated: Recipe) => void;
   currentUser: string;
+  onSignOut?: () => void;
 }) {
   const { pathname, search } = useLocation();
   const { count } = useShoppingList();
@@ -351,7 +354,7 @@ function AppLayout({
               </li>
               <li>
                 <Link
-                  to={shoppingListPath(false)}
+                  to={shoppingListPath()}
                   className={
                     pathname === "/shopping"
                       ? "app-chrome-nav-link app-chrome-nav-link--current"
@@ -398,6 +401,15 @@ function AppLayout({
                 </Link>
               </li>
             </ul>
+            {onSignOut ? (
+              <button
+                type="button"
+                className="app-chrome-nav-signout"
+                onClick={() => { setMenuOpen(false); onSignOut(); }}
+              >
+                Sign out
+              </button>
+            ) : null}
           </nav>
         </>
       ) : null}

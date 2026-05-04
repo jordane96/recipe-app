@@ -22,9 +22,7 @@ import {
   readFromPlanner,
   readFromShopping,
   readFromShoppingListItem,
-  readPlanPhaseSide,
   readRecipeDetailCookReturnContext,
-  readSidesListTab,
   recipeCookModePath,
   recipeDetailPath,
   urlParamToPlanKey,
@@ -302,14 +300,12 @@ export function EditRecipePage({
   const [searchParams] = useSearchParams();
   const { showToast } = useToast();
 
-  const fromSidesList = readSidesListTab(searchParams);
   const fromShopping = readFromShopping(searchParams);
   const fromShoppingListItem = readFromShoppingListItem(searchParams);
   const fromHistory = readFromHistory(searchParams);
   const fromPlanner = readFromPlanner(searchParams);
   const planKey = urlParamToPlanKey(searchParams.get(ADD_TO_PLAN_QUERY));
   const inPlanFlow = planKey != null;
-  const listSidesTab = inPlanFlow ? readPlanPhaseSide(searchParams) : fromSidesList;
   const preserve = inPlanFlow || fromShopping || fromHistory || fromPlanner ? searchParams : undefined;
 
   const recipe = React.useMemo(
@@ -442,7 +438,7 @@ export function EditRecipePage({
     id != null && id !== ""
       ? cookReturn
         ? recipeCookModePath(id, cookReturn.cookDate, cookReturn.cookSlotRef)
-        : recipeDetailPath(id, listSidesTab, preserve, fromShopping, fromHistory, fromShoppingListItem)
+        : recipeDetailPath(id, preserve, fromShopping, fromHistory, fromShoppingListItem)
       : "/recipes";
 
   /** Deep-link from cook mode (`?editStep=N`): scroll to that step and focus the instruction field once per URL. */

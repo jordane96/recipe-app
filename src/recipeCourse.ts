@@ -4,10 +4,11 @@ import type { Recipe } from "./types";
 export type RecipeSegment = "main" | "side" | "other";
 
 export function recipeSegment(r: Recipe): RecipeSegment {
-  if (r.course === "side") {
+  const tags = r.tags ?? [];
+  if (tags.includes("side")) {
     return "side";
   }
-  if (r.course === "main") {
+  if (tags.includes("main")) {
     return "main";
   }
   if (r.type === "reference") {

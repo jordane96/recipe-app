@@ -9,9 +9,7 @@ import {
   readFromPlanner,
   readFromShopping,
   readFromShoppingListItem,
-  readPlanPhaseSide,
   readPlannerMenuCookContext,
-  readSidesListTab,
   recipeCookModePath,
   recipeDetailBackPath,
   readRecipeListPickExperience,
@@ -94,7 +92,6 @@ export function RecipeDetail({
     }
   };
   const [searchParams] = useSearchParams();
-  const fromSidesList = readSidesListTab(searchParams);
   const fromShopping = readFromShopping(searchParams);
   const fromShoppingListItem = readFromShoppingListItem(searchParams);
   const fromHistory = readFromHistory(searchParams);
@@ -102,7 +99,6 @@ export function RecipeDetail({
   const plannerMenuCtx = readPlannerMenuCookContext(searchParams);
   const planKey = urlParamToPlanKey(searchParams.get(ADD_TO_PLAN_QUERY));
   const inPlanFlow = planKey != null;
-  const listSidesTab = inPlanFlow ? readPlanPhaseSide(searchParams) : fromSidesList;
   const preserve =
     inPlanFlow || fromShopping || fromShoppingListItem || fromHistory || fromPlanner
       ? searchParams
@@ -189,7 +185,7 @@ export function RecipeDetail({
       <>
         <div className="top-bar">
           <Link
-            to={recipeDetailBackPath(id ?? "", listSidesTab, preserve, fromHistory, searchParams)}
+            to={recipeDetailBackPath(id ?? "", preserve, fromHistory, searchParams)}
             className="back-btn"
           >
             Back
@@ -219,7 +215,7 @@ export function RecipeDetail({
           <span className="recipe-detail-headline">
             <span className="recipe-detail-title-text">{recipe.title}</span>
             <Link
-              to={recipeEditPath(recipe.id, listSidesTab, preserve)}
+              to={recipeEditPath(recipe.id, preserve)}
               className="recipe-detail-edit-link"
             >
               edit
@@ -307,7 +303,7 @@ export function RecipeDetail({
                   <div className="recommended-side-head">
                     {sideRecipe ? (
                       <Link
-                        to={recipeDetailPath(recipeId, listSidesTab, preserve)}
+                        to={recipeDetailPath(recipeId, preserve)}
                         className="recommended-side-title"
                       >
                         {sideRecipe.title}
@@ -407,7 +403,6 @@ export function RecipeDetail({
               <Link
                 to={recipeDetailBackPath(
                   recipe.id,
-                  listSidesTab,
                   preserve,
                   fromHistory,
                   searchParams,
@@ -421,7 +416,6 @@ export function RecipeDetail({
             <Link
               to={recipeDetailBackPath(
                 recipe.id,
-                listSidesTab,
                 preserve,
                 fromHistory,
                 searchParams,
@@ -444,7 +438,6 @@ export function RecipeDetail({
               <Link
                 to={recipeDetailBackPath(
                   recipe.id,
-                  listSidesTab,
                   preserve,
                   fromHistory,
                   searchParams,

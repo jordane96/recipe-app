@@ -51,14 +51,13 @@ export default async function handler(req, res) {
       forked = true
 
       await sql`
-        INSERT INTO recipes (id, title, description, tags, type, course, source_url, servings, total_cook_time_minutes, notes, "Owner", visibility, forked_from_recipe_id)
+        INSERT INTO recipes (id, title, description, tags, type, source_url, servings, total_cook_time_minutes, notes, "Owner", visibility, forked_from_recipe_id)
         VALUES (
           ${targetId},
           ${recipe.title.trim()},
           ${recipe.description ?? null},
           ${recipe.tags ?? []},
           ${recipe.type ?? 'recipe'},
-          ${recipe.course ?? null},
           ${recipe.source_url ?? null},
           ${recipe.servings ?? null},
           ${recipe.totalCookTimeMinutes ?? null},

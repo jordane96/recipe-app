@@ -61,9 +61,9 @@ for (const r of bundle.recipes) {
     if (!target) {
       throw new Error(`recommendedSides on "${r.id}": unknown recipeId "${ref.recipeId}"`);
     }
-    if (target.course !== "side") {
+    if (!Array.isArray(target.tags) || !target.tags.includes("side")) {
       throw new Error(
-        `recommendedSides on "${r.id}": "${ref.recipeId}" must have course "side" (got ${JSON.stringify(target.course)})`,
+        `recommendedSides on "${r.id}": "${ref.recipeId}" must have a "side" tag (got tags=${JSON.stringify(target.tags)})`,
       );
     }
   }

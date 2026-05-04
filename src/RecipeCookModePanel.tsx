@@ -5,7 +5,6 @@ import type { IngredientDef, Recipe } from "./types";
 import { formatIngredientLine, ingredientMap } from "./ingredientDisplay";
 import {
   EDIT_RECIPE_STEP_QUERY,
-  readSidesListTab,
   recipeEditPath,
   recipesAddMealForCookingPath,
   stripCookModeParams,
@@ -189,12 +188,7 @@ export function RecipeCookModePanel({
   const openEditRecipeForCurrentStep = React.useCallback(() => {
     const stripped = stripCookModeParams(searchParams);
     const cookReturn = { cookDate, cookSlotRef };
-    const base = recipeEditPath(
-      recipe.id,
-      readSidesListTab(searchParams),
-      stripped,
-      cookReturn,
-    );
+    const base = recipeEditPath(recipe.id, stripped, cookReturn);
     const recipeStepIndex = activeStepIndex >= 1 ? activeStepIndex - 1 : 0;
     const u = new URL(base, window.location.origin);
     u.searchParams.set(EDIT_RECIPE_STEP_QUERY, String(recipeStepIndex));

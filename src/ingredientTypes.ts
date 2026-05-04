@@ -103,8 +103,6 @@ export interface Recipe {
   /** Yield in servings; `null` when unknown. */
   servings?: number | null;
   type: "recipe" | "reference";
-  /** Optional: group on recipe list & shopping (default: main for recipes, other for reference). */
-  course?: "main" | "side";
   tags?: string[];
   /** Structured shopping + display */
   ingredientSections: IngredientSection[];

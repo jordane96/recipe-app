@@ -19,10 +19,9 @@ export async function loadRecipeBundle(): Promise<RecipeBundle> {
     }
     return res.json() as Promise<T>;
   };
-  const dev = import.meta.env.DEV;
   const [ingredients, recipes] = await Promise.all([
-    load<IngredientsFile>(dev ? dataFileUrl("./ingredients.json") : "/api/ingredients"),
-    load<RecipeFile>(dev ? dataFileUrl("./recipes.json") : "/api/recipes"),
+    load<IngredientsFile>("/api/ingredients"),
+    load<RecipeFile>("/api/recipes"),
   ]);
   return { ingredients, recipes };
 }
