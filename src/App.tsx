@@ -126,8 +126,11 @@ export default function App({ currentUser }: { currentUser: string }) {
     if (!rawRecipes) {
       return null;
     }
-    return applyQualitativeOverrides(rawRecipes, loadQualitativeOverrides());
-  }, [rawRecipes]);
+    const visible = rawRecipes.filter(
+      (r) => r.visibility !== "private" || r.owner === currentUser,
+    );
+    return applyQualitativeOverrides(visible, loadQualitativeOverrides());
+  }, [rawRecipes, currentUser]);
 
   const ingredients = ingredientsFile?.ingredients ?? [];
   const ready = recipes && ingredientsFile;
