@@ -78,7 +78,7 @@ function appChromeTitle(pathname: string, search: string): string {
   return appChromeSectionTitle(pathname);
 }
 
-export default function App() {
+export default function App({ currentUser }: { currentUser: string }) {
   const [rawRecipes, setRawRecipes] = React.useState<Recipe[] | null>(null);
   const [ingredientsFile, setIngredientsFile] = React.useState<IngredientsFile | null>(
     null,
