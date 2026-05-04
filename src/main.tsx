@@ -6,6 +6,13 @@ import { ErrorBoundary } from "./ErrorBoundary";
 import { AuthScreen } from "./AuthScreen";
 import { clearSessionUser, getSessionUser, setSessionUser } from "./userSession";
 
+// Disable browser scroll restoration before React mounts; otherwise mobile
+// Safari/Chrome may restore a non-zero scroll position from history before
+// our snap-to-top effects can run.
+if (typeof window !== "undefined" && "scrollRestoration" in window.history) {
+  window.history.scrollRestoration = "manual";
+}
+
 function Root() {
   const [user, setUser] = React.useState<string | null>(() => getSessionUser());
 

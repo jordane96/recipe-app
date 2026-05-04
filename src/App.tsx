@@ -280,17 +280,35 @@ function AppLayout({
       const raf = window.requestAnimationFrame(snapToTop);
       // On initial mount specifically (e.g. just after sign-in), the iOS
       // keyboard dismiss animation can run AFTER our synchronous snap and
-      // leave the page slightly scrolled. Re-snap on a few timers to catch it.
-      const timers = !prev
-        ? [
-            window.setTimeout(snapToTop, 100),
-            window.setTimeout(snapToTop, 300),
-            window.setTimeout(snapToTop, 600),
-          ]
-        : [];
+      // leave the page slightly scrolled.
+      let timers: number[] = [];
+      let viewportResizeHandler: (() => void) | null = null;
+      if (!prev) {
+        // Aggressive timer-based retries to outlast keyboard dismiss + URL bar settle.
+        timers = [100, 250, 500, 1000, 1500].map((ms) =>
+          window.setTimeout(snapToTop, ms),
+        );
+        // VisualViewport `resize` fires when the iOS keyboard finishes hiding —
+        // re-snap then to fight the residual scroll iOS leaves us with. Listener
+        // is unbound after the first ~2s so user-scroll isn't fought.
+        if (typeof window !== "undefined" && window.visualViewport) {
+          const vv = window.visualViewport;
+          viewportResizeHandler = () => snapToTop();
+          vv.addEventListener("resize", viewportResizeHandler);
+          window.setTimeout(() => {
+            if (viewportResizeHandler) {
+              vv.removeEventListener("resize", viewportResizeHandler);
+              viewportResizeHandler = null;
+            }
+          }, 2000);
+        }
+      }
       return () => {
         window.cancelAnimationFrame(raf);
         timers.forEach((t) => window.clearTimeout(t));
+        if (viewportResizeHandler && window.visualViewport) {
+          window.visualViewport.removeEventListener("resize", viewportResizeHandler);
+        }
       };
     }
     if (prev.search === search) {
