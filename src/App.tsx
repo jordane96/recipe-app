@@ -170,8 +170,71 @@ export default function App({ currentUser, onSignOut }: { currentUser: string; o
   const ingredients = ingredientsFile?.ingredients ?? [];
   const ready = recipes && ingredientsFile;
 
+  // TEMPORARY scroll debug — gated by ?debugScroll=1 in URL
+  const [scrollDebug, setScrollDebug] = React.useState<string[]>([]);
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const showDebug =
+      window.location.hash.includes("debugScroll=1") ||
+      window.location.search.includes("debugScroll=1");
+    if (!showDebug) return;
+    const log = (label: string) => {
+      const y = Math.round(
+        window.scrollY ||
+          document.documentElement.scrollTop ||
+          document.body.scrollTop ||
+          0,
+      );
+      const t = Math.round(performance.now());
+      const docH = document.documentElement.scrollHeight;
+      const winH = window.innerHeight;
+      setScrollDebug((d) => [
+        ...d.slice(-19),
+        `${t}ms ${label}: y=${y} doc=${docH} win=${winH}`,
+      ]);
+    };
+    log("App-mount");
+    const t1 = window.setTimeout(() => log("50ms"), 50);
+    const t2 = window.setTimeout(() => log("150ms"), 150);
+    const t3 = window.setTimeout(() => log("400ms"), 400);
+    const t4 = window.setTimeout(() => log("800ms"), 800);
+    const t5 = window.setTimeout(() => log("1500ms"), 1500);
+    const t6 = window.setTimeout(() => log("3000ms"), 3000);
+    const onScroll = () => log("scroll-evt");
+    window.addEventListener("scroll", onScroll, { passive: true });
+    const vv = window.visualViewport;
+    const onVvResize = () => log("vv-resize");
+    if (vv) vv.addEventListener("resize", onVvResize);
+    return () => {
+      [t1, t2, t3, t4, t5, t6].forEach((t) => window.clearTimeout(t));
+      window.removeEventListener("scroll", onScroll);
+      if (vv) vv.removeEventListener("resize", onVvResize);
+    };
+  }, []);
+
   return (
     <HashRouter>
+      {scrollDebug.length > 0 ? (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 99999,
+            background: "rgba(0,0,0,0.9)",
+            color: "#0f0",
+            font: "10px/1.3 monospace",
+            padding: "6px 8px",
+            maxHeight: "55vh",
+            overflowY: "auto",
+            whiteSpace: "pre-wrap",
+            pointerEvents: "auto",
+          }}
+        >
+          {scrollDebug.join("\n")}
+        </div>
+      ) : null}
       {err ? <p className="err app-shell">{err}</p> : null}
       {!ready && !err ? <p className="muted app-shell">Loading…</p> : null}
       {ready ? (
