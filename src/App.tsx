@@ -85,6 +85,33 @@ export default function App({ currentUser, onSignOut }: { currentUser: string; o
   );
   const [err, setErr] = React.useState<string | null>(null);
 
+  /**
+   * Mobile snap-to-top, hardened: this fires when App first mounts (i.e. the
+   * moment AuthScreen unmounts after sign-in), BEFORE the Loading screen even
+   * paints. AppLayout has its own snap, but it doesn't mount until recipe data
+   * resolves — so the Loading window would otherwise show at the auth-screen
+   * scroll position. Multiple retries to outlast keyboard dismiss + URL bar.
+   */
+  React.useLayoutEffect(() => {
+    if (typeof window === "undefined") return;
+    const snap = () => {
+      window.scrollTo(0, 0);
+      if (typeof document !== "undefined") {
+        if (document.documentElement) document.documentElement.scrollTop = 0;
+        if (document.body) document.body.scrollTop = 0;
+      }
+    };
+    snap();
+    const raf = window.requestAnimationFrame(snap);
+    const timers = [50, 150, 350, 700, 1200].map((ms) =>
+      window.setTimeout(snap, ms),
+    );
+    return () => {
+      window.cancelAnimationFrame(raf);
+      timers.forEach((t) => window.clearTimeout(t));
+    };
+  }, []);
+
   React.useEffect(() => {
     let cancelled = false;
     loadRecipeBundle()
@@ -211,43 +238,6 @@ function AppLayout({
 
   /** Last seen location for scroll-to-top: skip reset when edit page only drops `editStep` (deep-link cleanup). */
   const scrollSnapPrevRef = React.useRef<{ pathname: string; search: string } | null>(null);
-
-  // TEMPORARY scroll debug — remove once mobile snap-to-top is fixed.
-  const [scrollDebug, setScrollDebug] = React.useState<string[]>([]);
-  React.useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (!window.location.hash.includes("debugScroll=1") && !window.location.search.includes("debugScroll=1")) {
-      return;
-    }
-    const log = (label: string) => {
-      const y = Math.round(
-        window.scrollY ||
-          document.documentElement.scrollTop ||
-          document.body.scrollTop ||
-          0,
-      );
-      const t = Math.round(performance.now());
-      setScrollDebug((d) => [...d.slice(-15), `${t}ms ${label}: y=${y}`]);
-    };
-    log("mount");
-    const t1 = window.setTimeout(() => log("100ms"), 100);
-    const t2 = window.setTimeout(() => log("500ms"), 500);
-    const t3 = window.setTimeout(() => log("1500ms"), 1500);
-    const t4 = window.setTimeout(() => log("3000ms"), 3000);
-    const onScroll = () => log("scroll-event");
-    window.addEventListener("scroll", onScroll, { passive: true });
-    const vv = window.visualViewport;
-    const onVvResize = () => log("vv-resize");
-    if (vv) vv.addEventListener("resize", onVvResize);
-    return () => {
-      window.clearTimeout(t1);
-      window.clearTimeout(t2);
-      window.clearTimeout(t3);
-      window.clearTimeout(t4);
-      window.removeEventListener("scroll", onScroll);
-      if (vv) vv.removeEventListener("resize", onVvResize);
-    };
-  }, []);
 
   const isCookingNowView = React.useMemo(() => {
     if (pathname === "/cooking-now") {
@@ -400,27 +390,6 @@ function AppLayout({
 
   return (
     <div className={wide ? "app-shell app-shell--wide" : "app-shell"}>
-      {scrollDebug.length > 0 ? (
-        <div
-          style={{
-            position: "fixed",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            zIndex: 99999,
-            background: "rgba(0,0,0,0.85)",
-            color: "#0f0",
-            font: "10px/1.3 monospace",
-            padding: "6px 8px",
-            maxHeight: "40vh",
-            overflowY: "auto",
-            whiteSpace: "pre-wrap",
-            pointerEvents: "auto",
-          }}
-        >
-          {scrollDebug.join("\n")}
-        </div>
-      ) : null}
       <header className="app-chrome-bar">
         <button
           ref={menuBtnRef}
