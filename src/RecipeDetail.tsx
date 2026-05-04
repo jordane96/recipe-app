@@ -86,8 +86,8 @@ export function RecipeDetail({
         method: "DELETE",
       });
       if (res.ok) {
-        onRecipeDeleted?.(recipe.id);
-        navigate(`/recipe/${recipe.forkedFromRecipeId}`);
+        window.location.hash = `#/recipe/${recipe.forkedFromRecipeId}`;
+        window.location.reload();
       }
     } finally {
       setRestoring(false);
