@@ -66,12 +66,33 @@ function pickActiveCookProgressEntry(recipeId: string): CookProgressEntry | null
 export function RecipeDetail({
   recipes,
   ingredients,
+  currentUser,
+  onRecipeDeleted,
 }: {
   recipes: Recipe[];
   ingredients: IngredientDef[];
+  currentUser?: string;
+  onRecipeDeleted?: (id: string) => void;
 }) {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [restoring, setRestoring] = React.useState(false);
+
+  const handleRestoreOriginal = async (recipe: Recipe) => {
+    if (!recipe.forkedFromRecipeId || restoring) return;
+    setRestoring(true);
+    try {
+      const res = await fetch(`/api/recipes/${recipe.id}?user=${encodeURIComponent(currentUser ?? "")}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        onRecipeDeleted?.(recipe.id);
+        navigate(`/recipe/${recipe.forkedFromRecipeId}`);
+      }
+    } finally {
+      setRestoring(false);
+    }
+  };
   const [searchParams] = useSearchParams();
   const fromSidesList = readSidesListTab(searchParams);
   const fromShopping = readFromShopping(searchParams);
@@ -203,6 +224,16 @@ export function RecipeDetail({
             >
               edit
             </Link>
+            {recipe.forkedFromRecipeId && recipe.owner === currentUser ? (
+              <button
+                type="button"
+                className="recipe-detail-restore-btn"
+                onClick={() => handleRestoreOriginal(recipe)}
+                disabled={restoring}
+              >
+                {restoring ? "Restoring…" : "Restore original"}
+              </button>
+            ) : null}
           </span>
           {recipe.type === "reference" ? (
             <span className="badge">Reference</span>

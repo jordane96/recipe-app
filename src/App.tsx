@@ -126,8 +126,16 @@ export default function App({ currentUser }: { currentUser: string }) {
     if (!rawRecipes) {
       return null;
     }
+    // IDs of recipes the current user has forked — hide the originals from their view
+    const forkedOriginIds = new Set(
+      rawRecipes
+        .filter((r) => r.owner === currentUser && r.forkedFromRecipeId)
+        .map((r) => r.forkedFromRecipeId as string),
+    );
     const visible = rawRecipes.filter(
-      (r) => r.visibility !== "private" || r.owner === currentUser,
+      (r) =>
+        (r.visibility !== "private" || r.owner === currentUser) &&
+        !forkedOriginIds.has(r.id),
     );
     return applyQualitativeOverrides(visible, loadQualitativeOverrides());
   }, [rawRecipes, currentUser]);
@@ -417,7 +425,16 @@ function AppLayout({
         />
         <Route
           path="/recipe/:id"
-          element={<RecipeDetail recipes={recipes} ingredients={ingredients} />}
+          element={
+            <RecipeDetail
+              recipes={recipes}
+              ingredients={ingredients}
+              currentUser={currentUser}
+              onRecipeDeleted={(deletedId) =>
+                setRawRecipes((prev) => prev ? prev.filter((r) => r.id !== deletedId) : prev)
+              }
+            />
+          }
         />
         <Route
           path="/shopping"

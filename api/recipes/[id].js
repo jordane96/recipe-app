@@ -6,6 +6,28 @@ const sql = neon(process.env.DATABASE_URL)
 export default async function handler(req, res) {
   const { id } = req.query
 
+  if (req.method === 'DELETE') {
+    const currentUser = req.query.user ?? null
+    const [existing] = await sql`SELECT "Owner" FROM recipes WHERE id = ${id}`
+    if (!existing) return res.status(404).json({ error: 'Recipe not found' })
+    if (existing.Owner !== currentUser) return res.status(403).json({ error: 'Not your recipe' })
+
+    try {
+      const sections = await sql`SELECT id FROM ingredient_sections WHERE recipe_id = ${id}`
+      for (const sec of sections) {
+        await sql`DELETE FROM ingredient_lines WHERE section_id = ${sec.id}`
+      }
+      await sql`DELETE FROM ingredient_sections WHERE recipe_id = ${id}`
+      await sql`DELETE FROM recipe_instructions WHERE recipe_id = ${id}`
+      await sql`DELETE FROM recipe_recommended_sides WHERE recipe_id = ${id}`
+      await sql`DELETE FROM recipes WHERE id = ${id}`
+      return res.json({ ok: true })
+    } catch (e) {
+      console.error('DELETE /api/recipes/[id] error:', e)
+      return res.status(500).json({ error: 'Failed to delete recipe' })
+    }
+  }
+
   if (req.method !== 'PUT') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
@@ -18,7 +40,6 @@ export default async function handler(req, res) {
   const currentUser = recipe.currentUser ?? null
 
   try {
-    // Check ownership — fork if this user doesn't own the recipe
     const [existing] = await sql`SELECT "Owner" FROM recipes WHERE id = ${id}`
     if (!existing) return res.status(404).json({ error: 'Recipe not found' })
 
@@ -26,7 +47,6 @@ export default async function handler(req, res) {
     let forked = false
 
     if (existing.Owner !== currentUser) {
-      // Fork: create a new recipe owned by currentUser
       targetId = randomUUID()
       forked = true
 
@@ -49,7 +69,6 @@ export default async function handler(req, res) {
         )
       `
     } else {
-      // Update core fields in place
       await sql`
         UPDATE recipes
         SET title       = ${recipe.title.trim()},
@@ -59,7 +78,6 @@ export default async function handler(req, res) {
       `
     }
 
-    // Upsert any recipe-local custom ingredient defs into the library
     for (const def of recipe.customIngredientDefs ?? []) {
       await sql`
         INSERT INTO ingredients (id, name, unit, category)
@@ -71,7 +89,6 @@ export default async function handler(req, res) {
       `
     }
 
-    // Replace ingredient sections + lines
     const existingSections = await sql`
       SELECT id FROM ingredient_sections WHERE recipe_id = ${targetId}
     `
@@ -96,7 +113,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // Replace instructions
     await sql`DELETE FROM recipe_instructions WHERE recipe_id = ${targetId}`
     for (let i = 0; i < (recipe.instructions ?? []).length; i++) {
       const step = recipe.instructions[i]

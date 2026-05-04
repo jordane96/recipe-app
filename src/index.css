@@ -119,6 +119,22 @@
   cursor: default;
 }
 
+.recipe-detail-restore-btn {
+  background: none;
+  border: none;
+  font-size: var(--fs-ui);
+  color: var(--muted);
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+  margin-left: 0.5rem;
+}
+
+.recipe-detail-restore-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .auth-username-confirm {
   margin: 0;
   font-size: var(--fs-ui);
