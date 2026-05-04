@@ -20,8 +20,8 @@ export async function loadRecipeBundle(): Promise<RecipeBundle> {
     return res.json() as Promise<T>;
   };
   const [ingredients, recipes] = await Promise.all([
-    load<IngredientsFile>("ingredients.json"),
-    load<RecipeFile>("recipes.json"),
+    load<IngredientsFile>("/api/ingredients"),
+    load<RecipeFile>("/api/recipes"),
   ]);
   return { ingredients, recipes };
 }
