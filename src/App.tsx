@@ -278,7 +278,20 @@ function AppLayout({
       snapToTop();
       // Re-snap after first paint in case mobile URL bar / async content shifts layout.
       const raf = window.requestAnimationFrame(snapToTop);
-      return () => window.cancelAnimationFrame(raf);
+      // On initial mount specifically (e.g. just after sign-in), the iOS
+      // keyboard dismiss animation can run AFTER our synchronous snap and
+      // leave the page slightly scrolled. Re-snap on a few timers to catch it.
+      const timers = !prev
+        ? [
+            window.setTimeout(snapToTop, 100),
+            window.setTimeout(snapToTop, 300),
+            window.setTimeout(snapToTop, 600),
+          ]
+        : [];
+      return () => {
+        window.cancelAnimationFrame(raf);
+        timers.forEach((t) => window.clearTimeout(t));
+      };
     }
     if (prev.search === search) {
       return;
