@@ -20,7 +20,6 @@ import {
   urlParamToPlanKey,
 } from "./listTabSearch";
 import { addFlowCartSessionKey, setActiveAddFlowSessionKey } from "./addFlowCartSession";
-import { recipeSegment } from "./recipeCourse";
 import { MEAL_PLAN_UNASSIGNED_KEY } from "./mealPlanStorage";
 import { useMealPlan } from "./MealPlanContext";
 import { useToast } from "./ToastContext";
@@ -247,9 +246,6 @@ export function RecipeDetail({
           </span>
           {recipe.type === "reference" ? (
             <span className="badge">Reference</span>
-          ) : null}
-          {recipeSegment(recipe) === "side" ? (
-            <span className="badge badge-side">Side</span>
           ) : null}
         </h1>
       </div>
