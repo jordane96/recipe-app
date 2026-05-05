@@ -137,25 +137,16 @@ export default async function handler(req, res) {
 
   const customIngredientDefs = []
 
-  // For low-confidence matches, prefix the line note so the user sees a hint to verify.
-  const noteWithVerify = (line) => {
-    const base = line.note ?? ''
-    if (line.potentialMatch && line.ingredientId) {
-      return base ? `Verify match — ${base}` : 'Verify match'
-    }
-    return base || null
-  }
-
   const ingredientSections = object.ingredientSections.map(sec => ({
     name: sec.name || 'Main',
     lines: sec.lines.map(line => {
       if (line.ingredientId && existingIds.has(line.ingredientId)) {
-        const note = noteWithVerify(line)
         return {
           ingredientId: line.ingredientId,
           amount: line.amount,
           unit: line.unit,
-          ...(note ? { note } : {}),
+          ...(line.note ? { note: line.note } : {}),
+          ...(line.potentialMatch ? { potentialMatch: true } : {}),
         }
       }
       const id = makeCustomId(line.ingredientName ?? 'item')

@@ -75,15 +75,6 @@ export function AddRecipePage() {
 
   return (
     <div className="add-recipe-page">
-      <div className="top-bar">
-        <Link to="/recipes" className="back-btn">
-          Recipes
-        </Link>
-        <h1 className="page-title" style={{ fontSize: "1.25rem" }}>
-          Add recipe
-        </h1>
-      </div>
-
       <div className="add-recipe-tabs" role="tablist">
         <button
           role="tab"
@@ -101,7 +92,7 @@ export function AddRecipePage() {
           data-on={tab === "screenshot"}
           onClick={() => { setTab("screenshot"); setError(null); }}
         >
-          Screenshot
+          Share screenshot
         </button>
       </div>
 
@@ -182,13 +173,18 @@ export function AddRecipePage() {
       )}
 
       <div className="add-recipe-actions">
-        <button
-          className="btn-primary"
-          disabled={!canSubmit}
-          onClick={handleParse}
-        >
-          {loading ? "Reading recipe…" : "Parse recipe"}
-        </button>
+        <div className="add-recipe-cta-stack">
+          <button
+            className="btn-primary btn-cta-wide"
+            disabled={!canSubmit}
+            onClick={handleParse}
+          >
+            {loading ? "Reading recipe…" : "Import recipe"}
+          </button>
+          <Link to="/recipes" className="btn-secondary btn-cta-wide">
+            Back
+          </Link>
+        </div>
         <Link to="/recipe/new/edit" className="add-recipe-blank-link">
           Start with blank recipe
         </Link>

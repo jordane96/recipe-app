@@ -5,6 +5,8 @@ export interface RecipeIngredientLine {
   amount: number | null;
   unit: string | null;
   note?: string;
+  /** Set by the parse agent for low-confidence matches; surfaced as an inline "verify" alert in the editor. Ephemeral — not persisted to the DB. */
+  potentialMatch?: boolean;
 }
 
 export interface IngredientSection {

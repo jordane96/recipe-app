@@ -1136,6 +1136,22 @@ export function EditRecipePage({
                   key={`${sec.name}-${secIndex}-${lineIndex}-${line.ingredientId}`}
                   className="edit-recipe-ing-block"
                 >
+                  {line.potentialMatch ? (
+                    <div className="edit-recipe-ing-verify" role="status">
+                      <span className="edit-recipe-ing-verify-icon" aria-hidden>!</span>
+                      <span className="edit-recipe-ing-verify-text">
+                        Check this match — the agent wasn’t sure.
+                      </span>
+                      <button
+                        type="button"
+                        className="edit-recipe-ing-verify-confirm"
+                        onClick={() => updateLine(secIndex, lineIndex, { potentialMatch: undefined })}
+                        aria-label="Confirm ingredient match"
+                      >
+                        Looks right
+                      </button>
+                    </div>
+                  ) : null}
                   <div
                     className={`edit-recipe-ing-row${comboOpen || unitOpen ? " edit-recipe-ing-row--open" : ""}`}
                   >
