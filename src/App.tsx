@@ -170,88 +170,8 @@ export default function App({ currentUser, onSignOut }: { currentUser: string; o
   const ingredients = ingredientsFile?.ingredients ?? [];
   const ready = recipes && ingredientsFile;
 
-  // TEMPORARY scroll debug — gated by ?debugScroll=1
-  const [scrollDebug, setScrollDebug] = React.useState<string[]>([]);
-  React.useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (
-      !window.location.hash.includes("debugScroll=1") &&
-      !window.location.search.includes("debugScroll=1")
-    )
-      return;
-    const log = (label: string) => {
-      const y = Math.round(window.scrollY);
-      const docH = document.documentElement.scrollHeight;
-      const winH = window.innerHeight;
-      const vv = window.visualViewport;
-      const vvOff = vv ? Math.round(vv.offsetTop) : -1;
-      const vvH = vv ? Math.round(vv.height) : -1;
-      // What element is at viewport (0, 50)?  Skip the app header zone.
-      const probe = (px: number) => {
-        const el = document.elementFromPoint(20, px);
-        if (!el) return "null";
-        const cls = (el.className && typeof el.className === "string"
-          ? el.className.split(" ")[0]
-          : "");
-        return `${el.tagName.toLowerCase()}.${cls || "?"}`;
-      };
-      const at0 = probe(0);
-      const at90 = probe(90);
-      const at140 = probe(140);
-      const t = Math.round(performance.now());
-      setScrollDebug((d) => [
-        ...d.slice(-19),
-        `${t}ms ${label}: y=${y} vvOff=${vvOff} vvH=${vvH} doc=${docH} win=${winH}\n  @0=${at0} @90=${at90} @140=${at140}`,
-      ]);
-    };
-    log("App-mount");
-    [50, 200, 600, 1500, 3500].forEach((ms) =>
-      window.setTimeout(() => log(`${ms}ms`), ms),
-    );
-    const onScroll = () => log("scroll");
-    window.addEventListener("scroll", onScroll, { passive: true });
-    const vv = window.visualViewport;
-    const onVv = () => log("vv-rsz");
-    if (vv) vv.addEventListener("resize", onVv);
-    // After 4s, capture chrome bar + title position one more time.
-    window.setTimeout(() => {
-      const bar = document.querySelector(".app-chrome-bar");
-      const title = document.querySelector("#planner-this-week-menu-heading");
-      if (bar && title) {
-        const b = bar.getBoundingClientRect();
-        const tt = title.getBoundingClientRect();
-        const t = Math.round(performance.now());
-        setScrollDebug((d) => [
-          ...d.slice(-19),
-          `${t}ms layout: bar=${Math.round(b.top)}-${Math.round(b.bottom)} title=${Math.round(tt.top)}-${Math.round(tt.bottom)} winY=${window.scrollY}`,
-        ]);
-      }
-    }, 4000);
-  }, []);
-
   return (
     <HashRouter>
-      {scrollDebug.length > 0 ? (
-        <div
-          style={{
-            position: "fixed",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            zIndex: 99999,
-            background: "rgba(0,0,0,0.92)",
-            color: "#0f0",
-            font: "10px/1.3 monospace",
-            padding: "6px 8px",
-            maxHeight: "55vh",
-            overflowY: "auto",
-            whiteSpace: "pre-wrap",
-            pointerEvents: "auto",
-          }}
-        >
-          {scrollDebug.join("\n")}
-        </div>
-      ) : null}
       {err ? <p className="err app-shell">{err}</p> : null}
       {!ready && !err ? <p className="muted app-shell">Loading…</p> : null}
       {ready ? (
