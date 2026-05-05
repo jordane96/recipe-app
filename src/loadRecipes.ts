@@ -11,7 +11,7 @@ function dataFileUrl(file: string): string {
   return `${prefix}${name}`.replace(/\/{2,}/g, "/").replace(":/", "://");
 }
 
-export async function loadRecipeBundle(): Promise<RecipeBundle> {
+export async function loadRecipeBundle(currentUser?: string): Promise<RecipeBundle> {
   const load = async <T>(p: string): Promise<T> => {
     const res = await fetch(dataFileUrl(p));
     if (!res.ok) {
@@ -19,9 +19,12 @@ export async function loadRecipeBundle(): Promise<RecipeBundle> {
     }
     return res.json() as Promise<T>;
   };
+  const recipesPath = currentUser
+    ? `/api/recipes?user=${encodeURIComponent(currentUser)}`
+    : "/api/recipes";
   const [ingredients, recipes] = await Promise.all([
     load<IngredientsFile>("/api/ingredients"),
-    load<RecipeFile>("/api/recipes"),
+    load<RecipeFile>(recipesPath),
   ]);
   return { ingredients, recipes };
 }

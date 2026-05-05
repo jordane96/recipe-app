@@ -26,6 +26,7 @@ import {
 import { addCookProgressSessionsBatch } from "./cookProgressSession";
 import { recipeToPlannedMeal, useMealPlan } from "./MealPlanContext";
 import { useToast } from "./ToastContext";
+import { useSavedRecipes } from "./SavedRecipesContext";
 import { addFlowCartSessionKey, setActiveAddFlowSessionKey } from "./addFlowCartSession";
 
 /** "main" and "side" are pinned to the front of the chip row; the rest sort alphabetically. */
@@ -122,14 +123,24 @@ function matches(
 export function RecipeList({
   recipes,
   ingredients,
+  currentUser,
 }: {
   recipes: Recipe[];
   ingredients: IngredientDef[];
+  currentUser: string;
 }) {
   const { addPlannedMealsToKey } = useMealPlan();
+  const { savedRecipeIds } = useSavedRecipes();
+  // My recipes view: own + saved. Drops other users' public recipes (those
+  // are surfaced in /recipes/discover).
+  const myRecipes = React.useMemo(
+    () =>
+      recipes.filter((r) => r.owner === currentUser || savedRecipeIds.has(r.id)),
+    [recipes, currentUser, savedRecipeIds],
+  );
   const recipeById = React.useMemo(
-    () => new Map<string, Recipe>(recipes.map((r) => [r.id, r])),
-    [recipes],
+    () => new Map<string, Recipe>(myRecipes.map((r) => [r.id, r])),
+    [myRecipes],
   );
   const { showToast } = useToast();
   const { addToList } = useShoppingList();
@@ -339,13 +350,13 @@ export function RecipeList({
     showToast,
   ]);
 
-  const tags = React.useMemo(() => uniqueTags(recipes), [recipes]);
+  const tags = React.useMemo(() => uniqueTags(myRecipes), [myRecipes]);
   const filtered = React.useMemo(
     () =>
-      recipes
+      myRecipes
         .filter((r) => matches(r, q, selectedTags, byId))
         .sort((a, b) => a.title.localeCompare(b.title)),
-    [recipes, q, selectedTags, byId],
+    [myRecipes, q, selectedTags, byId],
   );
 
   const pickListAria = React.useCallback(
@@ -425,7 +436,7 @@ export function RecipeList({
     );
   };
 
-  const recipesEmpty = recipes.length === 0;
+  const recipesEmpty = myRecipes.length === 0;
   const listEmpty = filtered.length === 0;
 
   const addFlow = inPlanFlow;

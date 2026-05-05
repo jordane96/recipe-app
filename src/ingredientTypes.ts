@@ -123,6 +123,8 @@ export interface Recipe {
 export interface RecipeFile {
   version: number;
   recipes: Recipe[];
+  /** Recipe IDs the current user has saved (per the ?user=… query param). */
+  savedRecipeIds?: string[];
 }
 
 export interface RecipeBundle {

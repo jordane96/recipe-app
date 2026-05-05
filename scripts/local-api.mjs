@@ -34,7 +34,9 @@ const routes = [
   ["/api/auth/signin",        "../api/auth/signin.js"],
   ["/api/auth/signup",        "../api/auth/signup.js"],
   ["/api/auth/check-username","../api/auth/check-username.js"],
-  ["/api/recipes/",           "../api/recipes/[id].js"],   // /api/recipes/:id
+  ["/api/saves/",             "../api/saves/[recipeId].js"], // /api/saves/:recipeId
+  ["/api/saves",              "../api/saves.js"],            // POST /api/saves
+  ["/api/recipes/",           "../api/recipes/[id].js"],     // /api/recipes/:id
   ["/api/recipes",            "../api/recipes.js"],
   ["/api/ingredients",        "../api/ingredients.js"],
 ];
@@ -44,9 +46,12 @@ function makeReq(nodeReq, body) {
   const query = {};
   for (const [k, v] of url.searchParams) query[k] = v;
 
-  // Extract dynamic :id param for /api/recipes/:id
-  const idMatch = url.pathname.match(/^\/api\/recipes\/(.+)$/);
-  const query2 = idMatch ? { ...query, id: idMatch[1] } : query;
+  // Extract dynamic params: /api/recipes/:id  and  /api/saves/:recipeId
+  const recipeIdMatch = url.pathname.match(/^\/api\/recipes\/(.+)$/);
+  const saveIdMatch = url.pathname.match(/^\/api\/saves\/(.+)$/);
+  let query2 = query;
+  if (recipeIdMatch) query2 = { ...query, id: recipeIdMatch[1] };
+  else if (saveIdMatch) query2 = { ...query, recipeId: saveIdMatch[1] };
 
   return {
     method: nodeReq.method,

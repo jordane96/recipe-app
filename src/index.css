@@ -313,18 +313,8 @@ a {
 }
 
 .app-chrome-burger {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 5px;
-  width: 1.25rem;
-}
-
-.app-chrome-burger span {
   display: block;
-  height: 2px;
-  border-radius: 1px;
-  background: var(--text);
+  color: var(--text);
 }
 
 .app-chrome-home {
@@ -2601,6 +2591,46 @@ button.cook-mode-v2-meal-banner--in-chrome,
 .recipe-row .recipe-link {
   flex: 1;
   min-width: 0;
+}
+
+/* Discover: row layout includes a Save button on the right of the link. */
+.recipe-row.discover-row {
+  align-items: stretch;
+}
+
+.recipe-row.discover-row .discover-row-link {
+  flex: 1;
+  min-width: 0;
+}
+
+.discover-save-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: var(--tap);
+  padding: 0.45rem 0.75rem;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.discover-save-btn:hover {
+  background: var(--accent-soft, color-mix(in srgb, var(--accent) 12%, transparent));
+}
+
+.discover-save-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.discover-save-btn-label {
+  font-size: 0.9rem;
 }
 
 /* Add-to-plan / shop / cook-now: checkbox pick + in-card View (menu-tab pattern). */

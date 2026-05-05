@@ -13,7 +13,7 @@ import { MealPlannerPage } from "./MealPlannerPage";
 import type { IngredientDef, IngredientsFile, Recipe } from "./types";
 import { RecipeDetail } from "./RecipeDetail";
 import { AddRecipePlaceholderPage } from "./AddRecipePlaceholderPage";
-import { DiscoverPlaceholderPage } from "./DiscoverPlaceholderPage";
+import { DiscoverPage } from "./DiscoverPage";
 import { EditRecipePage } from "./EditRecipePage";
 import { RecipeList } from "./RecipeList";
 import { MealPlanProvider } from "./MealPlanContext";
@@ -22,6 +22,7 @@ import { ShoppingListPage } from "./ShoppingListPage";
 import { CookHistoryProvider } from "./CookHistoryContext";
 import { HistoryPage } from "./HistoryPage";
 import { ToastProvider } from "./ToastContext";
+import { SavedRecipesProvider } from "./SavedRecipesContext";
 import { InstacartPlaceholderPage } from "./InstacartPlaceholderPage";
 import { CookingNowPage } from "./CookingNowPage";
 import {
@@ -87,6 +88,7 @@ export default function App({ currentUser, onSignOut }: { currentUser: string; o
   const [ingredientsFile, setIngredientsFile] = React.useState<IngredientsFile | null>(
     null,
   );
+  const [initialSavedRecipeIds, setInitialSavedRecipeIds] = React.useState<string[]>([]);
   const [err, setErr] = React.useState<string | null>(null);
 
   /**
@@ -118,7 +120,7 @@ export default function App({ currentUser, onSignOut }: { currentUser: string; o
 
   React.useEffect(() => {
     let cancelled = false;
-    loadRecipeBundle()
+    loadRecipeBundle(currentUser)
       .then((bundle) => {
         if (!cancelled) {
           const list = bundle.recipes?.recipes;
@@ -133,6 +135,7 @@ export default function App({ currentUser, onSignOut }: { currentUser: string; o
           }
           setRawRecipes(list);
           setIngredientsFile(ing);
+          setInitialSavedRecipeIds(bundle.recipes.savedRecipeIds ?? []);
         }
       })
       .catch((e: unknown) => {
@@ -143,7 +146,7 @@ export default function App({ currentUser, onSignOut }: { currentUser: string; o
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [currentUser]);
 
   const onRecipeSaved = React.useCallback((updated: Recipe) => {
     setRawRecipes((prev) => {
@@ -183,14 +186,19 @@ export default function App({ currentUser, onSignOut }: { currentUser: string; o
           <MealPlanProvider>
             <CookHistoryProvider>
               <ToastProvider>
-                <AppLayout
-                  recipes={recipes}
-                  ingredients={ingredients}
-                  ingredientsFile={ingredientsFile}
-                  onRecipeSaved={onRecipeSaved}
+                <SavedRecipesProvider
                   currentUser={currentUser}
-                  onSignOut={onSignOut}
-                />
+                  initialSavedRecipeIds={initialSavedRecipeIds}
+                >
+                  <AppLayout
+                    recipes={recipes}
+                    ingredients={ingredients}
+                    ingredientsFile={ingredientsFile}
+                    onRecipeSaved={onRecipeSaved}
+                    currentUser={currentUser}
+                    onSignOut={onSignOut}
+                  />
+                </SavedRecipesProvider>
               </ToastProvider>
             </CookHistoryProvider>
           </MealPlanProvider>
@@ -404,11 +412,22 @@ function AppLayout({
           aria-controls="app-nav-drawer"
           onClick={() => setMenuOpen((o) => !o)}
         >
-          <span className="app-chrome-burger" aria-hidden>
-            <span />
-            <span />
-            <span />
-          </span>
+          <svg
+            className="app-chrome-burger"
+            xmlns="http://www.w3.org/2000/svg"
+            width="22"
+            height="22"
+            viewBox="0 0 22 22"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            aria-hidden
+          >
+            <line x1="3" y1="6" x2="19" y2="6" />
+            <line x1="3" y1="11" x2="19" y2="11" />
+            <line x1="3" y1="16" x2="19" y2="16" />
+          </svg>
         </button>
         <span className={`app-chrome-home${isPlannerHome ? " app-chrome-home--current" : ""}`}>
           {chromeTitle}
@@ -536,9 +555,9 @@ function AppLayout({
         />
         <Route
           path="/recipes/discover"
-          element={<DiscoverPlaceholderPage />}
+          element={<DiscoverPage recipes={recipes} ingredients={ingredients} currentUser={currentUser} />}
         />
-        <Route path="/recipes" element={<RecipeList recipes={recipes} ingredients={ingredients} />} />
+        <Route path="/recipes" element={<RecipeList recipes={recipes} ingredients={ingredients} currentUser={currentUser} />} />
         <Route
           path="/recipe/:id/edit"
           element={

@@ -4,12 +4,16 @@ const sql = neon(process.env.DATABASE_URL)
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
-    const [recipes, sections, lines, instructions, sides] = await Promise.all([
+    const currentUser = req.query.user ?? null
+    const [recipes, sections, lines, instructions, sides, saves] = await Promise.all([
       sql`SELECT * FROM recipes ORDER BY title`,
       sql`SELECT * FROM ingredient_sections ORDER BY recipe_id, sort_order`,
       sql`SELECT * FROM ingredient_lines ORDER BY section_id, sort_order`,
       sql`SELECT * FROM recipe_instructions ORDER BY recipe_id, sort_order`,
       sql`SELECT * FROM recipe_recommended_sides`,
+      currentUser
+        ? sql`SELECT recipe_id FROM recipe_saves WHERE username = ${currentUser}`
+        : Promise.resolve([]),
     ])
 
     const assembled = recipes.map(recipe => ({
@@ -44,7 +48,8 @@ export default async function handler(req, res) {
         .map(s => ({ recipeId: s.side_recipe_id, label: s.label })),
     }))
 
-    res.json({ version: 2, recipes: assembled })
+    const savedRecipeIds = saves.map(s => s.recipe_id)
+    res.json({ version: 2, recipes: assembled, savedRecipeIds })
   } else {
     res.status(405).json({ error: 'Method not allowed' })
   }

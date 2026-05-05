@@ -24,6 +24,7 @@ import { recipeSegment } from "./recipeCourse";
 import { MEAL_PLAN_UNASSIGNED_KEY } from "./mealPlanStorage";
 import { useMealPlan } from "./MealPlanContext";
 import { useToast } from "./ToastContext";
+import { useSavedRecipes } from "./SavedRecipesContext";
 import { RecipeCookModePanel } from "./RecipeCookModePanel";
 import { normalizeInstructionStep } from "./recipeInstructions";
 import { loadCookUi } from "./cookModeSessionStorage";
@@ -112,7 +113,20 @@ export function RecipeDetail({
   const cookParams = readCookModeParams(searchParams);
   const { addRecipeToPlanKey } = useMealPlan();
   const { showToast } = useToast();
+  const { isSaved, saveRecipe } = useSavedRecipes();
   const byId = React.useMemo(() => ingredientMap(ingredients), [ingredients]);
+
+  const isOtherUsersRecipe = !!(recipe && recipe.owner && recipe.owner !== currentUser);
+  const showSaveCta = isOtherUsersRecipe && recipe && !isSaved(recipe.id);
+  const handleSaveRecipe = React.useCallback(async () => {
+    if (!recipe) return;
+    try {
+      await saveRecipe(recipe.id);
+      showToast("Recipe saved!");
+    } catch {
+      showToast("Couldn't save — please try again.");
+    }
+  }, [recipe, saveRecipe, showToast]);
 
   const [cookProgressRev, setCookProgressRev] = React.useState(0);
   React.useEffect(() => {
@@ -426,7 +440,15 @@ export function RecipeDetail({
             </Link>
           ) : (
             <>
-              {!fromShoppingListItem ? (
+              {showSaveCta ? (
+                <button
+                  type="button"
+                  className="btn-primary btn-cta-wide"
+                  onClick={handleSaveRecipe}
+                >
+                  Save to my recipes
+                </button>
+              ) : !fromShoppingListItem ? (
                 <button
                   type="button"
                   className="btn-primary btn-cta-wide"
