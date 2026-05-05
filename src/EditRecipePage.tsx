@@ -300,6 +300,9 @@ export function EditRecipePage({
   const [searchParams] = useSearchParams();
   const { showToast } = useToast();
 
+  const isCreate = id === "new";
+  const parsedDraft = (location.state as { parsedDraft?: Recipe } | null)?.parsedDraft;
+
   const fromSidesList = readSidesListTab(searchParams);
   const fromShopping = readFromShopping(searchParams);
   const fromShoppingListItem = readFromShoppingListItem(searchParams);
@@ -311,8 +314,11 @@ export function EditRecipePage({
   const preserve = inPlanFlow || fromShopping || fromHistory || fromPlanner ? searchParams : undefined;
 
   const recipe = React.useMemo(
-    () => (id != null && id !== "" ? recipes.find((r) => r.id === id) : undefined),
-    [recipes, id],
+    () =>
+      id != null && id !== "" && !isCreate
+        ? recipes.find((r) => r.id === id)
+        : undefined,
+    [recipes, id, isCreate],
   );
 
   const [draft, setDraft] = React.useState<Recipe | null>(null);
@@ -401,6 +407,21 @@ export function EditRecipePage({
   }, [addIngredientOpen, addModalConcreteUnitOptions, addIngredientUnit]);
 
   React.useEffect(() => {
+    if (isCreate) {
+      const stored = loadStoredDraft("new");
+      const base: Recipe = stored ?? parsedDraft ?? {
+        id: "new",
+        title: "",
+        type: "recipe",
+        course: "main",
+        tags: [],
+        ingredientSections: [{ name: "Main", lines: [] }],
+        instructions: [{ text: "" }],
+      };
+      const defs = [...ingredients, ...(base.customIngredientDefs ?? [])];
+      setDraft(repairQualitativeLinesWhenMeasurable(base, defs, ingredientsFile.units));
+      return;
+    }
     if (!recipe) {
       setDraft(null);
       return;
@@ -409,7 +430,7 @@ export function EditRecipePage({
     const base = stored ?? cloneRecipe(recipe);
     const defs = [...ingredients, ...(base.customIngredientDefs ?? [])];
     setDraft(repairQualitativeLinesWhenMeasurable(base, defs, ingredientsFile.units));
-  }, [recipe?.id, ingredients, ingredientsFile]);
+  }, [recipe?.id, ingredients, ingredientsFile, isCreate, parsedDraft]);
 
   React.useEffect(() => {
     if (!addIngredientOpen) {
@@ -436,8 +457,9 @@ export function EditRecipePage({
   }, [addIngredientOpen]);
 
   const cookReturn = readRecipeDetailCookReturnContext(searchParams);
-  const backTo =
-    id != null && id !== ""
+  const backTo = isCreate
+    ? "/recipes"
+    : id != null && id !== ""
       ? cookReturn
         ? recipeCookModePath(id, cookReturn.cookDate, cookReturn.cookSlotRef)
         : recipeDetailPath(id, listSidesTab, preserve, fromShopping, fromHistory, fromShoppingListItem)
@@ -953,7 +975,10 @@ export function EditRecipePage({
   };
 
   const onSave = async () => {
-    if (!recipe || !draft || saving) {
+    if (!draft || saving) {
+      return;
+    }
+    if (!isCreate && !recipe) {
       return;
     }
     if (!draft.title.trim()) {
@@ -962,7 +987,26 @@ export function EditRecipePage({
     }
     setSaving(true);
     try {
-      const res = await fetch(`/api/recipes/${recipe.id}`, {
+      if (isCreate) {
+        const res = await fetch(`/api/recipes`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(draft),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({})) as { error?: string };
+          showToast(body.error ?? "Failed to save recipe. Try again.");
+          return;
+        }
+        const { id: newId } = await res.json() as { id: string };
+        clearStoredDraft("new");
+        const created: Recipe = { ...draft, id: newId };
+        onSaved?.(created);
+        showToast(`Saved “${created.title}”.`);
+        navigate(`/recipe/${newId}`);
+        return;
+      }
+      const res = await fetch(`/api/recipes/${recipe!.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(draft),
@@ -972,7 +1016,7 @@ export function EditRecipePage({
         showToast(body.error ?? "Failed to save recipe. Try again.");
         return;
       }
-      clearStoredDraft(recipe.id);
+      clearStoredDraft(recipe!.id);
       onSaved?.(draft);
       navigate(backTo);
     } catch {
@@ -983,6 +1027,11 @@ export function EditRecipePage({
   };
 
   const onDiscard = () => {
+    if (isCreate) {
+      clearStoredDraft("new");
+      navigate("/recipes");
+      return;
+    }
     if (!recipe) {
       navigate(backTo);
       return;
@@ -1002,7 +1051,15 @@ export function EditRecipePage({
     );
   }
 
-  if (!recipe || !draft) {
+  if (isCreate) {
+    if (!draft) {
+      return (
+        <div className="edit-recipe-page">
+          <p className="muted">Loading…</p>
+        </div>
+      );
+    }
+  } else if (!recipe || !draft) {
     return (
       <div className="edit-recipe-page">
         <p className="empty">

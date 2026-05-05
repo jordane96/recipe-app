@@ -12,7 +12,7 @@ import { loadRecipeBundle } from "./loadRecipes";
 import { MealPlannerPage } from "./MealPlannerPage";
 import type { IngredientDef, IngredientsFile, Recipe } from "./types";
 import { RecipeDetail } from "./RecipeDetail";
-import { AddRecipePlaceholderPage } from "./AddRecipePlaceholderPage";
+import { AddRecipePage } from "./AddRecipePage";
 import { EditRecipePage } from "./EditRecipePage";
 import { RecipeList } from "./RecipeList";
 import { MealPlanProvider } from "./MealPlanContext";
@@ -46,7 +46,7 @@ function appChromeSectionTitle(pathname: string): string {
     return "Recipes";
   }
   if (pathname === "/recipes/new") {
-    return "New recipe";
+    return "Add recipe";
   }
   if (pathname === "/shopping") {
     return "Shopping list";
@@ -115,7 +115,12 @@ export default function App() {
   }, []);
 
   const onRecipeSaved = React.useCallback((updated: Recipe) => {
-    setRawRecipes((prev) => prev ? prev.map((r) => (r.id === updated.id ? updated : r)) : prev);
+    setRawRecipes((prev) => {
+      if (!prev) return prev;
+      return prev.some((r) => r.id === updated.id)
+        ? prev.map((r) => (r.id === updated.id ? updated : r))
+        : [...prev, updated];
+    });
   }, []);
 
   const recipes = React.useMemo(() => {
@@ -390,7 +395,7 @@ function AppLayout({
         />
         <Route
           path="/recipes/new"
-          element={<AddRecipePlaceholderPage />}
+          element={<AddRecipePage />}
         />
         <Route path="/recipes" element={<RecipeList recipes={recipes} ingredients={ingredients} />} />
         <Route
