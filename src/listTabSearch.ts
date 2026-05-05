@@ -103,6 +103,8 @@ export const FROM_HISTORY_VALUE = "history";
 export const FROM_COOK_MODE_VALUE = "cook";
 /** “View” from meal planner (home) — Back returns to `/` (this week’s menu). */
 export const FROM_PLANNER_VALUE = "planner";
+/** Recipe opened from `/recipes/discover` — Back returns there. */
+export const FROM_DISCOVER_VALUE = "discover";
 /** Cook anchor when opening the recipe from the planner (scheduled day or today). */
 export const PLANNER_ANCHOR_DATE_QUERY = "plannerDate";
 export const PLANNER_PLAN_SLOT_REF_QUERY = "plannerSlot";
@@ -177,6 +179,10 @@ export function readFromCookMode(searchParams: URLSearchParams): boolean {
   return searchParams.get(FROM_QUERY) === FROM_COOK_MODE_VALUE;
 }
 
+export function readFromDiscover(searchParams: URLSearchParams): boolean {
+  return searchParams.get(FROM_QUERY) === FROM_DISCOVER_VALUE;
+}
+
 function copyFromShoppingParam(from: URLSearchParams, to: URLSearchParams): void {
   const v = from.get(FROM_QUERY);
   if (v === FROM_SHOPPING_VALUE || v === FROM_SHOPPING_LIST_ITEM_VALUE) {
@@ -187,6 +193,12 @@ function copyFromShoppingParam(from: URLSearchParams, to: URLSearchParams): void
 function copyFromHistoryParam(from: URLSearchParams, to: URLSearchParams): void {
   if (from.get(FROM_QUERY) === FROM_HISTORY_VALUE) {
     to.set(FROM_QUERY, FROM_HISTORY_VALUE);
+  }
+}
+
+function copyFromDiscoverParam(from: URLSearchParams, to: URLSearchParams): void {
+  if (from.get(FROM_QUERY) === FROM_DISCOVER_VALUE) {
+    to.set(FROM_QUERY, FROM_DISCOVER_VALUE);
   }
 }
 
@@ -398,6 +410,9 @@ export function recipeDetailBackPath(
   if (fromHistory) {
     return "/history";
   }
+  if (readFromDiscover(searchParams)) {
+    return "/recipes/discover";
+  }
   if (readNavigateBackToShoppingList(searchParams)) {
     return shoppingListPath(preserveParams ?? searchParams);
   }
@@ -431,6 +446,7 @@ export function recipeDetailPath(
   fromHistory?: boolean,
   fromShoppingListItem?: boolean,
   cookViewFromSession?: RecipeDetailCookViewContext,
+  fromDiscover?: boolean,
 ): string {
   const q = new URLSearchParams();
   if (preserveParams) {
@@ -441,6 +457,7 @@ export function recipeDetailPath(
     copyFromShoppingParam(preserveParams, q);
     copyFromHistoryParam(preserveParams, q);
     copyFromPlannerParam(preserveParams, q);
+    copyFromDiscoverParam(preserveParams, q);
   }
   if (cookViewFromSession) {
     q.set(FROM_QUERY, FROM_COOK_MODE_VALUE);
@@ -457,6 +474,8 @@ export function recipeDetailPath(
       q.set(FROM_QUERY, FROM_SHOPPING_LIST_ITEM_VALUE);
     } else if (fromShopping) {
       q.set(FROM_QUERY, FROM_SHOPPING_VALUE);
+    } else if (fromDiscover) {
+      q.set(FROM_QUERY, FROM_DISCOVER_VALUE);
     }
   }
   const s = q.toString();

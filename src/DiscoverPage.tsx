@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import type { IngredientDef, Recipe } from "./types";
 import { formatIngredientLine, ingredientMap } from "./ingredientDisplay";
 import { instructionStepText } from "./recipeInstructions";
@@ -66,6 +66,7 @@ export function DiscoverPage({
   const byId = React.useMemo(() => ingredientMap(ingredients), [ingredients]);
   const { savedRecipeIds, saveRecipe } = useSavedRecipes();
   const { showToast } = useToast();
+  const navigate = useNavigate();
 
   const [q, setQ] = React.useState("");
   const [selectedTags, setSelectedTags] = React.useState<Set<string>>(() => new Set());
@@ -118,7 +119,7 @@ export function DiscoverPage({
   const listEmpty = filtered.length === 0;
 
   return (
-    <div className="recipe-list-page">
+    <div className="recipe-list-page recipe-list-page--with-bottom-bar">
       <input
         className="search"
         type="search"
@@ -191,7 +192,10 @@ export function DiscoverPage({
           <ul className="recipe-list">
             {filtered.map((r) => (
               <li key={r.id} className="recipe-row discover-row">
-                <Link className="recipe-link discover-row-link" to={recipeDetailPath(r.id)}>
+                <Link
+                  className="recipe-link discover-row-link"
+                  to={recipeDetailPath(r.id, undefined, false, false, false, undefined, true)}
+                >
                   <span className="recipe-title-row">
                     <span>{r.title}</span>
                   </span>
@@ -225,6 +229,21 @@ export function DiscoverPage({
             ))}
           </ul>
         )}
+      </div>
+      <div
+        className="recipe-list-cart-bar"
+        role="region"
+        aria-label="Discover navigation"
+      >
+        <div className="recipe-list-cart-bar-inner">
+          <button
+            type="button"
+            className="btn-secondary btn-cta-wide"
+            onClick={() => navigate("/recipes")}
+          >
+            Back
+          </button>
+        </div>
       </div>
     </div>
   );

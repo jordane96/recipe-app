@@ -2427,6 +2427,7 @@ button.cook-mode-v2-meal-banner--in-chrome,
 /* Recipe list root (add-flow modifier changes section in TSX). */
 /* Recipe detail: same bottom inset so fixed CTA does not cover content */
 .recipe-list-page--add-flow,
+.recipe-list-page--with-bottom-bar,
 .recipe-detail-page--bottom-cta,
 .edit-recipe-page--bottom-cta {
   /* Primary + secondary CTA bar (fixed) + safe area */
