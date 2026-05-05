@@ -13,6 +13,7 @@ import { MealPlannerPage } from "./MealPlannerPage";
 import type { IngredientDef, IngredientsFile, Recipe } from "./types";
 import { RecipeDetail } from "./RecipeDetail";
 import { AddRecipePlaceholderPage } from "./AddRecipePlaceholderPage";
+import { DiscoverPlaceholderPage } from "./DiscoverPlaceholderPage";
 import { EditRecipePage } from "./EditRecipePage";
 import { RecipeList } from "./RecipeList";
 import { MealPlanProvider } from "./MealPlanContext";
@@ -47,6 +48,9 @@ function appChromeSectionTitle(pathname: string): string {
   }
   if (pathname === "/recipes/new") {
     return "New recipe";
+  }
+  if (pathname === "/recipes/discover") {
+    return "Discover";
   }
   if (pathname === "/shopping") {
     return "Shopping list";
@@ -529,6 +533,10 @@ function AppLayout({
         <Route
           path="/recipes/new"
           element={<AddRecipePlaceholderPage />}
+        />
+        <Route
+          path="/recipes/discover"
+          element={<DiscoverPlaceholderPage />}
         />
         <Route path="/recipes" element={<RecipeList recipes={recipes} ingredients={ingredients} />} />
         <Route
