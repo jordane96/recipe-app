@@ -253,6 +253,9 @@ export function RecipeDetail({
           ) : null}
         </h1>
       </div>
+      {isOtherUsersRecipe && recipe.owner ? (
+        <p className="recipe-detail-owner">by {recipe.owner}</p>
+      ) : null}
       {recipe.description?.trim() ? (
         <p className="recipe-detail-description">{recipe.description.trim()}</p>
       ) : null}
