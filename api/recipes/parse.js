@@ -145,13 +145,16 @@ export default async function handler(req, res) {
     }),
   }))
 
+  // Course (main/side) is stored as a tag rather than a separate field.
+  const courseTag = object.course === 'side' ? 'side' : 'main'
+  const tags = object.tags.includes(courseTag) ? object.tags : [...object.tags, courseTag]
+
   const draft = {
     title: object.title,
     ...(object.description ? { description: object.description } : {}),
     ...(object.servings != null ? { servings: object.servings } : {}),
     type: 'recipe',
-    course: object.course,
-    tags: object.tags,
+    tags,
     ingredientSections,
     instructions: object.instructions.map(s => ({
       text: s.text,

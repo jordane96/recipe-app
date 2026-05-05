@@ -9,9 +9,7 @@ import {
   readFromPlanner,
   readFromShopping,
   readFromShoppingListItem,
-  readPlanPhaseSide,
   readPlannerMenuCookContext,
-  readSidesListTab,
   recipeCookModePath,
   recipeDetailBackPath,
   readRecipeListPickExperience,
@@ -22,10 +20,10 @@ import {
   urlParamToPlanKey,
 } from "./listTabSearch";
 import { addFlowCartSessionKey, setActiveAddFlowSessionKey } from "./addFlowCartSession";
-import { recipeSegment } from "./recipeCourse";
 import { MEAL_PLAN_UNASSIGNED_KEY } from "./mealPlanStorage";
 import { useMealPlan } from "./MealPlanContext";
 import { useToast } from "./ToastContext";
+import { useSavedRecipes } from "./SavedRecipesContext";
 import { RecipeCookModePanel } from "./RecipeCookModePanel";
 import { normalizeInstructionStep } from "./recipeInstructions";
 import { loadCookUi } from "./cookModeSessionStorage";
@@ -66,14 +64,34 @@ function pickActiveCookProgressEntry(recipeId: string): CookProgressEntry | null
 export function RecipeDetail({
   recipes,
   ingredients,
+  currentUser,
+  onRecipeDeleted,
 }: {
   recipes: Recipe[];
   ingredients: IngredientDef[];
+  currentUser?: string;
+  onRecipeDeleted?: (id: string) => void;
 }) {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [restoring, setRestoring] = React.useState(false);
+
+  const handleRestoreOriginal = async (recipe: Recipe) => {
+    if (!recipe.forkedFromRecipeId || restoring) return;
+    setRestoring(true);
+    try {
+      const res = await fetch(`/api/recipes/${recipe.id}?user=${encodeURIComponent(currentUser ?? "")}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        window.location.hash = `#/recipe/${recipe.forkedFromRecipeId}`;
+        window.location.reload();
+      }
+    } finally {
+      setRestoring(false);
+    }
+  };
   const [searchParams] = useSearchParams();
-  const fromSidesList = readSidesListTab(searchParams);
   const fromShopping = readFromShopping(searchParams);
   const fromShoppingListItem = readFromShoppingListItem(searchParams);
   const fromHistory = readFromHistory(searchParams);
@@ -81,7 +99,6 @@ export function RecipeDetail({
   const plannerMenuCtx = readPlannerMenuCookContext(searchParams);
   const planKey = urlParamToPlanKey(searchParams.get(ADD_TO_PLAN_QUERY));
   const inPlanFlow = planKey != null;
-  const listSidesTab = inPlanFlow ? readPlanPhaseSide(searchParams) : fromSidesList;
   const preserve =
     inPlanFlow || fromShopping || fromShoppingListItem || fromHistory || fromPlanner
       ? searchParams
@@ -95,7 +112,20 @@ export function RecipeDetail({
   const cookParams = readCookModeParams(searchParams);
   const { addRecipeToPlanKey } = useMealPlan();
   const { showToast } = useToast();
+  const { isSaved, saveRecipe } = useSavedRecipes();
   const byId = React.useMemo(() => ingredientMap(ingredients), [ingredients]);
+
+  const isOtherUsersRecipe = !!(recipe && recipe.owner && recipe.owner !== currentUser);
+  const showSaveCta = isOtherUsersRecipe && recipe && !isSaved(recipe.id);
+  const handleSaveRecipe = React.useCallback(async () => {
+    if (!recipe) return;
+    try {
+      await saveRecipe(recipe.id);
+      showToast("Recipe saved!");
+    } catch {
+      showToast("Couldn't save — please try again.");
+    }
+  }, [recipe, saveRecipe, showToast]);
 
   const [cookProgressRev, setCookProgressRev] = React.useState(0);
   React.useEffect(() => {
@@ -168,7 +198,7 @@ export function RecipeDetail({
       <>
         <div className="top-bar">
           <Link
-            to={recipeDetailBackPath(id ?? "", listSidesTab, preserve, fromHistory, searchParams)}
+            to={recipeDetailBackPath(id ?? "", preserve, fromHistory, searchParams)}
             className="back-btn"
           >
             Back
@@ -198,20 +228,30 @@ export function RecipeDetail({
           <span className="recipe-detail-headline">
             <span className="recipe-detail-title-text">{recipe.title}</span>
             <Link
-              to={recipeEditPath(recipe.id, listSidesTab, preserve)}
+              to={recipeEditPath(recipe.id, preserve)}
               className="recipe-detail-edit-link"
             >
               edit
             </Link>
+            {recipe.forkedFromRecipeId && recipe.owner === currentUser ? (
+              <button
+                type="button"
+                className="recipe-detail-restore-btn"
+                onClick={() => handleRestoreOriginal(recipe)}
+                disabled={restoring}
+              >
+                {restoring ? "Restoring…" : "Restore original"}
+              </button>
+            ) : null}
           </span>
           {recipe.type === "reference" ? (
             <span className="badge">Reference</span>
           ) : null}
-          {recipeSegment(recipe) === "side" ? (
-            <span className="badge badge-side">Side</span>
-          ) : null}
         </h1>
       </div>
+      {isOtherUsersRecipe && recipe.owner ? (
+        <p className="recipe-detail-owner">By {recipe.owner}</p>
+      ) : null}
       {recipe.description?.trim() ? (
         <p className="recipe-detail-description">{recipe.description.trim()}</p>
       ) : null}
@@ -231,11 +271,6 @@ export function RecipeDetail({
             Continue cooking
           </Link>
         </div>
-      ) : null}
-      {recipe.tags && recipe.tags.length > 0 ? (
-        <p className="muted" style={{ marginTop: "-0.5rem", marginBottom: "1rem" }}>
-          {recipe.tags.join(" · ")}
-        </p>
       ) : null}
 
       {recipe.ingredientSections?.map((sec) => (
@@ -276,7 +311,7 @@ export function RecipeDetail({
                   <div className="recommended-side-head">
                     {sideRecipe ? (
                       <Link
-                        to={recipeDetailPath(recipeId, listSidesTab, preserve)}
+                        to={recipeDetailPath(recipeId, preserve)}
                         className="recommended-side-title"
                       >
                         {sideRecipe.title}
@@ -376,7 +411,6 @@ export function RecipeDetail({
               <Link
                 to={recipeDetailBackPath(
                   recipe.id,
-                  listSidesTab,
                   preserve,
                   fromHistory,
                   searchParams,
@@ -390,7 +424,6 @@ export function RecipeDetail({
             <Link
               to={recipeDetailBackPath(
                 recipe.id,
-                listSidesTab,
                 preserve,
                 fromHistory,
                 searchParams,
@@ -401,7 +434,15 @@ export function RecipeDetail({
             </Link>
           ) : (
             <>
-              {!fromShoppingListItem ? (
+              {showSaveCta ? (
+                <button
+                  type="button"
+                  className="btn-primary btn-cta-wide"
+                  onClick={handleSaveRecipe}
+                >
+                  Save to my recipes
+                </button>
+              ) : !fromShoppingListItem ? (
                 <button
                   type="button"
                   className="btn-primary btn-cta-wide"
@@ -413,7 +454,6 @@ export function RecipeDetail({
               <Link
                 to={recipeDetailBackPath(
                   recipe.id,
-                  listSidesTab,
                   preserve,
                   fromHistory,
                   searchParams,

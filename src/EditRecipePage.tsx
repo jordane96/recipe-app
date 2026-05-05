@@ -22,9 +22,7 @@ import {
   readFromPlanner,
   readFromShopping,
   readFromShoppingListItem,
-  readPlanPhaseSide,
   readRecipeDetailCookReturnContext,
-  readSidesListTab,
   recipeCookModePath,
   recipeDetailPath,
   urlParamToPlanKey,
@@ -288,11 +286,13 @@ export function EditRecipePage({
   ingredients,
   ingredientsFile,
   onSaved,
+  currentUser,
 }: {
   recipes: Recipe[];
   ingredients: IngredientDef[];
   ingredientsFile: IngredientsFile;
   onSaved?: (updated: Recipe) => void;
+  currentUser?: string;
 }) {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -303,14 +303,12 @@ export function EditRecipePage({
   const isCreate = id === "new";
   const parsedDraft = (location.state as { parsedDraft?: Recipe } | null)?.parsedDraft;
 
-  const fromSidesList = readSidesListTab(searchParams);
   const fromShopping = readFromShopping(searchParams);
   const fromShoppingListItem = readFromShoppingListItem(searchParams);
   const fromHistory = readFromHistory(searchParams);
   const fromPlanner = readFromPlanner(searchParams);
   const planKey = urlParamToPlanKey(searchParams.get(ADD_TO_PLAN_QUERY));
   const inPlanFlow = planKey != null;
-  const listSidesTab = inPlanFlow ? readPlanPhaseSide(searchParams) : fromSidesList;
   const preserve = inPlanFlow || fromShopping || fromHistory || fromPlanner ? searchParams : undefined;
 
   const recipe = React.useMemo(
@@ -413,7 +411,6 @@ export function EditRecipePage({
         id: "new",
         title: "",
         type: "recipe",
-        course: "main",
         tags: [],
         ingredientSections: [{ name: "Main", lines: [] }],
         instructions: [{ text: "" }],
@@ -462,7 +459,7 @@ export function EditRecipePage({
     : id != null && id !== ""
       ? cookReturn
         ? recipeCookModePath(id, cookReturn.cookDate, cookReturn.cookSlotRef)
-        : recipeDetailPath(id, listSidesTab, preserve, fromShopping, fromHistory, fromShoppingListItem)
+        : recipeDetailPath(id, preserve, fromShopping, fromHistory, fromShoppingListItem)
       : "/recipes";
 
   /** Deep-link from cook mode (`?editStep=N`): scroll to that step and focus the instruction field once per URL. */
@@ -991,7 +988,7 @@ export function EditRecipePage({
         const res = await fetch(`/api/recipes`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(draft),
+          body: JSON.stringify({ ...draft, currentUser }),
         });
         if (!res.ok) {
           const body = await res.json().catch(() => ({})) as { error?: string };
@@ -1000,7 +997,12 @@ export function EditRecipePage({
         }
         const { id: newId } = await res.json() as { id: string };
         clearStoredDraft("new");
-        const created: Recipe = { ...draft, id: newId };
+        const created: Recipe = {
+          ...draft,
+          id: newId,
+          owner: currentUser,
+          visibility: currentUser ? "private" : "public",
+        };
         onSaved?.(created);
         showToast(`Saved “${created.title}”.`);
         navigate(`/recipe/${newId}`);
@@ -1009,16 +1011,24 @@ export function EditRecipePage({
       const res = await fetch(`/api/recipes/${recipe!.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(draft),
+        body: JSON.stringify({ ...draft, currentUser }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({})) as { error?: string };
         showToast(body.error ?? "Failed to save recipe. Try again.");
         return;
       }
+      const body = await res.json() as { ok: boolean; forked?: boolean; newId?: string };
       clearStoredDraft(recipe!.id);
-      onSaved?.(draft);
-      navigate(backTo);
+      if (body.forked && body.newId) {
+        const forkedDraft: Recipe = { ...draft, id: body.newId, owner: currentUser, forkedFromRecipeId: recipe!.id, visibility: "private" };
+        onSaved?.(forkedDraft);
+        showToast("Saved as your own copy.");
+        navigate(`/recipe/${body.newId}`);
+      } else {
+        onSaved?.(draft);
+        navigate(backTo);
+      }
     } catch {
       showToast("Network error — check your connection and try again.");
     } finally {

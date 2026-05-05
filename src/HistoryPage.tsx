@@ -14,14 +14,14 @@ import type { CookHistoryByDate, CookedMeal } from "./cookHistoryStorage";
 import { useMealPlan } from "./MealPlanContext";
 import type { MealPlanByDate, PlannedMeal } from "./mealPlanStorage";
 
-/** Cook-log rows that are not already represented by the same plan slot on the calendar. */
+/** Cook-log rows whose recipe ID is not in the planned meals for that day (avoid duplicates). */
 function loggedRowsNotCoveredByPlan(
   logged: CookedMeal[],
-  planSlotRefs: Set<string>,
+  plannedIds: Set<string>,
 ): { meal: CookedMeal; logIndex: number }[] {
   const out: { meal: CookedMeal; logIndex: number }[] = [];
   logged.forEach((meal, logIndex) => {
-    if (meal.planSlotRef && planSlotRefs.has(meal.planSlotRef)) {
+    if (plannedIds.has(meal.id)) {
       return;
     }
     out.push({ meal, logIndex });
@@ -29,9 +29,8 @@ function loggedRowsNotCoveredByPlan(
   return out;
 }
 
-function planSlotRefsOnDay(plan: MealPlanByDate, dayIso: string): Set<string> {
-  const planned = plan[dayIso] ?? [];
-  return new Set(planned.map((m) => m.planSlotRef).filter((r): r is string => Boolean(r)));
+function plannedIdsOnDay(plan: MealPlanByDate, dayIso: string): Set<string> {
+  return new Set((plan[dayIso] ?? []).map((m) => m.id));
 }
 
 function dayHasPlanOrLog(
@@ -39,22 +38,12 @@ function dayHasPlanOrLog(
   history: CookHistoryByDate,
   dayIso: string,
 ): boolean {
-  const planned = plan[dayIso] ?? [];
-  const logged = history[dayIso] ?? [];
-  if (planned.length > 0) {
-    return true;
-  }
-  const refs = planSlotRefsOnDay(plan, dayIso);
-  return loggedRowsNotCoveredByPlan(logged, refs).length > 0;
+  return (plan[dayIso] ?? []).length > 0 || (history[dayIso] ?? []).length > 0;
 }
 
-/** Plan slot has a cook-log entry with the same ref → show mint “cooked” styling, not beige “planned only”. */
-function planMealHasCookLogLine(meal: { planSlotRef?: string }, logged: CookedMeal[]): boolean {
-  const ref = meal.planSlotRef;
-  if (!ref) {
-    return false;
-  }
-  return logged.some((l) => l.planSlotRef === ref);
+/** Plan slot has a cook-log entry for the same recipe on that day. */
+function planMealHasCookLogLine(meal: { id: string }, logged: CookedMeal[]): boolean {
+  return logged.some((l) => l.id === meal.id);
 }
 
 const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
@@ -176,7 +165,7 @@ type CalendarGranularity = "month" | "week";
 export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
   const navigate = useNavigate();
   const { history, logCooked, logRecipeCooked, removeCookedAt } = useCookHistory();
-  const { plan, removeMealAt, ensureCalendarSlotRef } = useMealPlan();
+  const { plan, removeMealAt } = useMealPlan();
   const todayIso = iso(new Date());
 
   const [granularity, setGranularity] = React.useState<CalendarGranularity>("month");
@@ -281,29 +270,23 @@ export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
   const weekTitle = weekRangeLabel(weekStart);
 
   const markPlannedMealAsCooked = React.useCallback(
-    (dayIso: string, meal: PlannedMeal, planIndex: number) => {
+    (dayIso: string, meal: PlannedMeal, _planIndex: number) => {
       if (dayRelativeToToday(dayIso, todayIso) === "future") {
         return;
       }
-      const ref = ensureCalendarSlotRef(dayIso, planIndex);
-      if (!ref) {
-        return;
-      }
       const logged = history[dayIso] ?? [];
-      if (planMealHasCookLogLine({ planSlotRef: ref }, logged)) {
+      if (planMealHasCookLogLine(meal, logged)) {
         return;
       }
-      logCooked(dayIso, { id: meal.id, title: meal.title, kind: meal.kind, planSlotRef: ref });
+      logCooked(dayIso, { id: meal.id, title: meal.title, kind: meal.kind });
     },
-    [ensureCalendarSlotRef, history, logCooked, todayIso],
+    [history, logCooked, todayIso],
   );
 
-  /** One × removes plan slot and any cook-log row tied by {@link PlannedMeal.planSlotRef} (otherwise log reappears as a second row). */
   const removePlannedMealFromDay = React.useCallback(
     (dayIso: string, planIndex: number, meal: PlannedMeal) => {
       const logged = history[dayIso] ?? [];
-      const ref = meal.planSlotRef;
-      const logIdx = ref ? logged.findIndex((l) => l.planSlotRef === ref) : -1;
+      const logIdx = logged.findIndex((l) => l.id === meal.id);
       removeMealAt(dayIso, planIndex);
       if (logIdx >= 0) {
         removeCookedAt(dayIso, logIdx);
@@ -494,7 +477,7 @@ export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
                 const d = new Date(`${dayIso}T12:00:00`);
                 const plannedForDay = plan[dayIso] ?? [];
                 const loggedForDay = history[dayIso] ?? [];
-                const planRefs = planSlotRefsOnDay(plan, dayIso);
+                const planRefs = plannedIdsOnDay(plan, dayIso);
                 const logExtras = loggedRowsNotCoveredByPlan(loggedForDay, planRefs);
                 const displayCount = plannedForDay.length + logExtras.length;
                 const isToday = dayIso === todayIso;
@@ -549,7 +532,7 @@ export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
                               const showMarkCooked = !hasCookLog && !isFuture;
                               return (
                                 <li
-                                  key={`plan-${dayIso}-${meal.planSlotRef ?? `i-${planIndex}`}-${meal.id}`}
+                                  key={`plan-${dayIso}-${planIndex}-${meal.id}`}
                                   className={`history-day-meal-row history-day-meal-row--in-week${
                                     hasCookLog ? "" : " history-day-meal-row--planned"
                                   }`}
@@ -557,7 +540,6 @@ export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
                                   <Link
                                     to={recipeDetailPath(
                                       meal.id,
-                                      meal.kind === "side",
                                       undefined,
                                       false,
                                       true,
@@ -602,7 +584,6 @@ export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
                                 <Link
                                   to={recipeDetailPath(
                                     meal.id,
-                                    meal.kind === "side",
                                     undefined,
                                     false,
                                     true,
@@ -718,13 +699,13 @@ export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
                 const showMarkCooked = !hasCookLog && !selectedIsFuture;
                 return (
                   <li
-                    key={`${selectedIso}-plan-${meal.planSlotRef ?? `i-${planIndex}`}-${meal.id}`}
+                    key={`${selectedIso}-plan-${planIndex}-${meal.id}`}
                     className={`history-day-meal-row${
                       hasCookLog ? "" : " history-day-meal-row--planned"
                     }`}
                   >
                     <Link
-                      to={recipeDetailPath(meal.id, meal.kind === "side", undefined, false, true, false)}
+                      to={recipeDetailPath(meal.id, undefined, false, true, false)}
                       className="history-day-meal-title"
                     >
                       {meal.title}
@@ -752,11 +733,11 @@ export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
               })}
               {loggedRowsNotCoveredByPlan(
                 history[selectedIso] ?? [],
-                planSlotRefsOnDay(plan, selectedIso),
+                plannedIdsOnDay(plan, selectedIso),
               ).map(({ meal, logIndex }) => (
                 <li key={`${selectedIso}-log-${logIndex}-${meal.id}`} className="history-day-meal-row">
                   <Link
-                    to={recipeDetailPath(meal.id, meal.kind === "side", undefined, false, true, false)}
+                    to={recipeDetailPath(meal.id, undefined, false, true, false)}
                     className="history-day-meal-title"
                   >
                     {meal.title}

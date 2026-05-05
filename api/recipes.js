@@ -4,16 +4,23 @@ const sql = neon(process.env.DATABASE_URL)
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
-    const [recipes, sections, lines, instructions, sides] = await Promise.all([
+    const currentUser = req.query.user ?? null
+    const [recipes, sections, lines, instructions, sides, saves] = await Promise.all([
       sql`SELECT * FROM recipes ORDER BY title`,
       sql`SELECT * FROM ingredient_sections ORDER BY recipe_id, sort_order`,
       sql`SELECT * FROM ingredient_lines ORDER BY section_id, sort_order`,
       sql`SELECT * FROM recipe_instructions ORDER BY recipe_id, sort_order`,
       sql`SELECT * FROM recipe_recommended_sides`,
+      currentUser
+        ? sql`SELECT recipe_id FROM recipe_saves WHERE username = ${currentUser}`
+        : Promise.resolve([]),
     ])
 
     const assembled = recipes.map(recipe => ({
       ...recipe,
+      owner: recipe.Owner ?? null,
+      visibility: recipe.visibility ?? 'public',
+      forkedFromRecipeId: recipe.forked_from_recipe_id ?? null,
       tags: recipe.tags ?? [],
       ingredientSections: sections
         .filter(s => s.recipe_id === recipe.id)
@@ -41,12 +48,14 @@ export default async function handler(req, res) {
         .map(s => ({ recipeId: s.side_recipe_id, label: s.label })),
     }))
 
-    res.json({ version: 2, recipes: assembled })
+    const savedRecipeIds = saves.map(s => s.recipe_id)
+    res.json({ version: 2, recipes: assembled, savedRecipeIds })
   } else if (req.method === 'POST') {
     const recipe = req.body
     if (!recipe || typeof recipe.title !== 'string' || !recipe.title.trim()) {
       return res.status(400).json({ error: 'Invalid recipe data' })
     }
+    const currentUser = recipe.currentUser ?? null
 
     const slug = recipe.title.trim().toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
@@ -61,17 +70,18 @@ export default async function handler(req, res) {
 
     try {
       await sql`
-        INSERT INTO recipes (id, title, description, type, course, tags, servings, source_url, notes)
+        INSERT INTO recipes (id, title, description, type, tags, servings, source_url, notes, "Owner", visibility)
         VALUES (
           ${id},
           ${recipe.title.trim()},
           ${recipe.description ?? null},
           ${recipe.type ?? 'recipe'},
-          ${recipe.course ?? null},
           ${recipe.tags ?? []},
           ${recipe.servings ?? null},
           ${recipe.sourceUrl ?? null},
-          ${recipe.notes ?? null}
+          ${recipe.notes ?? null},
+          ${currentUser},
+          ${currentUser ? 'private' : 'public'}
         )
       `
 

@@ -56,9 +56,9 @@ for (const [mainId, entries] of Object.entries(RECOMMENDED_SIDES)) {
         `recommendedSides.mjs: unknown side recipe id "${e.recipeId}" (from "${mainId}")`,
       );
     }
-    if (target.course !== "side") {
+    if (!Array.isArray(target.tags) || !target.tags.includes("side")) {
       throw new Error(
-        `recommendedSides.mjs: "${e.recipeId}" must have course "side" in legacy (referenced from "${mainId}")`,
+        `recommendedSides.mjs: "${e.recipeId}" must have a "side" tag in legacy (referenced from "${mainId}")`,
       );
     }
   }

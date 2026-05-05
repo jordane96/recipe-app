@@ -5,7 +5,6 @@ import type { IngredientDef, Recipe } from "./types";
 import { formatIngredientLine, ingredientMap } from "./ingredientDisplay";
 import {
   EDIT_RECIPE_STEP_QUERY,
-  readSidesListTab,
   recipeEditPath,
   recipesAddMealForCookingPath,
   stripCookModeParams,
@@ -38,8 +37,7 @@ import {
 import { iso, startOfWeekMonday } from "./mealPlanDates";
 import { normalizeInstructions } from "./recipeInstructions";
 import { useCookHistory } from "./CookHistoryContext";
-import { recipeToPlannedMeal, useMealPlan } from "./MealPlanContext";
-import { isMealPlanDateKey, type MealPlanByDate } from "./mealPlanStorage";
+import { recipeSegment } from "./recipeCourse";
 
 const SWIPE_PX = 56;
 
@@ -59,7 +57,7 @@ const isolateNestedTouchFromSwipePaneProps = {
 /** Prepended as step 1 in cook mode only (internal step label). */
 const COOK_MODE_INGREDIENTS_CONFIRM_STEP = "Confirm you have all necessary ingredients";
 
-/** Visible heading on the confirm card before “Start cooking”. */
+/** Visible heading on the confirm card before "Start cooking". */
 const COOK_MODE_CONFIRM_OVERVIEW_TITLE = "Recipe overview";
 
 function formatMSS(totalSeconds: number): string {
@@ -118,100 +116,6 @@ function sessionsMatch(
   return e.recipeId === recipeId && e.cookDate === cookDate && e.slotRef === slot;
 }
 
-/**
- * URL may omit `cookSlotRef`; cook-progress may store an empty slotRef. Without matching
- * `planSlotRef` on the cook log, slot-based “cooked” UI fails.
- *
- * Order matters: **pool (“This week’s menu”) before calendar**. Same recipe can appear on today’s
- * calendar and in the pool with different `planSlotRef`s — taking calendar first logged the wrong
- * ref and the menu chip never matched.
- */
-function resolvePlanSlotRefForCookLog(
-  plan: MealPlanByDate,
-  unassignedKey: string,
-  ensureCalendarSlotRef: (dateKey: string, planIndex: number) => string | undefined,
-  ensureUnassignedSlotRef: (unassignedIndex: number) => string | undefined,
-  recipeId: string,
-  cookDate: string,
-  cookSlotRef: string | null,
-): string | null {
-  if (cookSlotRef && cookSlotRef.length > 0) {
-    return cookSlotRef;
-  }
-  const forDay = getCookProgressSessions().filter(
-    (e) => e.recipeId === recipeId && e.cookDate === cookDate,
-  );
-  const withSlot = forDay.filter((e) => e.slotRef.length > 0);
-  if (withSlot.length === 1) {
-    return withSlot[0].slotRef;
-  }
-  if (withSlot.length > 1) {
-    return [...withSlot].sort((a, b) => a.slotRef.localeCompare(b.slotRef))[0].slotRef;
-  }
-
-  const pool = plan[unassignedKey] ?? [];
-
-  for (let i = 0; i < pool.length; i++) {
-    const m = pool[i]!;
-    if (m.id !== recipeId || !m.planSlotRef) {
-      continue;
-    }
-    if (m.scheduledForDay === cookDate) {
-      return m.planSlotRef;
-    }
-  }
-  for (let i = 0; i < pool.length; i++) {
-    const m = pool[i]!;
-    if (m.id === recipeId && m.planSlotRef) {
-      return m.planSlotRef;
-    }
-  }
-
-  const scheduledIdx: number[] = [];
-  for (let i = 0; i < pool.length; i++) {
-    const m = pool[i]!;
-    if (m.id === recipeId && m.scheduledForDay === cookDate) {
-      scheduledIdx.push(i);
-    }
-  }
-  if (scheduledIdx.length >= 1) {
-    const ref = ensureUnassignedSlotRef(scheduledIdx[0]!);
-    if (ref && ref.length > 0) {
-      return ref;
-    }
-  }
-
-  const poolRecipeIdx: number[] = [];
-  for (let i = 0; i < pool.length; i++) {
-    if (pool[i]!.id === recipeId) {
-      poolRecipeIdx.push(i);
-    }
-  }
-  if (poolRecipeIdx.length === 1) {
-    const ref = ensureUnassignedSlotRef(poolRecipeIdx[0]!);
-    if (ref && ref.length > 0) {
-      return ref;
-    }
-  }
-
-  if (isMealPlanDateKey(cookDate)) {
-    const dayMeals = plan[cookDate] ?? [];
-    const indices: number[] = [];
-    for (let i = 0; i < dayMeals.length; i++) {
-      if (dayMeals[i]!.id === recipeId) {
-        indices.push(i);
-      }
-    }
-    if (indices.length >= 1) {
-      const ref = ensureCalendarSlotRef(cookDate, indices[0]!);
-      if (ref && ref.length > 0) {
-        return ref;
-      }
-    }
-  }
-
-  return null;
-}
 
 /** First paint must match persisted step so the save effect cannot overwrite storage with 0 before layout runs. */
 function initialActiveStepIndexFromStorage(
@@ -251,15 +155,9 @@ export function RecipeCookModePanel({
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { logCooked } = useCookHistory();
-  const {
-    plan,
-    unassignedKey,
-    ensureCalendarSlotRef,
-    ensureUnassignedSlotRef,
-  } = useMealPlan();
   const byId = React.useMemo(() => ingredientMap(ingredients), [ingredients]);
 
-  /** Same target as “Browse recipes” on the empty Cooking now page — list with add-to-menu + cook on add. */
+  /** Same target as "Browse recipes" on the empty Cooking now page — list with add-to-menu + cook on add. */
   const addRecipeToCookListHref = React.useMemo(
     () => recipesAddMealForCookingPath(iso(startOfWeekMonday(new Date()))),
     [],
@@ -290,12 +188,7 @@ export function RecipeCookModePanel({
   const openEditRecipeForCurrentStep = React.useCallback(() => {
     const stripped = stripCookModeParams(searchParams);
     const cookReturn = { cookDate, cookSlotRef };
-    const base = recipeEditPath(
-      recipe.id,
-      readSidesListTab(searchParams),
-      stripped,
-      cookReturn,
-    );
+    const base = recipeEditPath(recipe.id, stripped, cookReturn);
     const recipeStepIndex = activeStepIndex >= 1 ? activeStepIndex - 1 : 0;
     const u = new URL(base, window.location.origin);
     u.searchParams.set(EDIT_RECIPE_STEP_QUERY, String(recipeStepIndex));
@@ -408,7 +301,7 @@ export function RecipeCookModePanel({
 
   void cookProgressListRev;
 
-  /** Re-tick every 1s so “Also running” step timers stay accurate while viewing another session */
+  /** Re-tick every 1s so "Also running" step timers stay accurate while viewing another session */
   const [dockTick, setDockTick] = React.useState(0);
   React.useEffect(() => {
     const id = window.setInterval(() => setDockTick((n) => n + 1), 1000);
@@ -633,7 +526,7 @@ export function RecipeCookModePanel({
     };
   }, [celebrationOpen, finishCelebrationAndExit]);
 
-  /** Cancel this cook session: go to another in-progress session, or the “nothing cooking” page. */
+  /** Cancel this cook session: go to another in-progress session, or the "nothing cooking" page. */
   const onCancelCooking = () => {
     clearCookSessionState();
     const next = getFirstActiveCookSessionHref();
@@ -650,21 +543,11 @@ export function RecipeCookModePanel({
       return;
     }
     celebrationExitOnceRef.current = false;
-    const meal = recipeToPlannedMeal(recipe);
-    const slotForLog = resolvePlanSlotRefForCookLog(
-      plan,
-      unassignedKey,
-      ensureCalendarSlotRef,
-      ensureUnassignedSlotRef,
-      recipe.id,
-      cookDate,
-      cookSlotRef,
-    );
-    /** Commit cook history synchronously before the celebration re-render so log + cap logic aren’t lost to batching. */
     flushSync(() => {
       logCooked(cookDate, {
-        ...meal,
-        ...(slotForLog ? { planSlotRef: slotForLog } : {}),
+        id: recipe.id,
+        title: recipe.title,
+        kind: recipeSegment(recipe) === "side" ? "side" : "main",
       });
     });
     setCelebrationOpen(true);
@@ -703,7 +586,7 @@ export function RecipeCookModePanel({
   const showSessionInBanner = !isConfirmStep && activeStepIndex >= 1 && sessionTotalPersist != null;
   const stepText = cookSteps[activeStepIndex]?.text ?? "";
   const stepNote = !isConfirmStep ? cookSteps[activeStepIndex]?.note : undefined;
-  /** Recipe instruction steps only (excludes leading confirm step) — drives “Step 1 of N” labels. */
+  /** Recipe instruction steps only (excludes leading confirm step) — drives "Step 1 of N" labels. */
   const nCookSteps = Math.max(1, nSteps - 1);
   /** 1-based index among cook steps; equals `activeStepIndex` once past confirm. */
   const displayedCookStep = activeStepIndex >= 1 ? activeStepIndex : 1;

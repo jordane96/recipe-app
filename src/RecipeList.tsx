@@ -8,16 +8,9 @@ import {
   COOK_ON_ADD_QUERY,
   COOK_ON_ADD_VALUE,
   FROM_QUERY,
-  LIST_TAB_QUERY,
-  LIST_TAB_SIDE_VALUE,
-  PLAN_PHASE_MAIN,
-  PLAN_PHASE_QUERY,
-  PLAN_PHASE_SIDE,
   PLAN_WEEK_START_QUERY,
   SHOP_MENU_BUILD_QUERY,
-  readPlanPhaseSide,
   readRecipeListPickExperience,
-  readSidesListTab,
   recipeCookModePath,
   recipeDetailPath,
   urlParamToPlanKey,
@@ -25,28 +18,19 @@ import {
 import { useShoppingList } from "./ShoppingListContext";
 import { iso } from "./mealPlanDates";
 import { instructionStepText } from "./recipeInstructions";
-import { recipeSegment, SEGMENT_LABEL } from "./recipeCourse";
 import {
   MEAL_PLAN_UNASSIGNED_KEY,
   newPlanSlotRef,
-  type MealPlanByDate,
   type PlannedMeal,
 } from "./mealPlanStorage";
 import { addCookProgressSessionsBatch } from "./cookProgressSession";
 import { recipeToPlannedMeal, useMealPlan } from "./MealPlanContext";
 import { useToast } from "./ToastContext";
+import { useSavedRecipes } from "./SavedRecipesContext";
 import { addFlowCartSessionKey, setActiveAddFlowSessionKey } from "./addFlowCartSession";
 
-/** Which top-level tab is active on the recipe list (reference items show under Mains). */
-type CourseTab = "main" | "side";
-
-function inCourseTab(r: Recipe, tab: CourseTab): boolean {
-  const seg = recipeSegment(r);
-  if (tab === "side") {
-    return seg === "side";
-  }
-  return seg === "main" || seg === "other";
-}
+/** "main" and "side" are pinned to the front of the chip row; the rest sort alphabetically. */
+const PINNED_TAG_ORDER = ["main", "side"];
 
 function uniqueTags(recipes: Recipe[]): string[] {
   const s = new Set<string>();
@@ -55,7 +39,11 @@ function uniqueTags(recipes: Recipe[]): string[] {
       s.add(t);
     }
   }
-  return [...s].sort((a, b) => a.localeCompare(b));
+  const pinned = PINNED_TAG_ORDER.filter((t) => s.has(t));
+  const rest = [...s]
+    .filter((t) => !PINNED_TAG_ORDER.includes(t))
+    .sort((a, b) => a.localeCompare(b));
+  return [...pinned, ...rest];
 }
 
 function loadAddFlowIds(key: string): Set<string> {
@@ -89,11 +77,16 @@ function saveAddFlowIds(key: string, ids: Set<string>): void {
 function matches(
   recipe: Recipe,
   q: string,
-  tag: string | null,
+  selectedTags: ReadonlySet<string>,
   byId: Map<string, IngredientDef>,
 ): boolean {
-  if (tag && !(recipe.tags?.includes(tag))) {
-    return false;
+  if (selectedTags.size > 0) {
+    const recipeTags = recipe.tags ?? [];
+    for (const t of selectedTags) {
+      if (!recipeTags.includes(t)) {
+        return false;
+      }
+    }
   }
   if (!q.trim()) {
     return true;
@@ -130,14 +123,24 @@ function matches(
 export function RecipeList({
   recipes,
   ingredients,
+  currentUser,
 }: {
   recipes: Recipe[];
   ingredients: IngredientDef[];
+  currentUser: string;
 }) {
-  const { plan, addPlannedMealsToKey } = useMealPlan();
+  const { addPlannedMealsToKey } = useMealPlan();
+  const { savedRecipeIds } = useSavedRecipes();
+  // My recipes view: own + saved. Drops other users' public recipes (those
+  // are surfaced in /recipes/discover).
+  const myRecipes = React.useMemo(
+    () =>
+      recipes.filter((r) => r.owner === currentUser || savedRecipeIds.has(r.id)),
+    [recipes, currentUser, savedRecipeIds],
+  );
   const recipeById = React.useMemo(
-    () => new Map<string, Recipe>(recipes.map((r) => [r.id, r])),
-    [recipes],
+    () => new Map<string, Recipe>(myRecipes.map((r) => [r.id, r])),
+    [myRecipes],
   );
   const { showToast } = useToast();
   const { addToList } = useShoppingList();
@@ -145,7 +148,21 @@ export function RecipeList({
   const [searchParams, setSearchParams] = useSearchParams();
   const byId = React.useMemo(() => ingredientMap(ingredients), [ingredients]);
   const [q, setQ] = React.useState("");
-  const [tag, setTag] = React.useState<string | null>(null);
+  const [selectedTags, setSelectedTags] = React.useState<Set<string>>(() => new Set());
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
+
+  const toggleTag = React.useCallback((t: string) => {
+    setSelectedTags((prev) => {
+      const next = new Set(prev);
+      if (next.has(t)) {
+        next.delete(t);
+      } else {
+        next.add(t);
+      }
+      return next;
+    });
+  }, []);
+  const clearTags = React.useCallback(() => setSelectedTags(new Set()), []);
   /** Add-to-menu flow: at most one pending add per recipe (order = tap order). */
   const [addFlowSelectedIds, setAddFlowSelectedIds] = React.useState<Set<string>>(
     () => new Set(),
@@ -176,40 +193,6 @@ export function RecipeList({
   );
   const lastAddFlowKeyForCleanupRef = React.useRef<string | null>(null);
 
-  const courseTab: CourseTab =
-    inPlanFlow ? (readPlanPhaseSide(searchParams) ? "side" : "main") : readSidesListTab(searchParams)
-      ? "side"
-      : "main";
-
-  const setCourseTab = React.useCallback(
-    (tab: CourseTab) => {
-      setSearchParams(
-        (prev) => {
-          const p = new URLSearchParams(prev);
-          const pk = urlParamToPlanKey(p.get(ADD_TO_PLAN_QUERY));
-          if (pk != null) {
-            p.set(PLAN_PHASE_QUERY, tab === "side" ? PLAN_PHASE_SIDE : PLAN_PHASE_MAIN);
-            p.delete(LIST_TAB_QUERY);
-          } else {
-            if (tab === "side") {
-              p.set(LIST_TAB_QUERY, LIST_TAB_SIDE_VALUE);
-            } else {
-              p.delete(LIST_TAB_QUERY);
-            }
-            p.delete(PLAN_PHASE_QUERY);
-          }
-          return p;
-        },
-        { replace: true },
-      );
-    },
-    [setSearchParams],
-  );
-
-  React.useEffect(() => {
-    setTag(null);
-  }, [courseTab]);
-
   React.useEffect(() => {
     const raw = searchParams.get(ADD_TO_PLAN_QUERY);
     if (raw && urlParamToPlanKey(raw) == null) {
@@ -217,7 +200,6 @@ export function RecipeList({
         (prev) => {
           const p = new URLSearchParams(prev);
           p.delete(ADD_TO_PLAN_QUERY);
-          p.delete(PLAN_PHASE_QUERY);
           p.delete(PLAN_WEEK_START_QUERY);
           p.delete(SHOP_MENU_BUILD_QUERY);
           p.delete(COOK_ON_ADD_QUERY);
@@ -368,25 +350,14 @@ export function RecipeList({
     showToast,
   ]);
 
-  const tabPool = React.useMemo(
-    () => recipes.filter((r) => inCourseTab(r, courseTab)),
-    [recipes, courseTab],
+  const tags = React.useMemo(() => uniqueTags(myRecipes), [myRecipes]);
+  const filtered = React.useMemo(
+    () =>
+      myRecipes
+        .filter((r) => matches(r, q, selectedTags, byId))
+        .sort((a, b) => a.title.localeCompare(b.title)),
+    [myRecipes, q, selectedTags, byId],
   );
-  const tags = uniqueTags(tabPool);
-  const filtered = tabPool
-    .filter((r) => matches(r, q, tag, byId))
-    .sort((a, b) => a.title.localeCompare(b.title));
-
-  const mainList =
-    courseTab === "main"
-      ? filtered.filter((r) => recipeSegment(r) === "main")
-      : filtered;
-  const otherList =
-    courseTab === "main"
-      ? filtered.filter((r) => recipeSegment(r) === "other")
-      : [];
-
-  const listForSideTab = courseTab === "side" ? filtered : [];
 
   const pickListAria = React.useCallback(
     (r: Recipe, inCart: boolean) => {
@@ -410,20 +381,14 @@ export function RecipeList({
     const inAddFlowCart = addFlowSelectedIds.has(r.id);
     const detailPath = recipeDetailPath(
       r.id,
-      courseTab === "side",
       inPlanFlow ? searchParams : undefined,
     );
 
     const titleAndMeta = (
-      <>
-        <span className="recipe-title-row">
-          <span>{r.title}</span>
-          {r.type === "reference" ? <span className="badge">Reference</span> : null}
-        </span>
-        {r.tags && r.tags.length > 0 ? (
-          <span className="meta">{r.tags.join(" · ")}</span>
-        ) : null}
-      </>
+      <span className="recipe-title-row">
+        <span>{r.title}</span>
+        {r.type === "reference" ? <span className="badge">Reference</span> : null}
+      </span>
     );
 
     if (!inPlanFlow) {
@@ -471,13 +436,9 @@ export function RecipeList({
     );
   };
 
-  const tabPoolEmpty = tabPool.length === 0;
-  const listEmpty =
-    courseTab === "main"
-      ? mainList.length === 0 && otherList.length === 0
-      : listForSideTab.length === 0;
+  const recipesEmpty = myRecipes.length === 0;
+  const listEmpty = filtered.length === 0;
 
-  /** Add-meal-from-planner URL: reorder chrome (tabs before search). */
   const addFlow = inPlanFlow;
 
   const searchInput = (
@@ -491,35 +452,6 @@ export function RecipeList({
       autoComplete="off"
       autoCorrect="off"
     />
-  );
-
-  const courseTabs = (
-    <div className="recipe-course-tabs" role="tablist" aria-label="Recipe course">
-      <button
-        type="button"
-        role="tab"
-        id="tab-main"
-        aria-selected={courseTab === "main"}
-        aria-controls="recipe-tab-panel"
-        className="recipe-course-tab"
-        data-on={courseTab === "main"}
-        onClick={() => setCourseTab("main")}
-      >
-        Mains
-      </button>
-      <button
-        type="button"
-        role="tab"
-        id="tab-side"
-        aria-selected={courseTab === "side"}
-        aria-controls="recipe-tab-panel"
-        className="recipe-course-tab"
-        data-on={courseTab === "side"}
-        onClick={() => setCourseTab("side")}
-      >
-        Sides
-      </button>
-    </div>
   );
 
   return (
@@ -544,65 +476,89 @@ export function RecipeList({
             </span>
             <span className="recipe-add-new-btn-label">Add new</span>
           </Link>
+          <Link to="/recipes/discover" className="recipe-add-new-btn" aria-label="Discover recipes">
+            <span className="recipe-add-new-btn-icon" aria-hidden>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.25"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="11" cy="11" r="7" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+            </span>
+            <span className="recipe-add-new-btn-label">Discover</span>
+          </Link>
         </div>
       </div>
 
-      {addFlow ? courseTabs : searchInput}
-      {addFlow ? searchInput : courseTabs}
-      {!tabPoolEmpty && tags.length > 0 ? (
-        <div
-          className="tag-row"
-          role="toolbar"
-          aria-label={`Filter ${courseTab === "main" ? "mains" : "sides"} by tag`}
-        >
+      {searchInput}
+      {!recipesEmpty && tags.length > 0 ? (
+        <>
           <button
             type="button"
-            className="tag-chip"
-            data-on={tag === null}
-            onClick={() => setTag(null)}
+            className="recipe-filters-toggle"
+            aria-expanded={filtersOpen}
+            aria-controls="recipe-filters-row"
+            onClick={() => setFiltersOpen((o) => !o)}
           >
-            All
+            <span>
+              Filters
+              {selectedTags.size > 0
+                ? `: ${[...selectedTags].sort((a, b) => a.localeCompare(b)).join(", ")}`
+                : ""}
+            </span>
+            <span className="recipe-filters-toggle-caret" aria-hidden>
+              {filtersOpen ? "▾" : "▸"}
+            </span>
           </button>
-          {tags.map((t) => (
-            <button
-              key={t}
-              type="button"
-              className="tag-chip"
-              data-on={tag === t}
-              onClick={() => setTag(tag === t ? null : t)}
+          {filtersOpen ? (
+            <div
+              id="recipe-filters-row"
+              className="tag-row"
+              role="toolbar"
+              aria-label="Filter recipes by tag"
             >
-              {t}
-            </button>
-          ))}
-        </div>
-      ) : !tabPoolEmpty ? (
-        <p className="muted recipe-tab-tags-empty">No tags in this category.</p>
+              <button
+                type="button"
+                className="tag-chip"
+                data-on={selectedTags.size === 0}
+                onClick={clearTags}
+              >
+                All
+              </button>
+              {tags.map((t) => {
+                const on = selectedTags.has(t);
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    className="tag-chip"
+                    data-on={on}
+                    aria-pressed={on}
+                    onClick={() => toggleTag(t)}
+                  >
+                    {t}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+        </>
       ) : null}
-      <div
-        id="recipe-tab-panel"
-        role="tabpanel"
-        aria-labelledby={courseTab === "main" ? "tab-main" : "tab-side"}
-      >
-        {tabPoolEmpty ? (
-          <p className="empty">
-            No recipes in {courseTab === "main" ? "Mains" : "Sides"} yet.
-          </p>
+      <div id="recipe-tab-panel">
+        {recipesEmpty ? (
+          <p className="empty">No recipes yet.</p>
         ) : listEmpty ? (
           <p className="empty">No recipes match your search or filters.</p>
-        ) : courseTab === "main" ? (
-          <>
-            {mainList.length > 0 ? (
-              <ul className="recipe-list">{mainList.map(renderRecipeRow)}</ul>
-            ) : null}
-            {otherList.length > 0 ? (
-              <section className="recipe-course-block" aria-label={SEGMENT_LABEL.other}>
-                <h2 className="recipe-course-heading">{SEGMENT_LABEL.other}</h2>
-                <ul className="recipe-list">{otherList.map(renderRecipeRow)}</ul>
-              </section>
-            ) : null}
-          </>
         ) : (
-          <ul className="recipe-list">{listForSideTab.map(renderRecipeRow)}</ul>
+          <ul className="recipe-list">{filtered.map(renderRecipeRow)}</ul>
         )}
       </div>
 

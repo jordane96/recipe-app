@@ -121,9 +121,7 @@ export function CookingNowPage() {
       planIdx,
       meal: unassignedMeals[planIdx]!,
     }));
-    const refsU = new Set(
-      uPills.map((p) => p.meal.planSlotRef).filter((r): r is string => Boolean(r && r.length > 0)),
-    );
+    const unassignedIds = new Set(uPills.map((p) => p.meal.id));
     const dPills: MenuPillD[] = [];
     for (const dayKey of weekKeys) {
       const meals = plan[dayKey] ?? [];
@@ -132,7 +130,7 @@ export function CookingNowPage() {
         if (isDaySlotCooked(history, dayKey, meals, idx, m.id)) {
           continue;
         }
-        if (m.planSlotRef && refsU.has(m.planSlotRef)) {
+        if (unassignedIds.has(m.id)) {
           continue;
         }
         dPills.push({ kind: "d", key: `d:${dayKey}:${idx}`, dayKey, index: idx, meal: m });

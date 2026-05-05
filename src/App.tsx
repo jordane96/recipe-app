@@ -13,6 +13,7 @@ import { MealPlannerPage } from "./MealPlannerPage";
 import type { IngredientDef, IngredientsFile, Recipe } from "./types";
 import { RecipeDetail } from "./RecipeDetail";
 import { AddRecipePage } from "./AddRecipePage";
+import { DiscoverPage } from "./DiscoverPage";
 import { EditRecipePage } from "./EditRecipePage";
 import { RecipeList } from "./RecipeList";
 import { MealPlanProvider } from "./MealPlanContext";
@@ -21,6 +22,7 @@ import { ShoppingListPage } from "./ShoppingListPage";
 import { CookHistoryProvider } from "./CookHistoryContext";
 import { HistoryPage } from "./HistoryPage";
 import { ToastProvider } from "./ToastContext";
+import { SavedRecipesProvider } from "./SavedRecipesContext";
 import { InstacartPlaceholderPage } from "./InstacartPlaceholderPage";
 import { CookingNowPage } from "./CookingNowPage";
 import {
@@ -47,6 +49,9 @@ function appChromeSectionTitle(pathname: string): string {
   }
   if (pathname === "/recipes/new") {
     return "Add recipe";
+  }
+  if (pathname === "/recipes/discover") {
+    return "Discover";
   }
   if (pathname === "/shopping") {
     return "Shopping list";
@@ -78,16 +83,44 @@ function appChromeTitle(pathname: string, search: string): string {
   return appChromeSectionTitle(pathname);
 }
 
-export default function App() {
+export default function App({ currentUser, onSignOut }: { currentUser: string; onSignOut?: () => void }) {
   const [rawRecipes, setRawRecipes] = React.useState<Recipe[] | null>(null);
   const [ingredientsFile, setIngredientsFile] = React.useState<IngredientsFile | null>(
     null,
   );
+  const [initialSavedRecipeIds, setInitialSavedRecipeIds] = React.useState<string[]>([]);
   const [err, setErr] = React.useState<string | null>(null);
+
+  /**
+   * Mobile snap-to-top, hardened: this fires when App first mounts (i.e. the
+   * moment AuthScreen unmounts after sign-in), BEFORE the Loading screen even
+   * paints. AppLayout has its own snap, but it doesn't mount until recipe data
+   * resolves — so the Loading window would otherwise show at the auth-screen
+   * scroll position. Multiple retries to outlast keyboard dismiss + URL bar.
+   */
+  React.useLayoutEffect(() => {
+    if (typeof window === "undefined") return;
+    const snap = () => {
+      window.scrollTo(0, 0);
+      if (typeof document !== "undefined") {
+        if (document.documentElement) document.documentElement.scrollTop = 0;
+        if (document.body) document.body.scrollTop = 0;
+      }
+    };
+    snap();
+    const raf = window.requestAnimationFrame(snap);
+    const timers = [50, 150, 350, 700, 1200].map((ms) =>
+      window.setTimeout(snap, ms),
+    );
+    return () => {
+      window.cancelAnimationFrame(raf);
+      timers.forEach((t) => window.clearTimeout(t));
+    };
+  }, []);
 
   React.useEffect(() => {
     let cancelled = false;
-    loadRecipeBundle()
+    loadRecipeBundle(currentUser)
       .then((bundle) => {
         if (!cancelled) {
           const list = bundle.recipes?.recipes;
@@ -102,6 +135,7 @@ export default function App() {
           }
           setRawRecipes(list);
           setIngredientsFile(ing);
+          setInitialSavedRecipeIds(bundle.recipes.savedRecipeIds ?? []);
         }
       })
       .catch((e: unknown) => {
@@ -112,14 +146,13 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [currentUser]);
 
   const onRecipeSaved = React.useCallback((updated: Recipe) => {
     setRawRecipes((prev) => {
       if (!prev) return prev;
-      return prev.some((r) => r.id === updated.id)
-        ? prev.map((r) => (r.id === updated.id ? updated : r))
-        : [...prev, updated];
+      const exists = prev.some((r) => r.id === updated.id);
+      return exists ? prev.map((r) => (r.id === updated.id ? updated : r)) : [...prev, updated];
     });
   }, []);
 
@@ -127,8 +160,19 @@ export default function App() {
     if (!rawRecipes) {
       return null;
     }
-    return applyQualitativeOverrides(rawRecipes, loadQualitativeOverrides());
-  }, [rawRecipes]);
+    // IDs of recipes the current user has forked — hide the originals from their view
+    const forkedOriginIds = new Set(
+      rawRecipes
+        .filter((r) => r.owner === currentUser && r.forkedFromRecipeId)
+        .map((r) => r.forkedFromRecipeId as string),
+    );
+    const visible = rawRecipes.filter(
+      (r) =>
+        (r.visibility !== "private" || r.owner === currentUser) &&
+        !forkedOriginIds.has(r.id),
+    );
+    return applyQualitativeOverrides(visible, loadQualitativeOverrides());
+  }, [rawRecipes, currentUser]);
 
   const ingredients = ingredientsFile?.ingredients ?? [];
   const ready = recipes && ingredientsFile;
@@ -142,12 +186,19 @@ export default function App() {
           <MealPlanProvider>
             <CookHistoryProvider>
               <ToastProvider>
-                <AppLayout
-                  recipes={recipes}
-                  ingredients={ingredients}
-                  ingredientsFile={ingredientsFile}
-                  onRecipeSaved={onRecipeSaved}
-                />
+                <SavedRecipesProvider
+                  currentUser={currentUser}
+                  initialSavedRecipeIds={initialSavedRecipeIds}
+                >
+                  <AppLayout
+                    recipes={recipes}
+                    ingredients={ingredients}
+                    ingredientsFile={ingredientsFile}
+                    onRecipeSaved={onRecipeSaved}
+                    currentUser={currentUser}
+                    onSignOut={onSignOut}
+                  />
+                </SavedRecipesProvider>
               </ToastProvider>
             </CookHistoryProvider>
           </MealPlanProvider>
@@ -162,11 +213,15 @@ function AppLayout({
   ingredients,
   ingredientsFile,
   onRecipeSaved,
+  currentUser,
+  onSignOut,
 }: {
   recipes: Recipe[];
   ingredients: IngredientDef[];
   ingredientsFile: IngredientsFile;
   onRecipeSaved: (updated: Recipe) => void;
+  currentUser: string;
+  onSignOut?: () => void;
 }) {
   const { pathname, search } = useLocation();
   const { count } = useShoppingList();
@@ -208,14 +263,92 @@ function AppLayout({
     setMenuOpen(false);
   }, [pathname]);
 
-  /** Snap to top on every in-app navigation (HashRouter does not scroll the window). */
-  React.useEffect(() => {
+  /**
+   * Snap to top on every in-app navigation (HashRouter does not scroll the window).
+   *
+   * - `useLayoutEffect` so the scroll fires before the new view paints — prevents the
+   *   mobile "flash of old scroll position" on iOS Safari and Android Chrome.
+   * - Reset `documentElement.scrollTop` and `body.scrollTop` in addition to `window.scrollTo`
+   *   to cover older Safari quirks where one wins over the other.
+   * - One-frame follow-up scroll to handle the case where the new page's content paints
+   *   slightly after the route commit (URL bar collapse / async data) and drifts back.
+   */
+  React.useLayoutEffect(() => {
+    if ("scrollRestoration" in window.history) {
+      window.history.scrollRestoration = "manual";
+    }
+  }, []);
+
+  React.useLayoutEffect(() => {
     const prev = scrollSnapPrevRef.current;
     scrollSnapPrevRef.current = { pathname, search };
 
-    if (!prev || prev.pathname !== pathname) {
+    const snapToTop = () => {
+      // Legacy 2-arg form: universally supported on older iOS Safari.
       window.scrollTo(0, 0);
-      return;
+      // Modern object form (some browsers honor only this for `behavior`).
+      try {
+        window.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior });
+      } catch {
+        // ignore — older browsers may throw on the options form
+      }
+      if (typeof document !== "undefined") {
+        if (document.documentElement) {
+          document.documentElement.scrollTop = 0;
+        }
+        if (document.body) {
+          document.body.scrollTop = 0;
+        }
+        // Some routes may have an inner scroll container (e.g. cook mode),
+        // and on certain viewports the `.app-shell` itself can be the scroller.
+        // Reset any element scrolled below 0 — cheap, safe, idempotent.
+        const candidates = document.querySelectorAll<HTMLElement>(
+          ".app-shell, [data-scroll-root]",
+        );
+        candidates.forEach((el) => {
+          if (el.scrollTop !== 0) {
+            el.scrollTop = 0;
+          }
+        });
+      }
+    };
+
+    if (!prev || prev.pathname !== pathname) {
+      snapToTop();
+      // Re-snap after first paint in case mobile URL bar / async content shifts layout.
+      const raf = window.requestAnimationFrame(snapToTop);
+      // On initial mount specifically (e.g. just after sign-in), the iOS
+      // keyboard dismiss animation can run AFTER our synchronous snap and
+      // leave the page slightly scrolled.
+      let timers: number[] = [];
+      let viewportResizeHandler: (() => void) | null = null;
+      if (!prev) {
+        // Aggressive timer-based retries to outlast keyboard dismiss + URL bar settle.
+        timers = [100, 250, 500, 1000, 1500].map((ms) =>
+          window.setTimeout(snapToTop, ms),
+        );
+        // VisualViewport `resize` fires when the iOS keyboard finishes hiding —
+        // re-snap then to fight the residual scroll iOS leaves us with. Listener
+        // is unbound after the first ~2s so user-scroll isn't fought.
+        if (typeof window !== "undefined" && window.visualViewport) {
+          const vv = window.visualViewport;
+          viewportResizeHandler = () => snapToTop();
+          vv.addEventListener("resize", viewportResizeHandler);
+          window.setTimeout(() => {
+            if (viewportResizeHandler) {
+              vv.removeEventListener("resize", viewportResizeHandler);
+              viewportResizeHandler = null;
+            }
+          }, 2000);
+        }
+      }
+      return () => {
+        window.cancelAnimationFrame(raf);
+        timers.forEach((t) => window.clearTimeout(t));
+        if (viewportResizeHandler && window.visualViewport) {
+          window.visualViewport.removeEventListener("resize", viewportResizeHandler);
+        }
+      };
     }
     if (prev.search === search) {
       return;
@@ -236,7 +369,9 @@ function AppLayout({
         }
       }
     }
-    window.scrollTo(0, 0);
+    snapToTop();
+    const raf = window.requestAnimationFrame(snapToTop);
+    return () => window.cancelAnimationFrame(raf);
   }, [pathname, search]);
 
   /** Drop add-to-plan cart in session when leaving the list/detail builder routes. */
@@ -277,14 +412,26 @@ function AppLayout({
           aria-controls="app-nav-drawer"
           onClick={() => setMenuOpen((o) => !o)}
         >
-          <span className="app-chrome-burger" aria-hidden>
-            <span />
-            <span />
-            <span />
-          </span>
+          <svg
+            className="app-chrome-burger"
+            xmlns="http://www.w3.org/2000/svg"
+            width="22"
+            height="22"
+            viewBox="0 0 22 22"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            aria-hidden
+          >
+            <line x1="3" y1="6" x2="19" y2="6" />
+            <line x1="3" y1="11" x2="19" y2="11" />
+            <line x1="3" y1="16" x2="19" y2="16" />
+          </svg>
         </button>
         <span className={`app-chrome-home${isPlannerHome ? " app-chrome-home--current" : ""}`}>
           {chromeTitle}
+          <span className="app-chrome-user"> — {currentUser}</span>
         </span>
       </header>
 
@@ -337,7 +484,7 @@ function AppLayout({
               </li>
               <li>
                 <Link
-                  to={shoppingListPath(false)}
+                  to={shoppingListPath()}
                   className={
                     pathname === "/shopping"
                       ? "app-chrome-nav-link app-chrome-nav-link--current"
@@ -384,6 +531,15 @@ function AppLayout({
                 </Link>
               </li>
             </ul>
+            {onSignOut ? (
+              <button
+                type="button"
+                className="app-chrome-nav-signout"
+                onClick={() => { setMenuOpen(false); onSignOut(); }}
+              >
+                Sign out
+              </button>
+            ) : null}
           </nav>
         </>
       ) : null}
@@ -397,7 +553,11 @@ function AppLayout({
           path="/recipes/new"
           element={<AddRecipePage />}
         />
-        <Route path="/recipes" element={<RecipeList recipes={recipes} ingredients={ingredients} />} />
+        <Route
+          path="/recipes/discover"
+          element={<DiscoverPage recipes={recipes} ingredients={ingredients} currentUser={currentUser} />}
+        />
+        <Route path="/recipes" element={<RecipeList recipes={recipes} ingredients={ingredients} currentUser={currentUser} />} />
         <Route
           path="/recipe/:id/edit"
           element={
@@ -406,12 +566,22 @@ function AppLayout({
               ingredients={ingredients}
               ingredientsFile={ingredientsFile}
               onSaved={onRecipeSaved}
+              currentUser={currentUser}
             />
           }
         />
         <Route
           path="/recipe/:id"
-          element={<RecipeDetail recipes={recipes} ingredients={ingredients} />}
+          element={
+            <RecipeDetail
+              recipes={recipes}
+              ingredients={ingredients}
+              currentUser={currentUser}
+              onRecipeDeleted={(deletedId) =>
+                setRawRecipes((prev) => prev ? prev.filter((r) => r.id !== deletedId) : prev)
+              }
+            />
+          }
         />
         <Route
           path="/shopping"

@@ -1,19 +1,10 @@
-/** Persist the recipe list "Sides" tab via `?tab=side` so Back returns to Sides. */
-
 import {
   MEAL_PLAN_UNASSIGNED_KEY,
   isMealPlanDateKey,
 } from "./mealPlanStorage";
 
-export const LIST_TAB_QUERY = "tab";
-export const LIST_TAB_SIDE_VALUE = "side";
-
 /** Planner-driven add flow: target day (YYYY-MM-DD) or `unassigned` in the URL. */
 export const ADD_TO_PLAN_QUERY = "addToPlan";
-/** After adding a main, `side` shows Sides tab; omit or `main` for Mains. */
-export const PLAN_PHASE_QUERY = "planPhase";
-export const PLAN_PHASE_MAIN = "main";
-export const PLAN_PHASE_SIDE = "side";
 export const ADD_TO_PLAN_URL_UNASSIGNED = "unassigned";
 
 /** Monday of the visible planner week (YYYY-MM-DD), only with `addToPlan=unassigned`. */
@@ -112,6 +103,8 @@ export const FROM_HISTORY_VALUE = "history";
 export const FROM_COOK_MODE_VALUE = "cook";
 /** “View” from meal planner (home) — Back returns to `/` (this week’s menu). */
 export const FROM_PLANNER_VALUE = "planner";
+/** Recipe opened from `/recipes/discover` — Back returns there. */
+export const FROM_DISCOVER_VALUE = "discover";
 /** Cook anchor when opening the recipe from the planner (scheduled day or today). */
 export const PLANNER_ANCHOR_DATE_QUERY = "plannerDate";
 export const PLANNER_PLAN_SLOT_REF_QUERY = "plannerSlot";
@@ -186,6 +179,10 @@ export function readFromCookMode(searchParams: URLSearchParams): boolean {
   return searchParams.get(FROM_QUERY) === FROM_COOK_MODE_VALUE;
 }
 
+export function readFromDiscover(searchParams: URLSearchParams): boolean {
+  return searchParams.get(FROM_QUERY) === FROM_DISCOVER_VALUE;
+}
+
 function copyFromShoppingParam(from: URLSearchParams, to: URLSearchParams): void {
   const v = from.get(FROM_QUERY);
   if (v === FROM_SHOPPING_VALUE || v === FROM_SHOPPING_LIST_ITEM_VALUE) {
@@ -196,6 +193,12 @@ function copyFromShoppingParam(from: URLSearchParams, to: URLSearchParams): void
 function copyFromHistoryParam(from: URLSearchParams, to: URLSearchParams): void {
   if (from.get(FROM_QUERY) === FROM_HISTORY_VALUE) {
     to.set(FROM_QUERY, FROM_HISTORY_VALUE);
+  }
+}
+
+function copyFromDiscoverParam(from: URLSearchParams, to: URLSearchParams): void {
+  if (from.get(FROM_QUERY) === FROM_DISCOVER_VALUE) {
+    to.set(FROM_QUERY, FROM_DISCOVER_VALUE);
   }
 }
 
@@ -247,15 +250,6 @@ export function recipeDetailFromMenuPath(
   return `/recipe/${recipeId}?${q.toString()}`;
 }
 
-export function readSidesListTab(searchParams: URLSearchParams): boolean {
-  return searchParams.get(LIST_TAB_QUERY) === LIST_TAB_SIDE_VALUE;
-}
-
-/** True when URL says we're on the optional-side step. */
-export function readPlanPhaseSide(searchParams: URLSearchParams): boolean {
-  return searchParams.get(PLAN_PHASE_QUERY) === PLAN_PHASE_SIDE;
-}
-
 export function urlParamToPlanKey(value: string | null): string | null {
   if (!value) {
     return null;
@@ -302,7 +296,6 @@ export function recipesAddMealForCookingPath(weekStartIso: string): string {
   if (isMealPlanDateKey(weekStartIso)) {
     q.set(PLAN_WEEK_START_QUERY, weekStartIso);
   }
-  q.set(PLAN_PHASE_QUERY, PLAN_PHASE_MAIN);
   q.set(COOK_ON_ADD_QUERY, COOK_ON_ADD_VALUE);
   return `/recipes?${q.toString()}`;
 }
@@ -317,7 +310,6 @@ export function recipesShopMenuBuildPath(weekStartIso: string): string {
   if (isMealPlanDateKey(weekStartIso)) {
     q.set(PLAN_WEEK_START_QUERY, weekStartIso);
   }
-  q.set(PLAN_PHASE_QUERY, PLAN_PHASE_MAIN);
   q.set(SHOP_MENU_BUILD_QUERY, SHOP_MENU_BUILD_VALUE);
   q.set(FROM_QUERY, FROM_SHOPPING_VALUE);
   return `/recipes?${q.toString()}`;
@@ -348,10 +340,6 @@ function copyAddToPlanParams(from: URLSearchParams, to: URLSearchParams): void {
     return;
   }
   to.set(ADD_TO_PLAN_QUERY, atp);
-  const ph = from.get(PLAN_PHASE_QUERY);
-  if (ph === PLAN_PHASE_SIDE || ph === PLAN_PHASE_MAIN) {
-    to.set(PLAN_PHASE_QUERY, ph);
-  }
   const ws = from.get(PLAN_WEEK_START_QUERY);
   if (ws && isMealPlanDateKey(ws)) {
     to.set(PLAN_WEEK_START_QUERY, ws);
@@ -386,10 +374,7 @@ export function recipesListAddToCartPath(
   return `/recipes?${q.toString()}`;
 }
 
-export function homeListPath(
-  sidesTab: boolean,
-  preserveParams?: URLSearchParams,
-): string {
+export function homeListPath(preserveParams?: URLSearchParams): string {
   if (preserveParams) {
     const atp = preserveParams.get(ADD_TO_PLAN_QUERY);
     if (atp && urlParamToPlanKey(atp)) {
@@ -398,13 +383,12 @@ export function homeListPath(
       return `/recipes?${q.toString()}`;
     }
   }
-  return sidesTab ? `/recipes?${LIST_TAB_QUERY}=${LIST_TAB_SIDE_VALUE}` : "/recipes";
+  return "/recipes";
 }
 
 /** Back from recipe detail: cook mode vs calendar vs shopping list vs recipe list (and plan-preserved URLs). */
 export function recipeDetailBackPath(
   recipeId: string,
-  sidesTab: boolean,
   preserveParams: URLSearchParams | undefined,
   fromHistory: boolean,
   searchParams: URLSearchParams,
@@ -426,10 +410,13 @@ export function recipeDetailBackPath(
   if (fromHistory) {
     return "/history";
   }
-  if (readNavigateBackToShoppingList(searchParams)) {
-    return shoppingListPath(sidesTab, preserveParams ?? searchParams);
+  if (readFromDiscover(searchParams)) {
+    return "/recipes/discover";
   }
-  return homeListPath(sidesTab, preserveParams);
+  if (readNavigateBackToShoppingList(searchParams)) {
+    return shoppingListPath(preserveParams ?? searchParams);
+  }
+  return homeListPath(preserveParams);
 }
 
 /** When set, user opened full recipe from cook mode; `cook=1` is not set, so this is not active cook mode. */
@@ -454,12 +441,12 @@ export function readRecipeDetailCookReturnContext(
 
 export function recipeDetailPath(
   recipeId: string,
-  sidesTab: boolean,
   preserveParams?: URLSearchParams,
   fromShopping?: boolean,
   fromHistory?: boolean,
   fromShoppingListItem?: boolean,
   cookViewFromSession?: RecipeDetailCookViewContext,
+  fromDiscover?: boolean,
 ): string {
   const q = new URLSearchParams();
   if (preserveParams) {
@@ -470,6 +457,7 @@ export function recipeDetailPath(
     copyFromShoppingParam(preserveParams, q);
     copyFromHistoryParam(preserveParams, q);
     copyFromPlannerParam(preserveParams, q);
+    copyFromDiscoverParam(preserveParams, q);
   }
   if (cookViewFromSession) {
     q.set(FROM_QUERY, FROM_COOK_MODE_VALUE);
@@ -486,10 +474,9 @@ export function recipeDetailPath(
       q.set(FROM_QUERY, FROM_SHOPPING_LIST_ITEM_VALUE);
     } else if (fromShopping) {
       q.set(FROM_QUERY, FROM_SHOPPING_VALUE);
+    } else if (fromDiscover) {
+      q.set(FROM_QUERY, FROM_DISCOVER_VALUE);
     }
-  }
-  if (!q.has(ADD_TO_PLAN_QUERY) && sidesTab) {
-    q.set(LIST_TAB_QUERY, LIST_TAB_SIDE_VALUE);
   }
   const s = q.toString();
   return `/recipe/${recipeId}${s ? `?${s}` : ""}`;
@@ -498,7 +485,6 @@ export function recipeDetailPath(
 /** Same query preservation as `recipeDetailPath`, for the recipe editor route. */
 export function recipeEditPath(
   recipeId: string,
-  sidesTab: boolean,
   preserveParams?: URLSearchParams,
   cookViewFromSession?: RecipeDetailCookViewContext,
 ): string {
@@ -521,26 +507,17 @@ export function recipeEditPath(
       q.delete(COOK_SLOT_REF_QUERY);
     }
   }
-  if (!q.has(ADD_TO_PLAN_QUERY) && sidesTab) {
-    q.set(LIST_TAB_QUERY, LIST_TAB_SIDE_VALUE);
-  }
   const s = q.toString();
   return `/recipe/${recipeId}/edit${s ? `?${s}` : ""}`;
 }
 
-export function shoppingListPath(
-  sidesTab: boolean,
-  preserveParams?: URLSearchParams,
-): string {
+export function shoppingListPath(preserveParams?: URLSearchParams): string {
   const q = new URLSearchParams();
   if (preserveParams) {
     const atp = preserveParams.get(ADD_TO_PLAN_QUERY);
     if (atp && urlParamToPlanKey(atp)) {
       copyAddToPlanFlowParamsForList(preserveParams, q);
     }
-  }
-  if (!q.has(ADD_TO_PLAN_QUERY) && sidesTab) {
-    q.set(LIST_TAB_QUERY, LIST_TAB_SIDE_VALUE);
   }
   const s = q.toString();
   return s ? `/shopping?${s}` : "/shopping";

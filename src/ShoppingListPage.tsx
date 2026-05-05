@@ -279,7 +279,6 @@ export function ShoppingListPage({
                           <Link
                             to={recipeDetailPath(
                               r.id,
-                              recipeSegment(r) === "side",
                               planPreserveForRecipeLinks,
                               false,
                               false,

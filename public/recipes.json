@@ -70,14 +70,18 @@
         }
       ],
       "createdBy": "Jordan E",
-      "servings": null
+      "servings": null,
+      "tags": [
+        "main"
+      ]
     },
     {
       "id": "grilled-tri-tip",
       "title": "Grilled tri tip",
       "type": "recipe",
       "tags": [
-        "grill"
+        "grill",
+        "main"
       ],
       "instructions": [
         "Grill meat, add vegetable"
@@ -107,7 +111,8 @@
       "title": "Grilled burger",
       "type": "recipe",
       "tags": [
-        "grill"
+        "grill",
+        "main"
       ],
       "instructions": [
         "Grill meat, add vegetable"
@@ -137,7 +142,8 @@
       "title": "Grilled hot link",
       "type": "recipe",
       "tags": [
-        "grill"
+        "grill",
+        "main"
       ],
       "instructions": [
         "Grill meat, add vegetable"
@@ -162,7 +168,8 @@
       "title": "Grilled wings",
       "type": "recipe",
       "tags": [
-        "grill"
+        "grill",
+        "main"
       ],
       "instructions": [
         "Grill meat, add vegetable"
@@ -193,7 +200,8 @@
       "title": "Grilled carne asada",
       "type": "recipe",
       "tags": [
-        "grill"
+        "grill",
+        "main"
       ],
       "instructions": [
         "Grill meat, add vegetable"
@@ -218,7 +226,8 @@
       "title": "Grilled chicken",
       "type": "recipe",
       "tags": [
-        "grill"
+        "grill",
+        "main"
       ],
       "instructions": [
         "Grill meat, add vegetable"
@@ -250,7 +259,8 @@
       "type": "recipe",
       "tags": [
         "keto",
-        "crock-pot"
+        "crock-pot",
+        "main"
       ],
       "instructions": [
         "Coat roast in salt and pepper, add ingredients to crock pot, cook 6 hrs (or until shredable), shred, cook 1 hr"
@@ -304,7 +314,8 @@
       "title": "Taco chicken (crock pot)",
       "type": "recipe",
       "tags": [
-        "crock-pot"
+        "crock-pot",
+        "main"
       ],
       "instructions": [
         "Cut up vegetables, mix chicken, vegetables, salsa in crock pot",
@@ -381,7 +392,8 @@
       "title": "Meatballs (Keto)",
       "type": "recipe",
       "tags": [
-        "keto"
+        "keto",
+        "main"
       ],
       "instructions": [
         "Mix main items together in large bowl, form into meatballs",
@@ -517,7 +529,10 @@
         }
       ],
       "createdBy": "Jordan E",
-      "servings": null
+      "servings": null,
+      "tags": [
+        "main"
+      ]
     },
     {
       "id": "mozzarella-crusted-chicken",
@@ -585,7 +600,10 @@
         }
       ],
       "createdBy": "Jordan E",
-      "servings": null
+      "servings": null,
+      "tags": [
+        "main"
+      ]
     },
     {
       "id": "dijon-onion-chicken",
@@ -650,7 +668,10 @@
         }
       ],
       "createdBy": "Jordan E",
-      "servings": null
+      "servings": null,
+      "tags": [
+        "main"
+      ]
     },
     {
       "id": "cayenne-breaded-chicken",
@@ -705,7 +726,10 @@
         }
       ],
       "createdBy": "Jordan E",
-      "servings": null
+      "servings": null,
+      "tags": [
+        "main"
+      ]
     },
     {
       "id": "lemon-italian-chicken-spaghetti",
@@ -801,7 +825,10 @@
         }
       ],
       "createdBy": "Jordan E",
-      "servings": null
+      "servings": null,
+      "tags": [
+        "main"
+      ]
     },
     {
       "id": "chicken-pita-pockets",
@@ -854,7 +881,10 @@
         }
       ],
       "createdBy": "Jordan E",
-      "servings": null
+      "servings": null,
+      "tags": [
+        "main"
+      ]
     },
     {
       "id": "miso-salmon",
@@ -915,7 +945,10 @@
         }
       ],
       "createdBy": "Jordan E",
-      "servings": null
+      "servings": null,
+      "tags": [
+        "main"
+      ]
     },
     {
       "id": "curry-peanut-chicken",
@@ -1005,7 +1038,10 @@
         }
       ],
       "createdBy": "Jordan E",
-      "servings": null
+      "servings": null,
+      "tags": [
+        "main"
+      ]
     },
     {
       "id": "soy-glazed-meatloaf",
@@ -1124,7 +1160,10 @@
         }
       ],
       "createdBy": "Jordan E",
-      "servings": null
+      "servings": null,
+      "tags": [
+        "main"
+      ]
     },
     {
       "id": "steak-spicy-soy-sauce",
@@ -1201,7 +1240,10 @@
         }
       ],
       "createdBy": "Jordan E",
-      "servings": null
+      "servings": null,
+      "tags": [
+        "main"
+      ]
     },
     {
       "id": "steak-jam-honey-mustard-sauce",
@@ -1289,7 +1331,10 @@
         }
       ],
       "createdBy": "Jordan E",
-      "servings": null
+      "servings": null,
+      "tags": [
+        "main"
+      ]
     },
     {
       "id": "chicken-katsu-curry",
@@ -1362,7 +1407,10 @@
         }
       ],
       "createdBy": "Jordan E",
-      "servings": null
+      "servings": null,
+      "tags": [
+        "main"
+      ]
     },
     {
       "id": "beef-tortilla-melts",
@@ -1436,7 +1484,10 @@
         }
       ],
       "createdBy": "Jordan E",
-      "servings": null
+      "servings": null,
+      "tags": [
+        "main"
+      ]
     },
     {
       "id": "chili",
@@ -1523,7 +1574,10 @@
         }
       ],
       "createdBy": "Jordan E",
-      "servings": null
+      "servings": null,
+      "tags": [
+        "main"
+      ]
     },
     {
       "id": "tortellini-tomato-soup",
@@ -1555,7 +1609,10 @@
         }
       ],
       "createdBy": "Jordan E",
-      "servings": null
+      "servings": null,
+      "tags": [
+        "main"
+      ]
     },
     {
       "id": "quesadilla-leftovers",
@@ -1598,16 +1655,19 @@
         }
       ],
       "createdBy": "Jordan E",
-      "servings": null
+      "servings": null,
+      "tags": [
+        "main"
+      ]
     },
     {
       "id": "air-fry-asparagus",
       "title": "Air fryer asparagus",
       "type": "recipe",
-      "course": "side",
       "tags": [
         "vegetables",
-        "air-fryer"
+        "air-fryer",
+        "side"
       ],
       "instructions": [
         "Trim woody ends.",
@@ -1644,10 +1704,10 @@
       "id": "air-fry-brussels-sprouts",
       "title": "Air fryer Brussels sprouts",
       "type": "recipe",
-      "course": "side",
       "tags": [
         "vegetables",
-        "air-fryer"
+        "air-fryer",
+        "side"
       ],
       "instructions": [
         "Halve or quarter any very large sprouts.",
@@ -1685,10 +1745,10 @@
       "id": "air-fry-broccoli",
       "title": "Air fryer broccoli",
       "type": "recipe",
-      "course": "side",
       "tags": [
         "vegetables",
-        "air-fryer"
+        "air-fryer",
+        "side"
       ],
       "instructions": [
         "Cut into medium florets.",
@@ -1726,10 +1786,10 @@
       "id": "air-fry-squash",
       "title": "Air fryer squash",
       "type": "recipe",
-      "course": "side",
       "tags": [
         "vegetables",
-        "air-fryer"
+        "air-fryer",
+        "side"
       ],
       "instructions": [
         "Cut into uniform pieces (similar size for even cooking).",
@@ -1767,10 +1827,10 @@
       "id": "air-fry-potatoes",
       "title": "Air fryer potatoes",
       "type": "recipe",
-      "course": "side",
       "tags": [
         "vegetables",
-        "air-fryer"
+        "air-fryer",
+        "side"
       ],
       "instructions": [
         "Cut into bite-size pieces.",
@@ -1814,10 +1874,10 @@
       "id": "air-fry-zucchini-chips",
       "title": "Air fryer zucchini chips",
       "type": "recipe",
-      "course": "side",
       "tags": [
         "vegetables",
-        "air-fryer"
+        "air-fryer",
+        "side"
       ],
       "instructions": [
         "Slice zucchini into thin chips; pat dry if very wet.",
@@ -1867,10 +1927,10 @@
       "id": "saute-spinach",
       "title": "Sautéed spinach",
       "type": "recipe",
-      "course": "side",
       "tags": [
         "vegetables",
-        "stovetop"
+        "stovetop",
+        "side"
       ],
       "instructions": [
         "Heat a little olive oil in a large pan over medium-high heat.",
@@ -1907,7 +1967,6 @@
       "id": "regular-rice",
       "title": "Regular rice",
       "type": "recipe",
-      "course": "side",
       "instructions": [
         "Wash rice",
         "1.5 cup of water for 1 cup of brown rice",
@@ -1916,13 +1975,15 @@
       ],
       "ingredientSections": [],
       "createdBy": "Jordan E",
-      "servings": null
+      "servings": null,
+      "tags": [
+        "side"
+      ]
     },
     {
       "id": "fried-rice",
       "title": "Fried rice",
       "type": "recipe",
-      "course": "side",
       "instructions": [
         "Make rice then put in pan w/ olive oil",
         "Let rice sit for 3-4 minutes (don't stir)",
@@ -1968,13 +2029,15 @@
         }
       ],
       "createdBy": "Jordan E",
-      "servings": null
+      "servings": null,
+      "tags": [
+        "side"
+      ]
     },
     {
       "id": "garlic-bread",
       "title": "Garlic bread",
       "type": "recipe",
-      "course": "side",
       "instructions": [
         "Cut bread in half, add butter and parmesan, cook for 5 min"
       ],
@@ -2002,13 +2065,15 @@
         }
       ],
       "createdBy": "Jordan E",
-      "servings": null
+      "servings": null,
+      "tags": [
+        "side"
+      ]
     },
     {
       "id": "mashed-potatoes",
       "title": "Mashed potatoes",
       "type": "recipe",
-      "course": "side",
       "instructions": [
         "Boil potatoes for 15 minutes",
         "Drain water (keep some in a cup)",
@@ -2038,13 +2103,15 @@
         }
       ],
       "createdBy": "Jordan E",
-      "servings": null
+      "servings": null,
+      "tags": [
+        "side"
+      ]
     },
     {
       "id": "sliced-potatoes",
       "title": "Sliced potatoes",
       "type": "recipe",
-      "course": "side",
       "instructions": [
         "Preheat oven to 450°F (or match the main if roasting together).",
         "Slice or dice potatoes; toss with olive oil, salt, and pepper.",
@@ -2077,13 +2144,15 @@
         }
       ],
       "createdBy": "Jordan E",
-      "servings": null
+      "servings": null,
+      "tags": [
+        "side"
+      ]
     },
     {
       "id": "lemon-panko-burrata-salad",
       "title": "Lemon panko burrata salad",
       "type": "recipe",
-      "course": "side",
       "instructions": [
         "Mince garlic",
         "Cook panko and garlic for 3-5 min on medium heat (with drizzle of olive oil)",
@@ -2130,13 +2199,15 @@
         }
       ],
       "createdBy": "Jordan E",
-      "servings": null
+      "servings": null,
+      "tags": [
+        "side"
+      ]
     },
     {
       "id": "lemon-spaghetti",
       "title": "Lemon spaghetti",
       "type": "recipe",
-      "course": "side",
       "instructions": [
         "Boil water, wash zucchini and lemon",
         "Trim and quarter zucchini, cut into ½ inch slices, toss in olive oil, salt, pepper, a bit of parmesan",
@@ -2205,176 +2276,9 @@
         }
       ],
       "createdBy": "Jordan E",
-      "servings": null
-    },
-    {
-      "id": "chicken-parmesan-allrecipes-223042",
-      "title": "Chicken Parmesan (AllRecipes #223042)",
-      "type": "recipe",
-      "tags": ["italian", "chicken", "bake"],
-      "servings": 4,
-      "sourceUrl": "https://www.allrecipes.com/recipe/223042/chicken-parmesan/",
-      "totalCookTimeMinutes": 45,
-      "notes": "Ingredient list and directions aligned to AllRecipes from user screenshots (original 1× yields 4 servings). Step 6 uses ~½ inch oil depth in the skillet; shopping line uses ½ cup as written on the recipe card.",
-      "ingredientSections": [
-        {
-          "name": "Chicken",
-          "lines": [
-            {
-              "ingredientId": "chicken-breast",
-              "amount": 28,
-              "unit": "oz",
-              "note": "4 skinless boneless chicken breast halves (~7 oz each), pounded to ½ inch"
-            },
-            {
-              "ingredientId": "salt",
-              "amount": null,
-              "unit": null,
-              "note": "to taste"
-            },
-            {
-              "ingredientId": "black-pepper",
-              "amount": null,
-              "unit": null,
-              "note": "freshly ground, to taste"
-            }
-          ]
-        },
-        {
-          "name": "Breading",
-          "lines": [
-            {
-              "ingredientId": "egg",
-              "amount": 2,
-              "unit": "each",
-              "note": "large eggs, beaten in a shallow bowl"
-            },
-            {
-              "ingredientId": "panko",
-              "amount": 1,
-              "unit": "cup",
-              "note": "or more as needed"
-            },
-            {
-              "ingredientId": "parmesan-cheese",
-              "amount": 0.5,
-              "unit": "cup",
-              "note": "freshly grated, mixed with panko (½ of ¾ cup total Parmesan)"
-            },
-            {
-              "ingredientId": "flour-all-purpose",
-              "amount": 2,
-              "unit": "tbsp",
-              "note": "sifted/strained over chicken; or more if needed"
-            }
-          ]
-        },
-        {
-          "name": "Cook",
-          "lines": [
-            {
-              "ingredientId": "olive-oil",
-              "amount": 0.5,
-              "unit": "cup",
-              "note": "for frying (or as needed); directions also call for ~½ inch depth in skillet"
-            }
-          ]
-        },
-        {
-          "name": "Topping & bake",
-          "lines": [
-            {
-              "ingredientId": "marinara-sauce",
-              "amount": 0.5,
-              "unit": "cup",
-              "note": "prepared tomato sauce — 2 tbsp per breast when assembling (4 breasts)"
-            },
-            {
-              "ingredientId": "mozzarella-cheese",
-              "amount": 0.25,
-              "unit": "cup",
-              "note": "fresh mozzarella, small cubes"
-            },
-            {
-              "ingredientId": "fresh-basil",
-              "amount": 0.25,
-              "unit": "cup",
-              "note": "chopped"
-            },
-            {
-              "ingredientId": "provolone",
-              "amount": 2,
-              "unit": "oz",
-              "note": "½ cup freshly grated (approx.; library uses weight)"
-            },
-            {
-              "ingredientId": "parmesan-cheese",
-              "amount": 0.25,
-              "unit": "cup",
-              "note": "freshly grated, remaining ¼ cup on top before bake"
-            },
-            {
-              "ingredientId": "olive-oil",
-              "amount": 2,
-              "unit": "tsp",
-              "note": "½ tsp drizzled on each breast before baking (4 breasts)"
-            }
-          ]
-        }
-      ],
-      "instructions": [
-        {
-          "text": "Preheat an oven to 450°F (230°C)."
-        },
-        {
-          "text": "Place chicken breasts between two sheets of heavy plastic (resealable freezer bags work well) on a solid, level surface. Firmly pound chicken with the smooth side of a meat mallet to a thickness of ½ inch. Season thoroughly with salt and pepper. Using a sifter or strainer, sprinkle flour over chicken breasts, evenly coating both sides. Beat eggs in a shallow bowl and set aside.",
-          "stepIngredients": [
-            "Chicken breast",
-            "Salt",
-            "Black pepper",
-            "All-purpose flour",
-            "Egg"
-          ]
-        },
-        {
-          "text": "Mix bread crumbs and ½ cup Parmesan cheese in a separate bowl; set aside. Dip a flour-coated chicken breast in beaten eggs.",
-          "stepIngredients": ["Panko breadcrumbs", "Parmesan cheese", "Egg", "Chicken breast"]
-        },
-        {
-          "text": "Transfer breast to the bread crumb mixture, pressing crumbs into both sides. Repeat for each breast.",
-          "stepIngredients": ["Panko breadcrumbs", "Parmesan cheese", "Chicken breast"]
-        },
-        {
-          "text": "Let chicken rest for 10 to 15 minutes.",
-          "durationSeconds": 600
-        },
-        {
-          "text": "Heat ½ inch olive oil in a large skillet on medium-high heat until it begins to shimmer. Cook chicken in the hot oil until golden, about 2 minutes per side. The chicken will finish cooking in the oven.",
-          "durationSeconds": 120,
-          "stepIngredients": ["Olive oil", "Chicken breast"]
-        },
-        {
-          "text": "Transfer chicken to a baking dish. Top each breast with 2 tablespoons tomato sauce.",
-          "stepIngredients": ["Marinara sauce", "Chicken breast"]
-        },
-        {
-          "text": "Layer each chicken breast with equal amounts of mozzarella cheese, fresh basil, and provolone cheese.",
-          "stepIngredients": [
-            "Mozzarella cheese",
-            "Fresh basil (chopped)",
-            "Provolone cheese",
-            "Chicken breast"
-          ]
-        },
-        {
-          "text": "Sprinkle remaining Parmesan over top and drizzle each with ½ teaspoon olive oil.",
-          "stepIngredients": ["Parmesan cheese", "Olive oil", "Chicken breast"]
-        },
-        {
-          "text": "Bake in the preheated oven until cheese is browned and bubbly and chicken breasts are no longer pink in the center, 15 to 20 minutes. An instant-read thermometer inserted into the center should read at least 165°F (74°C).",
-          "durationSeconds": 900,
-          "note": "Use a thermometer to confirm doneness."
-        }
+      "servings": null,
+      "tags": [
+        "side"
       ]
     }
   ]

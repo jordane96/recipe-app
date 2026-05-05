@@ -20,7 +20,7 @@ import {
   markRecipeSourcePlanMany,
 } from "./planShoppingAuthority";
 import type { CookHistoryByDate } from "./cookHistoryStorage";
-import { isDaySlotCooked, isUnassignedSlotCooked } from "./mealPlannerCookUi";
+import { isDaySlotCooked, isUnassignedSlotCookedAllTime } from "./mealPlannerCookUi";
 import { reconcilePlanRecipeSlotCount } from "./mealPlanSlotSync";
 
 export function recipeToPlannedMeal(r: Recipe): PlannedMeal {
@@ -185,7 +185,7 @@ function removeUncookedPlanSlotsForRecipeFromPlan(
       if (!slot || slot.id !== recipeId) {
         continue;
       }
-      if (isUnassignedSlotCooked(history, weekKeys, urow, i, recipeId)) {
+      if (isUnassignedSlotCookedAllTime(history, urow, i, recipeId)) {
         continue;
       }
       const n = planAfterRemoveMealAt(work, uk, i);

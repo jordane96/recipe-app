@@ -31,6 +31,11 @@ if (existsSync(envFile)) {
 
 // Route table: maps URL path prefix → handler module. Order matters: more-specific routes first.
 const routes = [
+  ["/api/auth/signin",        "../api/auth/signin.js"],
+  ["/api/auth/signup",        "../api/auth/signup.js"],
+  ["/api/auth/check-username","../api/auth/check-username.js"],
+  ["/api/saves/",             "../api/saves/[recipeId].js"], // /api/saves/:recipeId
+  ["/api/saves",              "../api/saves.js"],            // POST /api/saves
   ["/api/recipes/parse",      "../api/recipes/parse.js"],    // POST parse
   ["/api/recipes/",           "../api/recipes/[id].js"],     // /api/recipes/:id
   ["/api/recipes",            "../api/recipes.js"],
@@ -125,5 +130,5 @@ const server = createServer(async (nodeReq, nodeRes) => {
   }
 });
 
-const PORT = process.env.PORT ? Number(process.env.PORT) : 3002;
+const PORT = 3001;
 server.listen(PORT, () => console.log(`Local API server running on http://localhost:${PORT}`));

@@ -90,6 +90,12 @@ export type RecipeInstructionStep =
 export interface Recipe {
   id: string;
   title: string;
+  /** Username of the recipe owner. */
+  owner?: string;
+  /** If this is a fork, the id of the original recipe. */
+  forkedFromRecipeId?: string;
+  /** 'public' or 'private' */
+  visibility?: string;
   /** Short intro or blurb shown on recipe detail (optional). */
   description?: string;
   /** Library attribution (e.g. who added the recipe); optional until backfilled. */
@@ -97,8 +103,6 @@ export interface Recipe {
   /** Yield in servings; `null` when unknown. */
   servings?: number | null;
   type: "recipe" | "reference";
-  /** Optional: group on recipe list & shopping (default: main for recipes, other for reference). */
-  course?: "main" | "side";
   tags?: string[];
   /** Structured shopping + display */
   ingredientSections: IngredientSection[];
@@ -119,6 +123,8 @@ export interface Recipe {
 export interface RecipeFile {
   version: number;
   recipes: Recipe[];
+  /** Recipe IDs the current user has saved (per the ?user=… query param). */
+  savedRecipeIds?: string[];
 }
 
 export interface RecipeBundle {
