@@ -276,11 +276,6 @@ export function RecipeDetail({
           </Link>
         </div>
       ) : null}
-      {recipe.tags && recipe.tags.length > 0 ? (
-        <p className="muted" style={{ marginTop: "-0.5rem", marginBottom: "1rem" }}>
-          {recipe.tags.join(" · ")}
-        </p>
-      ) : null}
 
       {recipe.ingredientSections?.map((sec) => (
         <section key={sec.name} className="detail-section">
