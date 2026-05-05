@@ -81,7 +81,7 @@ export default async function handler(req, res) {
           ${recipe.sourceUrl ?? null},
           ${recipe.notes ?? null},
           ${currentUser},
-          ${currentUser ? 'private' : 'public'}
+          'public'
         )
       `
 

@@ -1001,7 +1001,7 @@ export function EditRecipePage({
           ...draft,
           id: newId,
           owner: currentUser,
-          visibility: currentUser ? "private" : "public",
+          visibility: "public",
         };
         onSaved?.(created);
         showToast(`Saved “${created.title}”.`);
