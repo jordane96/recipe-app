@@ -32,13 +32,14 @@ if (existsSync(envFile)) {
   console.warn("No .env.local found — API calls may fail without DATABASE_URL");
 }
 
-// Route table: maps URL path prefix → handler module
+// Route table: maps URL path prefix → handler module. Order matters: more-specific routes first.
 const routes = [
   ["/api/auth/signin",        "../api/auth/signin.js"],
   ["/api/auth/signup",        "../api/auth/signup.js"],
   ["/api/auth/check-username","../api/auth/check-username.js"],
   ["/api/saves/",             "../api/saves/[recipeId].js"], // /api/saves/:recipeId
   ["/api/saves",              "../api/saves.js"],            // POST /api/saves
+  ["/api/recipes/parse",      "../api/recipes/parse.js"],    // POST parse
   ["/api/recipes/",           "../api/recipes/[id].js"],     // /api/recipes/:id
   ["/api/recipes",            "../api/recipes.js"],
   ["/api/ingredients",        "../api/ingredients.js"],

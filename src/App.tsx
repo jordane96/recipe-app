@@ -12,7 +12,7 @@ import { loadRecipeBundle } from "./loadRecipes";
 import { MealPlannerPage } from "./MealPlannerPage";
 import type { IngredientDef, IngredientsFile, Recipe } from "./types";
 import { RecipeDetail } from "./RecipeDetail";
-import { AddRecipePlaceholderPage } from "./AddRecipePlaceholderPage";
+import { AddRecipePage } from "./AddRecipePage";
 import { DiscoverPage } from "./DiscoverPage";
 import { EditRecipePage } from "./EditRecipePage";
 import { RecipeList } from "./RecipeList";
@@ -48,7 +48,7 @@ function appChromeSectionTitle(pathname: string): string {
     return "Recipes";
   }
   if (pathname === "/recipes/new") {
-    return "New recipe";
+    return "Add recipe";
   }
   if (pathname === "/recipes/discover") {
     return "Discover";
@@ -551,7 +551,7 @@ function AppLayout({
         />
         <Route
           path="/recipes/new"
-          element={<AddRecipePlaceholderPage />}
+          element={<AddRecipePage />}
         />
         <Route
           path="/recipes/discover"
