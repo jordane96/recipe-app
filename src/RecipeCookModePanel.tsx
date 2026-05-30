@@ -2,7 +2,7 @@ import * as React from "react";
 import { flushSync } from "react-dom";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import type { IngredientDef, Recipe } from "./types";
-import { formatIngredientLine, ingredientMap } from "./ingredientDisplay";
+import { formatIngredientLine, ingredientMapWithRecipes } from "./ingredientDisplay";
 import {
   EDIT_RECIPE_STEP_QUERY,
   recipeEditPath,
@@ -61,6 +61,13 @@ const COOK_MODE_INGREDIENTS_CONFIRM_STEP = "Confirm you have all necessary ingre
 const COOK_MODE_CONFIRM_OVERVIEW_TITLE = "Recipe overview";
 
 function formatMSS(totalSeconds: number): string {
+  // At >= 1h the M:SS form gets too wide for the timer container (long bakes / braises).
+  // Drop seconds and switch to "Xh" / "Xh Ym" so the display stays inside its slot.
+  if (totalSeconds >= 3600) {
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    return m === 0 ? `${h}h` : `${h}h ${m}m`;
+  }
   const m = Math.floor(totalSeconds / 60);
   const s = totalSeconds % 60;
   return `${m}:${String(s).padStart(2, "0")}`;
@@ -155,7 +162,11 @@ export function RecipeCookModePanel({
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { logCooked } = useCookHistory();
-  const byId = React.useMemo(() => ingredientMap(ingredients), [ingredients]);
+  // Recipe-aware so custom-* ids render as human names during cook mode.
+  const byId = React.useMemo(
+    () => ingredientMapWithRecipes(ingredients, [recipe]),
+    [ingredients, recipe],
+  );
 
   /** Same target as "Browse recipes" on the empty Cooking now page — list with add-to-menu + cook on add. */
   const addRecipeToCookListHref = React.useMemo(
@@ -245,18 +256,25 @@ export function RecipeCookModePanel({
     if (!clock || clock.phase !== "running" || clock.runEndsAt == null) {
       return;
     }
-    const sec = Math.ceil((clock.runEndsAt - Date.now()) / 1000);
-    if (sec > 0) {
+    const transitionToDone = () => {
+      const next: StepClockPersist = {
+        ...clock,
+        phase: "done",
+        runEndsAt: null,
+        remainingSeconds: 0,
+      };
+      saveStepClock(recipe.id, cookDate, cookSlotRef, activeStepIndex, next);
+      setClock(next);
+    };
+    const msUntilExpiry = clock.runEndsAt - Date.now();
+    if (msUntilExpiry <= 0) {
+      transitionToDone();
       return;
     }
-    const next: StepClockPersist = {
-      ...clock,
-      phase: "done",
-      runEndsAt: null,
-      remainingSeconds: 0,
-    };
-    saveStepClock(recipe.id, cookDate, cookSlotRef, activeStepIndex, next);
-    setClock(next);
+    // Schedule a transition at the exact expiry moment so phase flips to "done" on its own,
+    // not on the next user interaction. Without this, the UI shows "0:00 Pause" until tapped.
+    const id = window.setTimeout(transitionToDone, msUntilExpiry);
+    return () => window.clearTimeout(id);
   }, [clock, recipe.id, cookDate, cookSlotRef, activeStepIndex]);
 
   const sessionTotalRunning =
@@ -458,6 +476,18 @@ export function RecipeCookModePanel({
       });
       return;
     }
+    if (clock.phase === "done") {
+      // Timer finished but the user wants more time — flip back to paused with 30s on the clock,
+      // so the display shows "0:30 Resume" and a tap re-starts. Without this, +30 in done phase
+      // bumps totalSeconds invisibly (displaySecondsForClock returns 0 for done) and looks broken.
+      persistClock({
+        phase: "paused",
+        totalSeconds: clock.totalSeconds + 30,
+        runEndsAt: null,
+        remainingSeconds: 30,
+      });
+      return;
+    }
     persistClock({ ...clock, totalSeconds: clock.totalSeconds + 30 });
   };
 
@@ -548,6 +578,7 @@ export function RecipeCookModePanel({
         id: recipe.id,
         title: recipe.title,
         kind: recipeSegment(recipe) === "side" ? "side" : "main",
+        ...(cookSlotRef ? { planSlotRef: cookSlotRef } : {}),
       });
     });
     setCelebrationOpen(true);
@@ -884,14 +915,20 @@ export function RecipeCookModePanel({
                       {...isolateNestedTouchFromSwipePaneProps}
                     >
                       <span className="cook-mode-v2-timer-main-digits-wrap">
-                        <span className="cook-mode-v2-timer-main-digits">{formatMSS(displaySeconds)}</span>
+                        <span
+                          className={`cook-mode-v2-timer-main-digits${displaySeconds >= 3600 ? " cook-mode-v2-timer-main-digits--long" : ""}`}
+                        >
+                          {formatMSS(displaySeconds)}
+                        </span>
                       </span>
                       <span className="cook-mode-v2-timer-main-action">
                         {clock.phase === "running"
                           ? "Pause"
                           : clock.phase === "paused"
                             ? "Resume"
-                            : "Start"}
+                            : clock.phase === "done"
+                              ? "Restart"
+                              : "Start"}
                       </span>
                     </button>
                     <div className="cook-mode-v2-timer-adjusts">

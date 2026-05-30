@@ -40,27 +40,12 @@ export function flattenUncookedPlanRecipeIdsInOrder(
   weekKeys: string[],
 ): string[] {
   const ukey = MEAL_PLAN_UNASSIGNED_KEY;
-  const unassigned = plan[ukey] ?? [];
-  const mirroredRefByDay = new Map<string, Set<string>>();
-  for (const m of unassigned) {
-    if (m.scheduledForDay && isMealPlanDateKey(m.scheduledForDay) && m.planSlotRef) {
-      const d = m.scheduledForDay;
-      const s = mirroredRefByDay.get(d) ?? new Set<string>();
-      s.add(m.planSlotRef);
-      mirroredRefByDay.set(d, s);
-    }
-  }
-
   const keys = Object.keys(plan).filter((k) => k !== ukey && isMealPlanDateKey(k)).sort();
   const out: string[] = [];
   for (const k of keys) {
     const meals = plan[k] ?? [];
-    const mirrored = mirroredRefByDay.get(k);
     for (let idx = 0; idx < meals.length; idx++) {
       const m = meals[idx]!;
-      if (m.planSlotRef && mirrored?.has(m.planSlotRef)) {
-        continue;
-      }
       if (isDaySlotCooked(history, k, meals, idx, m.id)) {
         continue;
       }

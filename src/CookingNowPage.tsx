@@ -204,11 +204,9 @@ export function CookingNowPage() {
       if (p.kind === "u") {
         const m = p.meal;
         const slotRef = m.planSlotRef ?? ensureUnassignedSlotRef(p.planIdx);
-        const cookDate =
-          m.scheduledForDay && isMealPlanDateKey(m.scheduledForDay) ? m.scheduledForDay : todayIso;
         return {
           recipeId: m.id,
-          cookDate,
+          cookDate: todayIso,
           planSlotRef: slotRef,
           title: m.title,
         };
@@ -227,9 +225,7 @@ export function CookingNowPage() {
     if (first.kind === "u") {
       const m = first.meal;
       const slot = m.planSlotRef ?? ensureUnassignedSlotRef(first.planIdx) ?? null;
-      const d =
-        m.scheduledForDay && isMealPlanDateKey(m.scheduledForDay) ? m.scheduledForDay : todayIso;
-      navigate(recipeCookModePath(m.id, d, slot));
+      navigate(recipeCookModePath(m.id, todayIso, slot));
     } else {
       const m = first.meal;
       const slot = m.planSlotRef ?? ensureCalendarSlotRef(first.dayKey, first.index) ?? null;

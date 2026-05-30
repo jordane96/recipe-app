@@ -6,7 +6,11 @@ import type {
   RecipeIngredientLine,
 } from "./ingredientTypes";
 import { INGREDIENT_CATEGORY_ORDER } from "./ingredientTypes";
-import { formatIngredientLine, formatQuantityDisplay, ingredientMap } from "./ingredientDisplay";
+import {
+  formatIngredientLine,
+  formatQuantityDisplay,
+  ingredientMapWithRecipes,
+} from "./ingredientDisplay";
 
 const VOL_TO_TSP: Record<string, number> = {
   tsp: 1,
@@ -297,7 +301,10 @@ type Bucket =
   | { kind: "volume"; name: string; ingredientId: string; tsp: number }
   | { kind: "weight"; name: string; ingredientId: string; oz: number }
   | { kind: "count"; name: string; ingredientId: string; amount: number; unit: string }
-  | { kind: "raw"; text: string };
+  /** Qualitative / unmergeable lines. Carry ingredientId when we know it so the consumer
+   *  can still recover the catalog category (e.g. unit-kind mismatches still group in Produce
+   *  instead of "Other"). */
+  | { kind: "raw"; text: string; ingredientId?: string };
 
 function lineToBucket(line: RecipeIngredientLine, byId: Map<string, IngredientDef>): Bucket {
   const def = byId.get(line.ingredientId);
@@ -305,6 +312,7 @@ function lineToBucket(line: RecipeIngredientLine, byId: Map<string, IngredientDe
     return {
       kind: "raw",
       text: formatIngredientLine(line, byId),
+      ingredientId: line.ingredientId,
     };
   }
 
@@ -312,6 +320,7 @@ function lineToBucket(line: RecipeIngredientLine, byId: Map<string, IngredientDe
     return {
       kind: "raw",
       text: formatIngredientLine(line, byId),
+      ingredientId: def.id,
     };
   }
 
@@ -322,6 +331,7 @@ function lineToBucket(line: RecipeIngredientLine, byId: Map<string, IngredientDe
       return {
         kind: "raw",
         text: formatIngredientLine(line, byId),
+        ingredientId: def.id,
       };
     }
     return {
@@ -338,6 +348,7 @@ function lineToBucket(line: RecipeIngredientLine, byId: Map<string, IngredientDe
       return {
         kind: "raw",
         text: formatIngredientLine(line, byId),
+        ingredientId: def.id,
       };
     }
     return {
@@ -361,6 +372,7 @@ function lineToBucket(line: RecipeIngredientLine, byId: Map<string, IngredientDe
   return {
     kind: "raw",
     text: formatIngredientLine(line, byId),
+    ingredientId: def.id,
   };
 }
 
@@ -374,7 +386,9 @@ export function buildShoppingListData(
   combinedItems: CombinedShoppingItem[];
   byRecipe: IngredientBreakdown[];
 } {
-  const byId = ingredientMap(allIngredients);
+  // Include recipe-scoped customIngredientDefs so a recipe using e.g. "custom-spinach"
+  // resolves to its human name on the combined list instead of leaking the raw id.
+  const byId = ingredientMapWithRecipes(allIngredients, recipesInOrder);
 
   const vol = new Map<
     string,
@@ -388,7 +402,10 @@ export function buildShoppingListData(
     string,
     { name: string; amount: number; unit: string; recipeIds: Set<string> }
   >();
-  const rawMap = new Map<string, { line: string; recipeIds: Set<string> }>();
+  const rawMap = new Map<
+    string,
+    { line: string; recipeIds: Set<string>; ingredientId?: string }
+  >();
   const rawOrderKeys: string[] = [];
 
   for (const recipe of recipesInOrder) {
@@ -399,9 +416,11 @@ export function buildShoppingListData(
           const k = b.text.trim().toLowerCase().replace(/\s+/g, " ");
           let ex = rawMap.get(k);
           if (!ex) {
-            ex = { line: b.text, recipeIds: new Set() };
+            ex = { line: b.text, recipeIds: new Set(), ingredientId: b.ingredientId };
             rawMap.set(k, ex);
             rawOrderKeys.push(k);
+          } else if (!ex.ingredientId && b.ingredientId) {
+            ex.ingredientId = b.ingredientId;
           }
           ex.recipeIds.add(recipe.id);
           continue;
@@ -492,11 +511,15 @@ export function buildShoppingListData(
 
   const rawItems: CombinedShoppingItem[] = rawOrderKeys.map((k) => {
     const ex = rawMap.get(k)!;
+    // Preserve the ingredient's catalog category for unit-mismatched / qualitative lines —
+    // otherwise a recipe using spinach by oz (while catalog says volume) lands in "Other"
+    // instead of Produce. Falls back to "other" only when the ingredient is truly unknown.
+    const def = ex.ingredientId ? byId.get(ex.ingredientId) : undefined;
     return {
       kind: "raw" as const,
       line: ex.line,
       sourceRecipeIds: sortedIds(ex.recipeIds),
-      category: "other" as IngredientCategory,
+      category: (def?.category ?? "other") as IngredientCategory,
     };
   });
 

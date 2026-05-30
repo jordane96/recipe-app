@@ -32,7 +32,13 @@ export function CookHistoryProvider({ children }: { children: React.ReactNode })
     if (!isMealPlanDateKey(dateIso)) return;
     setHistory((prev) => {
       const next = { ...prev };
-      next[dateIso] = [...(prev[dateIso] ?? []), { id: meal.id, title: meal.title, kind: meal.kind }];
+      const entry: CookedMeal = {
+        id: meal.id,
+        title: meal.title,
+        kind: meal.kind,
+        ...(meal.planSlotRef ? { planSlotRef: meal.planSlotRef } : {}),
+      };
+      next[dateIso] = [...(prev[dateIso] ?? []), entry];
       saveCookHistory(next);
       return next;
     });

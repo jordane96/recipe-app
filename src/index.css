@@ -895,7 +895,10 @@ a {
 /* Cook mode — airy surface; layout padding from .app-shell */
 .cook-mode-v2 {
   font-family: var(--font-cook);
-  padding-bottom: 0;
+  /* Give the teal footer breathing room above the iOS home indicator / Safari bottom bar.
+     env(safe-area-inset-bottom) adds the real device inset on iOS (requires viewport-fit=cover,
+     which is set in index.html); the fallback covers browsers / desktop where the inset is 0. */
+  padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
   background: #f6f3ee;
   position: relative;
 }
@@ -2035,16 +2038,24 @@ button.cook-mode-v2-meal-banner--in-chrome,
   justify-content: center;
 }
 
-/* Figma: 36px / 44lh */
+/* Figma: 36px / 44lh — but tightened line-height so the glyph's visual center matches the
+   adjacent action label (44lh added asymmetric vertical padding that made "Resume" look high). */
 .cook-mode-v2-timer-main-digits {
   font-family: var(--font-cook);
   font-size: 36px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  line-height: 44px;
+  line-height: 1;
   letter-spacing: -0.02em;
   text-align: center;
   color: #2d4a3e;
+  white-space: nowrap;
+}
+
+/* Hours-form ("1h 30m") needs more characters than M:SS — shrink so it fits the same slot. */
+.cook-mode-v2-timer-main-digits--long {
+  font-size: 26px;
+  letter-spacing: -0.01em;
 }
 
 /* Figma Start: 16px / 19lh */

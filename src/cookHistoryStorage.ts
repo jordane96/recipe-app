@@ -6,6 +6,12 @@ export type CookedMeal = {
   id: string;
   title: string;
   kind: "main" | "side";
+  /**
+   * The plan slot this cook log was generated from. When present, lets the UI distinguish
+   * between duplicate slots of the same recipe (e.g. chicken parm cooked once, then re-added
+   * to the menu). Optional for backward-compat with legacy entries written before this field.
+   */
+  planSlotRef?: string;
 };
 
 export type CookHistoryByDate = Record<string, CookedMeal[]>;
@@ -23,7 +29,13 @@ function parseStored(raw: Record<string, unknown>): CookHistoryByDate {
         typeof (x as CookedMeal).title === "string" &&
         ((x as CookedMeal).kind === "main" || (x as CookedMeal).kind === "side")
       ) {
-        arr.push({ id: (x as CookedMeal).id, title: (x as CookedMeal).title, kind: (x as CookedMeal).kind });
+        const ref = (x as CookedMeal).planSlotRef;
+        arr.push({
+          id: (x as CookedMeal).id,
+          title: (x as CookedMeal).title,
+          kind: (x as CookedMeal).kind,
+          ...(typeof ref === "string" && ref.length > 0 ? { planSlotRef: ref } : {}),
+        });
       }
     }
     if (arr.length) out[k] = arr;

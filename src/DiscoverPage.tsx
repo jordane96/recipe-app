@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import type { IngredientDef, Recipe } from "./types";
-import { formatIngredientLine, ingredientMap } from "./ingredientDisplay";
+import { formatIngredientLine, ingredientMapWithRecipes } from "./ingredientDisplay";
 import { instructionStepText } from "./recipeInstructions";
 import { useToast } from "./ToastContext";
 import { useSavedRecipes } from "./SavedRecipesContext";
@@ -63,7 +63,11 @@ export function DiscoverPage({
   ingredients: IngredientDef[];
   currentUser: string;
 }) {
-  const byId = React.useMemo(() => ingredientMap(ingredients), [ingredients]);
+  // Recipe-aware so custom-* ids resolve to human names across the discover grid.
+  const byId = React.useMemo(
+    () => ingredientMapWithRecipes(ingredients, recipes),
+    [ingredients, recipes],
+  );
   const { savedRecipeIds, saveRecipe } = useSavedRecipes();
   const { showToast } = useToast();
   const navigate = useNavigate();

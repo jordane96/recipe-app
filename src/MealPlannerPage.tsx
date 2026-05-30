@@ -186,11 +186,9 @@ export function MealPlannerPage({
   const goRecipeFromMenu = React.useCallback(
     (planIdx: number, m: PlannedMeal) => {
       const slotRef = m.planSlotRef ?? ensureUnassignedSlotRef(planIdx);
-      const dateIso =
-        m.scheduledForDay && isMealPlanDateKey(m.scheduledForDay) ? m.scheduledForDay : todayIso;
       navigate(
         recipeDetailFromMenuPath(m.id, {
-          dateIso,
+          dateIso: todayIso,
           planSlotRef: slotRef ?? null,
         }),
       );
@@ -244,13 +242,9 @@ export function MealPlannerPage({
     const items = indices.map((idx) => {
       const m = unassignedMeals[idx]!;
       const slotRef = m.planSlotRef ?? ensureUnassignedSlotRef(idx);
-      const cookDate =
-        m.scheduledForDay && isMealPlanDateKey(m.scheduledForDay)
-          ? m.scheduledForDay
-          : todayIso;
       return {
         recipeId: m.id,
-        cookDate,
+        cookDate: todayIso,
         planSlotRef: slotRef,
         title: m.title,
       };
@@ -446,14 +440,10 @@ export function MealPlannerPage({
                   aria-label={`${m.title} — in progress. Open cook checklist`}
                   onClick={(e) => {
                     e.stopPropagation();
-                    const resumeDate =
-                      m.scheduledForDay && isMealPlanDateKey(m.scheduledForDay)
-                        ? m.scheduledForDay
-                        : todayIso;
                     navigate(
                       recipeCookModePath(
                         m.id,
-                        resumeDate,
+                        todayIso,
                         m.planSlotRef ?? ensureUnassignedSlotRef(planIdx) ?? null,
                       ),
                     );
@@ -466,38 +456,18 @@ export function MealPlannerPage({
           </div>
         </div>
         <div className="meal-chip-actions">
-          {m.scheduledForDay ? (
-            <div className="meal-chip-scheduled-with-edit">
-              <span className="meal-chip-scheduled-date" title={m.scheduledForDay}>
-                {formatPlannerDayShort(m.scheduledForDay)}
-              </span>
-              <button
-                type="button"
-                className="meal-chip-day-edit"
-                draggable={false}
-                aria-label={`View recipe: ${m.title}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  goRecipeFromMenu(planIdx, m);
-                }}
-              >
-                View
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              className="meal-chip-assign"
-              draggable={false}
-              aria-label={`View recipe: ${m.title}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                goRecipeFromMenu(planIdx, m);
-              }}
-            >
-              View
-            </button>
-          )}
+          <button
+            type="button"
+            className="meal-chip-assign"
+            draggable={false}
+            aria-label={`View recipe: ${m.title}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              goRecipeFromMenu(planIdx, m);
+            }}
+          >
+            View
+          </button>
           <button
             type="button"
             className="meal-chip-x"

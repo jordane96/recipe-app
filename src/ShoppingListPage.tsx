@@ -31,6 +31,7 @@ import {
   type RecipeSegment,
 } from "./recipeCourse";
 import { useShoppingList } from "./ShoppingListContext";
+import { useToast } from "./ToastContext";
 
 function altConversionsForItem(item: CombinedShoppingItem): string | null {
   if (item.kind === "volume") {
@@ -151,6 +152,19 @@ export function ShoppingListPage({
     setPurchasedBatch,
     prunePurchasedToValidLines,
   } = useShoppingList();
+  const { showToast } = useToast();
+
+  /** Toggle + toast wrapper. Only toasts on the unpurchased → purchased transition. */
+  const togglePurchasedWithToast = React.useCallback(
+    (line: string) => {
+      const wasPurchased = isPurchased(line);
+      togglePurchased(line);
+      if (!wasPurchased) {
+        showToast(`Moved “${line}” to Purchased`);
+      }
+    },
+    [isPurchased, togglePurchased, showToast],
+  );
 
   const selectedSlots = React.useMemo(() => {
     return selectedIds
@@ -195,15 +209,28 @@ export function ShoppingListPage({
     ingredients,
   );
 
+  // Category sections show only NOT-yet-purchased items; checked items move to the
+  // dedicated "Purchased" section at the bottom of the page.
   const combinedByCategory = React.useMemo(() => {
     const m = new Map<IngredientCategory, CombinedShoppingItem[]>();
     for (const it of combinedItems) {
+      if (isPurchased(it.line)) continue;
       const list = m.get(it.category) ?? [];
       list.push(it);
       m.set(it.category, list);
     }
     return m;
-  }, [combinedItems]);
+  }, [combinedItems, isPurchased]);
+
+  // Flat alphabetical list of purchased items (no category grouping per the spec).
+  const purchasedItems = React.useMemo(
+    () =>
+      combinedItems
+        .filter((it) => isPurchased(it.line))
+        .slice()
+        .sort((a, b) => a.line.localeCompare(b.line)),
+    [combinedItems, isPurchased],
+  );
 
   const combinedLines = React.useMemo(
     () => combinedItems.map((i) => i.line),
@@ -396,7 +423,7 @@ export function ShoppingListPage({
                                   type="checkbox"
                                   className="shopping-check-input"
                                   checked={bought}
-                                  onChange={() => togglePurchased(line)}
+                                  onChange={() => togglePurchasedWithToast(line)}
                                   aria-label={`Purchased: ${visibleLabel}`}
                                 />
                                 <span className="shopping-check-label">
@@ -416,6 +443,41 @@ export function ShoppingListPage({
               </>
             )}
           </section>
+
+          {purchasedItems.length > 0 ? (
+            <section className="detail-section">
+              <h2>
+                Purchased
+                <span className="shopping-segment-count"> ({purchasedItems.length})</span>
+              </h2>
+              <ul className="shopping-combined shopping-checklist">
+                {purchasedItems.map((item, i) => {
+                  const line = item.line;
+                  const alt = altConversionsForItem(item);
+                  const visibleLabel = alt ? `${line} (${alt})` : line;
+                  return (
+                    <li key={`purchased-${line}-${i}`}>
+                      <label className="shopping-check-row shopping-check-row--bought">
+                        <input
+                          type="checkbox"
+                          className="shopping-check-input"
+                          checked
+                          onChange={() => togglePurchased(line)}
+                          aria-label={`Restore to list: ${visibleLabel}`}
+                        />
+                        <span className="shopping-check-label">
+                          <span className="shopping-check-primary">{line}</span>
+                          {alt ? (
+                            <span className="shopping-inline-alt"> ({alt})</span>
+                          ) : null}
+                        </span>
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ) : null}
 
           <section className="detail-section">
             <h2>By recipe</h2>

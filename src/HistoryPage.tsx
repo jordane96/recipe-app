@@ -1,32 +1,45 @@
 import * as React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import type { Recipe } from "./types";
-import {
-  addDays,
-  buildWeekKeys,
-  iso,
-  startOfWeekMonday,
-  weekRangeLabel,
-} from "./mealPlanDates";
+import { iso } from "./mealPlanDates";
 import { recipeDetailPath, recipesAddToPlanPath } from "./listTabSearch";
 import { useCookHistory } from "./CookHistoryContext";
 import type { CookHistoryByDate, CookedMeal } from "./cookHistoryStorage";
 import { useMealPlan } from "./MealPlanContext";
 import type { MealPlanByDate, PlannedMeal } from "./mealPlanStorage";
 
-/** Cook-log rows whose recipe ID is not in the planned meals for that day (avoid duplicates). */
+/**
+ * Cook-log rows for a day that are NOT covered by a planned slot for that day.
+ *
+ * Matching is slot-ref-first: a cook-log entry counts as "covered" only if a plan slot
+ * shares its `planSlotRef`. Legacy cook entries with no `planSlotRef` fall back to id-match
+ * against any plan id on the day. This prevents extra cook-log rows being hidden when the
+ * user has duplicate plan slots of the same recipe (only one cooked).
+ */
 function loggedRowsNotCoveredByPlan(
   logged: CookedMeal[],
-  plannedIds: Set<string>,
+  plannedSlotRefs: Set<string>,
+  plannedIdsFallback: Set<string>,
 ): { meal: CookedMeal; logIndex: number }[] {
   const out: { meal: CookedMeal; logIndex: number }[] = [];
   logged.forEach((meal, logIndex) => {
-    if (plannedIds.has(meal.id)) {
+    if (meal.planSlotRef && plannedSlotRefs.has(meal.planSlotRef)) {
+      return;
+    }
+    if (!meal.planSlotRef && plannedIdsFallback.has(meal.id)) {
       return;
     }
     out.push({ meal, logIndex });
   });
   return out;
+}
+
+function plannedSlotRefsOnDay(plan: MealPlanByDate, dayIso: string): Set<string> {
+  const refs = new Set<string>();
+  for (const m of plan[dayIso] ?? []) {
+    if (m.planSlotRef) refs.add(m.planSlotRef);
+  }
+  return refs;
 }
 
 function plannedIdsOnDay(plan: MealPlanByDate, dayIso: string): Set<string> {
@@ -41,9 +54,17 @@ function dayHasPlanOrLog(
   return (plan[dayIso] ?? []).length > 0 || (history[dayIso] ?? []).length > 0;
 }
 
-/** Plan slot has a cook-log entry for the same recipe on that day. */
-function planMealHasCookLogLine(meal: { id: string }, logged: CookedMeal[]): boolean {
-  return logged.some((l) => l.id === meal.id);
+/**
+ * Has this specific plan slot been logged as cooked? Slot-ref-first match with id-match fallback
+ * for legacy cook entries (so multiple plan slots of the same recipe are tracked independently).
+ */
+function planMealHasCookLogLine(meal: PlannedMeal, logged: CookedMeal[]): boolean {
+  if (meal.planSlotRef) {
+    if (logged.some((l) => l.planSlotRef === meal.planSlotRef)) return true;
+  }
+  // Legacy fallback: a no-slot-ref cook entry of the same recipe covers a single plan slot
+  // (best effort — the legacy schema can't distinguish duplicates).
+  return logged.some((l) => l.planSlotRef == null && l.id === meal.id);
 }
 
 const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
@@ -123,64 +144,17 @@ function computeMonthStats(history: CookHistoryByDate, year: number, monthIndex:
   };
 }
 
-function computeWeekStats(history: CookHistoryByDate, weekKeys: string[]) {
-  let daysWithCooks = 0;
-  let totalMeals = 0;
-  const idCounts = new Map<string, { title: string; count: number }>();
-  for (const k of weekKeys) {
-    const arr = history[k] ?? [];
-    if (arr.length > 0) {
-      daysWithCooks += 1;
-    }
-    for (const m of arr) {
-      totalMeals += 1;
-      const prev = idCounts.get(m.id);
-      if (prev) {
-        prev.count += 1;
-      } else {
-        idCounts.set(m.id, { title: m.title, count: 1 });
-      }
-    }
-  }
-  let most: { title: string; count: number } | null = null;
-  for (const v of idCounts.values()) {
-    if (!most || v.count > most.count) {
-      most = { title: v.title, count: v.count };
-    }
-  }
-
-  return {
-    daysWithCooks,
-    dim: 7,
-    totalMeals,
-    most,
-    secondLabel: "Total servings" as const,
-    secondValue: totalMeals,
-    secondSub: "this week" as const,
-  };
-}
-
-type CalendarGranularity = "month" | "week";
-
 export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
   const navigate = useNavigate();
   const { history, logCooked, logRecipeCooked, removeCookedAt } = useCookHistory();
   const { plan, removeMealAt } = useMealPlan();
   const todayIso = iso(new Date());
 
-  const [granularity, setGranularity] = React.useState<CalendarGranularity>("month");
-
   const [viewMonth, setViewMonth] = React.useState(() => {
     const d = new Date();
     d.setDate(1);
     d.setHours(12, 0, 0, 0);
     return d;
-  });
-
-  const [weekStart, setWeekStart] = React.useState(() => {
-    const ws = startOfWeekMonday(new Date());
-    ws.setHours(12, 0, 0, 0);
-    return ws;
   });
 
   const [selectedIso, setSelectedIso] = React.useState<string | null>(null);
@@ -197,55 +171,14 @@ export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
   const pad = mondayPaddingFirstOfMonth(y, m);
 
   const monthKeys = React.useMemo(() => monthDateKeys(y, m), [y, m]);
-  const weekKeys = React.useMemo(() => buildWeekKeys(weekStart), [weekStart]);
 
   React.useEffect(() => {
-    if (granularity !== "month") {
-      return;
-    }
     if (selectedIso && !monthKeys.includes(selectedIso)) {
       setSelectedIso(null);
     }
-  }, [granularity, monthKeys, selectedIso]);
+  }, [monthKeys, selectedIso]);
 
-  React.useEffect(() => {
-    if (granularity !== "week") {
-      return;
-    }
-    if (selectedIso && !weekKeys.includes(selectedIso)) {
-      setSelectedIso(null);
-    }
-  }, [granularity, weekKeys, selectedIso]);
-
-  const stats = React.useMemo(() => {
-    if (granularity === "month") {
-      return computeMonthStats(history, y, m);
-    }
-    return computeWeekStats(history, weekKeys);
-  }, [granularity, history, y, m, weekKeys]);
-
-  const selectMonthView = () => {
-    setGranularity("month");
-    const anchor =
-      selectedIso != null ? new Date(`${selectedIso}T12:00:00`) : weekStart;
-    setViewMonth(new Date(anchor.getFullYear(), anchor.getMonth(), 1, 12, 0, 0, 0));
-  };
-
-  const selectWeekView = () => {
-    setGranularity("week");
-    const now = new Date();
-    const viewingCurrentMonth =
-      viewMonth.getFullYear() === now.getFullYear() && viewMonth.getMonth() === now.getMonth();
-    const anchor =
-      selectedIso != null
-        ? new Date(`${selectedIso}T12:00:00`)
-        : viewingCurrentMonth
-          ? now
-          : viewMonth;
-    const ws = startOfWeekMonday(anchor);
-    ws.setHours(12, 0, 0, 0);
-    setWeekStart(ws);
-  };
+  const stats = React.useMemo(() => computeMonthStats(history, y, m), [history, y, m]);
 
   const calendarCells: Array<{ day: number | null; iso: string | null }> = [];
   for (let i = 0; i < pad; i++) {
@@ -267,7 +200,6 @@ export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
   }, [recipes, pickQ]);
 
   const monthTitle = viewMonth.toLocaleDateString(undefined, { month: "long", year: "numeric" });
-  const weekTitle = weekRangeLabel(weekStart);
 
   const markPlannedMealAsCooked = React.useCallback(
     (dayIso: string, meal: PlannedMeal, _planIndex: number) => {
@@ -278,7 +210,12 @@ export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
       if (planMealHasCookLogLine(meal, logged)) {
         return;
       }
-      logCooked(dayIso, { id: meal.id, title: meal.title, kind: meal.kind });
+      logCooked(dayIso, {
+        id: meal.id,
+        title: meal.title,
+        kind: meal.kind,
+        ...(meal.planSlotRef ? { planSlotRef: meal.planSlotRef } : {}),
+      });
     },
     [history, logCooked, todayIso],
   );
@@ -286,7 +223,15 @@ export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
   const removePlannedMealFromDay = React.useCallback(
     (dayIso: string, planIndex: number, meal: PlannedMeal) => {
       const logged = history[dayIso] ?? [];
-      const logIdx = logged.findIndex((l) => l.id === meal.id);
+      // Prefer slot-ref match (no false positive when duplicate recipes exist that day);
+      // fall back to id-match for legacy cook entries that predate planSlotRef.
+      let logIdx = -1;
+      if (meal.planSlotRef) {
+        logIdx = logged.findIndex((l) => l.planSlotRef === meal.planSlotRef);
+      }
+      if (logIdx < 0) {
+        logIdx = logged.findIndex((l) => l.planSlotRef == null && l.id === meal.id);
+      }
       removeMealAt(dayIso, planIndex);
       if (logIdx >= 0) {
         removeCookedAt(dayIso, logIdx);
@@ -309,117 +254,48 @@ export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
 
   return (
     <div className="history-page">
-      <header className="history-head">
-        <div className="history-view-toggle" role="tablist" aria-label="Calendar view">
-          <button
-            type="button"
-            role="tab"
-            id="history-tab-month"
-            aria-selected={granularity === "month"}
-            aria-controls="history-calendar-panel"
-            className="history-view-tab"
-            data-on={granularity === "month"}
-            onClick={selectMonthView}
-          >
-            Month
-          </button>
-          <button
-            type="button"
-            role="tab"
-            id="history-tab-week"
-            aria-selected={granularity === "week"}
-            aria-controls="history-calendar-panel"
-            className="history-view-tab"
-            data-on={granularity === "week"}
-            onClick={selectWeekView}
-          >
-            Week
-          </button>
-        </div>
-      </header>
+      <header className="history-head" />
+
 
       <section className="history-calendar-section" aria-label="Calendar">
         <div className="history-month-nav">
-          {granularity === "month" ? (
-            <>
-              <button
-                type="button"
-                className="history-month-btn"
-                aria-label="Previous month"
-                onClick={() =>
-                  setViewMonth((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1, 12, 0, 0, 0))
-                }
-              >
-                ‹
-              </button>
-              <span className="history-month-label">{monthTitle}</span>
-              <button
-                type="button"
-                className="history-month-btn"
-                aria-label="Next month"
-                onClick={() =>
-                  setViewMonth((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1, 12, 0, 0, 0))
-                }
-              >
-                ›
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                type="button"
-                className="history-month-btn"
-                aria-label="Previous week"
-                onClick={() =>
-                  setWeekStart((d) => {
-                    const n = addDays(d, -7);
-                    n.setHours(12, 0, 0, 0);
-                    return n;
-                  })
-                }
-              >
-                ‹
-              </button>
-              <span className="history-month-label history-month-label--week">{weekTitle}</span>
-              <button
-                type="button"
-                className="history-month-btn"
-                aria-label="Next week"
-                onClick={() =>
-                  setWeekStart((d) => {
-                    const n = addDays(d, 7);
-                    n.setHours(12, 0, 0, 0);
-                    return n;
-                  })
-                }
-              >
-                ›
-              </button>
-            </>
-          )}
+          <button
+            type="button"
+            className="history-month-btn"
+            aria-label="Previous month"
+            onClick={() =>
+              setViewMonth((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1, 12, 0, 0, 0))
+            }
+          >
+            ‹
+          </button>
+          <span className="history-month-label">{monthTitle}</span>
+          <button
+            type="button"
+            className="history-month-btn"
+            aria-label="Next month"
+            onClick={() =>
+              setViewMonth((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1, 12, 0, 0, 0))
+            }
+          >
+            ›
+          </button>
         </div>
 
-        {granularity === "month" ? (
-          <div className="history-weekdays" aria-hidden="true">
-            {WEEKDAY_LABELS.map((label) => (
-              <div key={label} className="history-weekday">
-                {label}
-              </div>
-            ))}
-          </div>
-        ) : null}
+        <div className="history-weekdays" aria-hidden="true">
+          {WEEKDAY_LABELS.map((label) => (
+            <div key={label} className="history-weekday">
+              {label}
+            </div>
+          ))}
+        </div>
 
-        <div
-          id="history-calendar-panel"
-          role="tabpanel"
-          aria-labelledby={granularity === "month" ? "history-tab-month" : "history-tab-week"}
-        >
-          {granularity === "month" ? (
-            <div
-              className="history-calendar-grid"
-              role="grid"
-              aria-label={`${monthTitle} — calendar`}
-            >
+        <div id="history-calendar-panel">
+          <div
+            className="history-calendar-grid"
+            role="grid"
+            aria-label={`${monthTitle} — calendar`}
+          >
               {calendarCells.map((cell, idx) => {
                 if (cell.iso === null || cell.day === null) {
                   return (
@@ -467,180 +343,12 @@ export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
                 );
               })}
             </div>
-          ) : (
-            <div
-              className="history-week-grid"
-              role="list"
-              aria-label={`${weekTitle} — calendar`}
-            >
-              {weekKeys.map((dayIso) => {
-                const d = new Date(`${dayIso}T12:00:00`);
-                const plannedForDay = plan[dayIso] ?? [];
-                const loggedForDay = history[dayIso] ?? [];
-                const planRefs = plannedIdsOnDay(plan, dayIso);
-                const logExtras = loggedRowsNotCoveredByPlan(loggedForDay, planRefs);
-                const displayCount = plannedForDay.length + logExtras.length;
-                const isToday = dayIso === todayIso;
-                const isSelected = dayIso === selectedIso;
-                const rel = dayRelativeToToday(dayIso, todayIso);
-                const isFuture = rel === "future";
-                const dayLong = d.toLocaleDateString(undefined, { weekday: "long" });
-                const dayShort = d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-                const emptyLine = isFuture ? "Nothing planned yet" : "Nothing logged";
-                const emptyListAria = isFuture
-                  ? `Nothing planned yet for ${dayLong}, ${dayShort}`
-                  : `Nothing logged for ${dayLong}, ${dayShort}`;
-                const listAria =
-                  displayCount > 0
-                    ? `Meals for ${dayLong}, ${dayShort} — on menu or cook log`
-                    : emptyListAria;
-                const headerAria =
-                  displayCount > 0
-                    ? `Select ${dayLong} ${dayShort}, ${displayCount} meal(s) on menu or logged`
-                    : `Select ${dayLong} ${dayShort}, ${emptyLine.toLowerCase()}`;
-                return (
-                  <div
-                    key={dayIso}
-                    role="listitem"
-                    className={`day-card${isToday ? " is-today" : ""}${
-                      isSelected ? " history-day-card--selected" : ""
-                    }`}
-                  >
-                    <div className="day-card-drop-area">
-                      <button
-                        type="button"
-                        className="day-card-header history-day-card-select"
-                        aria-pressed={isSelected}
-                        aria-label={headerAria}
-                        onClick={() => setSelectedIso((prev) => (prev === dayIso ? null : dayIso))}
-                      >
-                        <div className="day-head">{dayLong}</div>
-                        <div className="day-date">{dayShort}</div>
-                      </button>
-                      <ul
-                        className={`meal-chips${displayCount === 0 ? " meal-chips--empty" : ""}`}
-                        aria-label={listAria}
-                      >
-                        {displayCount === 0 ? (
-                          <li className="meal-chips-empty">
-                            <span className="meal-chips-empty-text">{emptyLine}</span>
-                          </li>
-                        ) : (
-                          <>
-                            {plannedForDay.map((meal, planIndex) => {
-                              const hasCookLog = planMealHasCookLogLine(meal, loggedForDay);
-                              const showMarkCooked = !hasCookLog && !isFuture;
-                              return (
-                                <li
-                                  key={`plan-${dayIso}-${planIndex}-${meal.id}`}
-                                  className={`history-day-meal-row history-day-meal-row--in-week${
-                                    hasCookLog ? "" : " history-day-meal-row--planned"
-                                  }`}
-                                >
-                                  <Link
-                                    to={recipeDetailPath(
-                                      meal.id,
-                                      undefined,
-                                      false,
-                                      true,
-                                      false,
-                                    )}
-                                    className="history-day-meal-title"
-                                  >
-                                    {meal.title}
-                                  </Link>
-                                  {showMarkCooked ? (
-                                    <button
-                                      type="button"
-                                      className="history-day-meal-log-cooked"
-                                      aria-label={`Log ${meal.title} as cooked`}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        markPlannedMealAsCooked(dayIso, meal, planIndex);
-                                      }}
-                                    >
-                                      Log cooked
-                                    </button>
-                                  ) : null}
-                                  <button
-                                    type="button"
-                                    className="history-day-meal-remove"
-                                    aria-label={`Remove ${meal.title} from meal plan`}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      removePlannedMealFromDay(dayIso, planIndex, meal);
-                                    }}
-                                  >
-                                    ×
-                                  </button>
-                                </li>
-                              );
-                            })}
-                            {logExtras.map(({ meal, logIndex }) => (
-                              <li
-                                key={`log-${dayIso}-${logIndex}-${meal.id}`}
-                                className="history-day-meal-row history-day-meal-row--in-week"
-                              >
-                                <Link
-                                  to={recipeDetailPath(
-                                    meal.id,
-                                    undefined,
-                                    false,
-                                    true,
-                                  )}
-                                  className="history-day-meal-title"
-                                >
-                                  {meal.title}
-                                </Link>
-                                <button
-                                  type="button"
-                                  className="history-day-meal-remove"
-                                  aria-label={`Remove ${meal.title} from cook log`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    removeCookedAt(dayIso, logIndex);
-                                  }}
-                                >
-                                  ×
-                                </button>
-                              </li>
-                            ))}
-                          </>
-                        )}
-                      </ul>
-                      <div className="add-meal">
-                        {isFuture ? (
-                          <button
-                            type="button"
-                            onClick={() => navigate(recipesAddToPlanPath(dayIso))}
-                          >
-                            + Plan meal
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedIso(dayIso);
-                              setPickQ("");
-                              setPickOpen(true);
-                            }}
-                          >
-                            + Log meal
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
         </div>
       </section>
 
       <section
         className="history-summary"
-        aria-label={granularity === "month" ? "Month summary" : "Week summary"}
+        aria-label="Month summary"
       >
         <div className="history-summary-card">
           <div className="history-summary-value">{stats.daysWithCooks}</div>
@@ -669,7 +377,7 @@ export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
         </div>
       </section>
 
-      {granularity === "month" && selectedIso ? (
+      {selectedIso ? (
         dayHasPlanOrLog(plan, history, selectedIso) ? (
           <section className="history-day-detail" aria-labelledby="history-day-heading">
             <div className="history-day-detail-head">
@@ -733,6 +441,7 @@ export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
               })}
               {loggedRowsNotCoveredByPlan(
                 history[selectedIso] ?? [],
+                plannedSlotRefsOnDay(plan, selectedIso),
                 plannedIdsOnDay(plan, selectedIso),
               ).map(({ meal, logIndex }) => (
                 <li key={`${selectedIso}-log-${logIndex}-${meal.id}`} className="history-day-meal-row">

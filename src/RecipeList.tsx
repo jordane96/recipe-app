@@ -1,7 +1,7 @@
 import * as React from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useNavigationType, useSearchParams } from "react-router-dom";
 import type { IngredientDef, Recipe } from "./types";
-import { formatIngredientLine, ingredientMap } from "./ingredientDisplay";
+import { formatIngredientLine, ingredientMapWithRecipes } from "./ingredientDisplay";
 import {
   ADD_TO_CART_QUERY,
   ADD_TO_PLAN_QUERY,
@@ -16,6 +16,12 @@ import {
   urlParamToPlanKey,
 } from "./listTabSearch";
 import { useShoppingList } from "./ShoppingListContext";
+import {
+  loadRecipeListFilters,
+  loadRecipeListScrollY,
+  saveRecipeListFilters,
+  saveRecipeListScrollY,
+} from "./recipeListPersistence";
 import { iso } from "./mealPlanDates";
 import { instructionStepText } from "./recipeInstructions";
 import {
@@ -145,11 +151,62 @@ export function RecipeList({
   const { showToast } = useToast();
   const { addToList } = useShoppingList();
   const navigate = useNavigate();
+  const navigationType = useNavigationType();
   const [searchParams, setSearchParams] = useSearchParams();
-  const byId = React.useMemo(() => ingredientMap(ingredients), [ingredients]);
-  const [q, setQ] = React.useState("");
-  const [selectedTags, setSelectedTags] = React.useState<Set<string>>(() => new Set());
-  const [filtersOpen, setFiltersOpen] = React.useState(false);
+  // Include each recipe's customIngredientDefs so custom-* ingredient ids render their human
+  // names instead of leaking the raw id (e.g. "custom-spinach" → "Spinach").
+  const byId = React.useMemo(
+    () => ingredientMapWithRecipes(ingredients, recipes),
+    [ingredients, recipes],
+  );
+  // Hydrate filter state from sessionStorage so list state survives detail-page round-trips.
+  const persistedFiltersRef = React.useRef(loadRecipeListFilters());
+  const [q, setQ] = React.useState(persistedFiltersRef.current.q);
+  const [selectedTags, setSelectedTags] = React.useState<Set<string>>(
+    () => new Set(persistedFiltersRef.current.selectedTags),
+  );
+  const [filtersOpen, setFiltersOpen] = React.useState(persistedFiltersRef.current.filtersOpen);
+
+  // Persist filter state on every change. Lightweight (one sessionStorage write per change).
+  React.useEffect(() => {
+    saveRecipeListFilters({
+      q,
+      selectedTags: [...selectedTags],
+      filtersOpen,
+    });
+  }, [q, selectedTags, filtersOpen]);
+
+  // Scroll restore on back-nav (POP). Forward nav (PUSH/REPLACE) lets App.tsx snap-to-top win.
+  // We schedule restore through 2x rAF so it lands after App.tsx's snap-to-top rAF re-snap.
+  React.useEffect(() => {
+    if (navigationType !== "POP") {
+      return;
+    }
+    const y = loadRecipeListScrollY();
+    if (y == null) {
+      return;
+    }
+    let raf1 = 0;
+    let raf2 = 0;
+    raf1 = window.requestAnimationFrame(() => {
+      raf2 = window.requestAnimationFrame(() => {
+        window.scrollTo(0, y);
+      });
+    });
+    return () => {
+      window.cancelAnimationFrame(raf1);
+      window.cancelAnimationFrame(raf2);
+    };
+    // Mount-only: navigationType is stable across the lifetime of this RecipeList instance.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Capture scrollY on unmount so the next back-nav can restore it.
+  React.useEffect(() => {
+    return () => {
+      saveRecipeListScrollY(window.scrollY);
+    };
+  }, []);
 
   const toggleTag = React.useCallback((t: string) => {
     setSelectedTags((prev) => {

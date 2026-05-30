@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type { IngredientDef, Recipe, RecommendedSideRef } from "./types";
-import { formatIngredientLine, ingredientMap } from "./ingredientDisplay";
+import { formatIngredientLine, ingredientMapWithRecipes } from "./ingredientDisplay";
 import {
   ADD_TO_PLAN_QUERY,
   readCookModeParams,
@@ -113,7 +113,11 @@ export function RecipeDetail({
   const { addRecipeToPlanKey } = useMealPlan();
   const { showToast } = useToast();
   const { isSaved, saveRecipe } = useSavedRecipes();
-  const byId = React.useMemo(() => ingredientMap(ingredients), [ingredients]);
+  // Recipe-aware so custom-* ids resolve to their human names (e.g. "Spinach", not "custom-spinach").
+  const byId = React.useMemo(
+    () => ingredientMapWithRecipes(ingredients, recipe ? [recipe] : []),
+    [ingredients, recipe],
+  );
 
   const isOtherUsersRecipe = !!(recipe && recipe.owner && recipe.owner !== currentUser);
   const showSaveCta = isOtherUsersRecipe && recipe && !isSaved(recipe.id);
