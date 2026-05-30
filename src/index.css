@@ -3382,7 +3382,8 @@ a.recipe-detail-back-cta {
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--surface);
-  font-size: 0.95rem;
+  /* 16px exactly to stop iOS Safari from auto-zooming when the field gets focus. */
+  font-size: 16px;
   color: var(--text);
 }
 

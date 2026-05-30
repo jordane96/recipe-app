@@ -244,11 +244,13 @@ export function ShoppingListPage({
 
   // Reusable JSX for the Additional items section so we can mount it in both the empty
   // state (so users can capture non-recipe items without first selecting a recipe) and the
-  // populated state.
-  const additionalItemsSection = (
+  // populated state. The heading differs between the two: in the empty state the section
+  // is the primary affordance, so it's labeled "Build your own list" instead of the
+  // catalog-style "Additional items".
+  const renderAdditionalItemsSection = (heading: string) => (
     <section className="detail-section">
       <h2>
-        Additional items
+        {heading}
         {unpurchasedAdditional.length > 0 ? (
           <span className="shopping-segment-count"> ({unpurchasedAdditional.length})</span>
         ) : null}
@@ -398,7 +400,7 @@ export function ShoppingListPage({
             </Link>
           </div>
           {/* Free-text capture works even before any recipes are selected. */}
-          {additionalItemsSection}
+          {renderAdditionalItemsSection("Build your own list")}
           {purchasedSection}
         </>
       ) : null}
@@ -556,7 +558,7 @@ export function ShoppingListPage({
             )}
           </section>
 
-          {additionalItemsSection}
+          {renderAdditionalItemsSection("Additional items")}
           {purchasedSection}
 
           <section className="detail-section">
