@@ -11,20 +11,30 @@ function dataFileUrl(file: string): string {
   return `${prefix}${name}`.replace(/\/{2,}/g, "/").replace(":/", "://");
 }
 
+async function loadJson<T>(p: string): Promise<T> {
+  const res = await fetch(dataFileUrl(p));
+  if (!res.ok) {
+    throw new Error(`Failed to load ${p} (${res.status})`);
+  }
+  return res.json() as Promise<T>;
+}
+
 export async function loadRecipeBundle(currentUser?: string): Promise<RecipeBundle> {
-  const load = async <T>(p: string): Promise<T> => {
-    const res = await fetch(dataFileUrl(p));
-    if (!res.ok) {
-      throw new Error(`Failed to load ${p} (${res.status})`);
-    }
-    return res.json() as Promise<T>;
-  };
   const recipesPath = currentUser
     ? `/api/recipes?user=${encodeURIComponent(currentUser)}`
     : "/api/recipes";
   const [ingredients, recipes] = await Promise.all([
-    load<IngredientsFile>("/api/ingredients"),
-    load<RecipeFile>(recipesPath),
+    loadJson<IngredientsFile>("/api/ingredients"),
+    loadJson<RecipeFile>(recipesPath),
   ]);
   return { ingredients, recipes };
+}
+
+/**
+ * Reload just the ingredient catalog. Use after a recipe save (the editor / AI parser may
+ * have created new ingredient rows in the DB; without this the client cache is stale and
+ * fresh ids fall back to displaying their raw slug instead of the human name).
+ */
+export async function loadIngredientsFile(): Promise<IngredientsFile> {
+  return loadJson<IngredientsFile>("/api/ingredients");
 }

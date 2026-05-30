@@ -2998,6 +2998,8 @@ a.recipe-detail-back-cta {
   width: 100%;
   max-width: 100%;
   margin-top: 1rem;
+  /* Breathing room before the "Additional items" section (empty-state layout). */
+  margin-bottom: 2.5rem;
   box-sizing: border-box;
 }
 
@@ -3363,6 +3365,49 @@ a.recipe-detail-back-cta {
   cursor: pointer;
   padding: 0.35rem 0;
   border-radius: 8px;
+}
+
+/* Free-text "Additional items" input row — sits above the list of added items. */
+.shopping-additional-input {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+  margin: 0.5rem 0 0.75rem;
+}
+
+.shopping-additional-input-field {
+  flex: 1;
+  min-width: 0;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+.shopping-additional-input-field:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* Per-row × on additional items; sits to the right of the checkbox label. */
+.shopping-additional-remove {
+  flex-shrink: 0;
+  background: none;
+  border: 0;
+  padding: 0 0.5rem;
+  font-size: 1.25rem;
+  line-height: 1;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.shopping-additional-remove:hover {
+  color: var(--text);
+  background: var(--accent-soft);
 }
 
 .shopping-check-row:active {

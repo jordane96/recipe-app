@@ -8,7 +8,7 @@ import {
   useLocation,
 } from "react-router-dom";
 import { applyQualitativeOverrides, loadQualitativeOverrides } from "./qualitativeOverrides";
-import { loadRecipeBundle } from "./loadRecipes";
+import { loadIngredientsFile, loadRecipeBundle } from "./loadRecipes";
 import { MealPlannerPage } from "./MealPlannerPage";
 import type { IngredientDef, IngredientsFile, Recipe } from "./types";
 import { RecipeDetail } from "./RecipeDetail";
@@ -154,6 +154,20 @@ export default function App({ currentUser, onSignOut }: { currentUser: string; o
       const exists = prev.some((r) => r.id === updated.id);
       return exists ? prev.map((r) => (r.id === updated.id ? updated : r)) : [...prev, updated];
     });
+    // The save may have inserted new rows into the ingredients table (via the editor's
+    // add-ingredient flow or the AI parser). Refetch so byId lookups in every other view
+    // can resolve the fresh ids — otherwise they leak the raw slug until a hard reload.
+    loadIngredientsFile()
+      .then((ing) => {
+        if (ing && Array.isArray(ing.ingredients)) {
+          setIngredientsFile(ing);
+        }
+      })
+      .catch((e: unknown) => {
+        // Non-fatal: previous in-memory catalog stays in place. Worst case is the stale
+        // display from before this fix existed — degrades back to the pre-fix behavior.
+        console.warn("Failed to refresh ingredients after recipe save:", e);
+      });
   }, []);
 
   const recipes = React.useMemo(() => {

@@ -79,6 +79,15 @@ function singleIngredientMatchByName(options: IngredientDef[], raw: string): Ing
   return hits.length === 1 ? hits[0]! : null;
 }
 
+/**
+ * Generate the id for a newly-added ingredient. The slug is the id (no `custom-` prefix —
+ * the legacy distinction is meaningless now that every ingredient is a row in the shared
+ * library and was a source of bugs: duplicate rows, raw-id leaking into the UI).
+ *
+ * Note this only handles slug collisions among "ids the editor has already issued or seen";
+ * callers are responsible for not invoking this when they meant to reuse an existing
+ * library entry by name. The fallthrough -2 / -3 / … suffix is a safety net, not the goal.
+ */
 function newCustomIngredientId(name: string, existingIds: Set<string>): string {
   const slug = name
     .trim()
@@ -86,17 +95,16 @@ function newCustomIngredientId(name: string, existingIds: Set<string>): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
     .slice(0, 40) || "item";
-  let id = `custom-${slug}`;
-  if (!existingIds.has(id)) {
-    return id;
+  if (!existingIds.has(slug)) {
+    return slug;
   }
   for (let n = 2; n < 1000; n++) {
-    const tryId = `custom-${slug}-${n}`;
+    const tryId = `${slug}-${n}`;
     if (!existingIds.has(tryId)) {
       return tryId;
     }
   }
-  return `custom-${slug}-${Date.now().toString(36)}`;
+  return `${slug}-${Date.now().toString(36)}`;
 }
 
 function cloneRecipe(r: Recipe): Recipe {

@@ -121,18 +121,31 @@ export default async function handler(req, res) {
   }
 
   const existingIds = new Set(rows.map(r => r.id))
-  const usedCustomIds = new Set()
+  const usedNewIds = new Set()
 
-  function makeCustomId(name) {
+  /**
+   * Mint an id for a "new" ingredient. The slug IS the id (no `custom-` prefix anymore —
+   * legacy distinction caused duplicate-row bugs and id leaks in the UI).
+   *
+   * If the slug already exists in the library, reuse it — the AI flagged this as "new" but
+   * it actually matches an existing entry. Cheap deduplication on the server side; the
+   * client UI will get the existing id back and merge correctly in the shopping list.
+   *
+   * Returns { id, isExisting } so the caller knows whether to also push a new ingredient def.
+   */
+  function makeIdForNew(name) {
     const slug = slugify(name)
-    let id = `custom-${slug}`
-    let n = 2
-    while (existingIds.has(id) || usedCustomIds.has(id)) {
-      id = `custom-${slug}-${n++}`
+    if (existingIds.has(slug)) {
+      return { id: slug, isExisting: true }
     }
-    usedCustomIds.add(id)
+    let id = slug
+    let n = 2
+    while (existingIds.has(id) || usedNewIds.has(id)) {
+      id = `${slug}-${n++}`
+    }
+    usedNewIds.add(id)
     existingIds.add(id)
-    return id
+    return { id, isExisting: false }
   }
 
   const customIngredientDefs = []
@@ -149,13 +162,15 @@ export default async function handler(req, res) {
           ...(line.potentialMatch ? { potentialMatch: true } : {}),
         }
       }
-      const id = makeCustomId(line.ingredientName ?? 'item')
-      customIngredientDefs.push({
-        id,
-        name: line.ingredientName ?? 'Unknown ingredient',
-        unit: line.ingredientUnitKind ?? 'other',
-        category: line.ingredientCategory ?? 'other',
-      })
+      const { id, isExisting } = makeIdForNew(line.ingredientName ?? 'item')
+      if (!isExisting) {
+        customIngredientDefs.push({
+          id,
+          name: line.ingredientName ?? 'Unknown ingredient',
+          unit: line.ingredientUnitKind ?? 'other',
+          category: line.ingredientCategory ?? 'other',
+        })
+      }
       return {
         ingredientId: id,
         amount: line.amount,

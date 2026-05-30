@@ -9,6 +9,23 @@ import { normalizeShoppingLineKey } from "./shoppingLineKey";
 
 const STORAGE_SELECTED = "recipe-app-shopping-v1";
 const STORAGE_PURCHASED = "recipe-app-purchased-v1";
+const STORAGE_ADDITIONAL = "recipe-app-additional-items-v1";
+
+function readAdditional(): string[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_ADDITIONAL);
+    if (!raw) return [];
+    const p = JSON.parse(raw) as unknown;
+    if (!Array.isArray(p)) return [];
+    return p.filter((x): x is string => typeof x === "string");
+  } catch {
+    return [];
+  }
+}
+
+function writeAdditional(items: string[]) {
+  localStorage.setItem(STORAGE_ADDITIONAL, JSON.stringify(items));
+}
 
 function readIds(): string[] {
   try {
@@ -86,6 +103,16 @@ type Ctx = {
   clearPurchased: () => void;
   /** Drop purchased keys that are not on the current combined list */
   prunePurchasedToValidLines: (lines: string[]) => void;
+  /**
+   * Free-text shopping items not derived from any recipe (e.g. "coffee filters", "foil").
+   * Ordered by insertion. Use {@link isPurchased} / {@link togglePurchased} against the item
+   * text to participate in the same purchased flow as recipe-derived lines.
+   */
+  additionalItems: string[];
+  /** Append a free-text item. Trims; dedupes case-insensitively; no-op on empty / duplicate. */
+  addAdditionalItem: (text: string) => void;
+  /** Remove a free-text item by exact text. Also clears any purchased mark for that line. */
+  removeAdditionalItem: (text: string) => void;
 };
 
 const ShoppingListContext = React.createContext<Ctx | null>(null);
@@ -97,6 +124,9 @@ export function ShoppingListProvider({ children }: { children: React.ReactNode }
   const [purchased, setPurchased] = React.useState<string[]>(() =>
     typeof window === "undefined" ? [] : readPurchased(),
   );
+  const [additionalItems, setAdditionalItems] = React.useState<string[]>(() =>
+    typeof window === "undefined" ? [] : readAdditional(),
+  );
 
   React.useEffect(() => {
     writeIds(selectedIds);
@@ -105,6 +135,28 @@ export function ShoppingListProvider({ children }: { children: React.ReactNode }
   React.useEffect(() => {
     writePurchased(purchased);
   }, [purchased]);
+
+  React.useEffect(() => {
+    writeAdditional(additionalItems);
+  }, [additionalItems]);
+
+  const addAdditionalItem = React.useCallback((text: string) => {
+    const t = text.trim();
+    if (!t) return;
+    setAdditionalItems((prev) => {
+      // Case-insensitive dedupe.
+      const lower = t.toLowerCase();
+      if (prev.some((x) => x.toLowerCase() === lower)) return prev;
+      return [...prev, t];
+    });
+  }, []);
+
+  const removeAdditionalItem = React.useCallback((text: string) => {
+    setAdditionalItems((prev) => prev.filter((x) => x !== text));
+    // Also clear any purchased mark for this line — otherwise it would ghost in Purchased.
+    const k = normalizeShoppingLineKey(text);
+    setPurchased((prev) => prev.filter((x) => x !== k));
+  }, []);
 
   const purchasedSet = React.useMemo(() => new Set(purchased), [purchased]);
 
@@ -260,6 +312,9 @@ export function ShoppingListProvider({ children }: { children: React.ReactNode }
       setPurchasedBatch,
       clearPurchased,
       prunePurchasedToValidLines,
+      additionalItems,
+      addAdditionalItem,
+      removeAdditionalItem,
     };
   }, [
     selectedIds,
@@ -279,6 +334,9 @@ export function ShoppingListProvider({ children }: { children: React.ReactNode }
     setPurchasedBatch,
     clearPurchased,
     prunePurchasedToValidLines,
+    additionalItems,
+    addAdditionalItem,
+    removeAdditionalItem,
   ]);
 
   return (

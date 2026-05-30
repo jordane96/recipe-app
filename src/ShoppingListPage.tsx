@@ -23,13 +23,7 @@ import {
   urlParamToPlanKey,
 } from "./listTabSearch";
 import { iso, startOfWeekMonday } from "./mealPlanDates";
-import {
-  recipeSegment,
-  SEGMENT_LABEL,
-  SEGMENT_ORDER,
-  segmentRank,
-  type RecipeSegment,
-} from "./recipeCourse";
+import { recipeSegment, segmentRank } from "./recipeCourse";
 import { useShoppingList } from "./ShoppingListContext";
 import { useToast } from "./ToastContext";
 
@@ -93,10 +87,6 @@ function SelectedRecipePurchasedCheckbox({
   );
 }
 
-function segmentSlotTotal(list: Array<{ recipe: Recipe; count: number }>): number {
-  return list.reduce((acc, { count }) => acc + count, 0);
-}
-
 function mergeBreakdownsByRecipeId(
   blocks: IngredientBreakdown[],
 ): Array<IngredientBreakdown & { portionCount: number }> {
@@ -151,6 +141,9 @@ export function ShoppingListPage({
     togglePurchased,
     setPurchasedBatch,
     prunePurchasedToValidLines,
+    additionalItems,
+    addAdditionalItem,
+    removeAdditionalItem,
   } = useShoppingList();
   const { showToast } = useToast();
 
@@ -185,24 +178,13 @@ export function ShoppingListPage({
     [recipes],
   );
 
-  const selectedBySegment = React.useMemo(() => {
-    const slots: Record<
-      RecipeSegment,
-      Array<{ recipe: Recipe; slotIndex: number }>
-    > = { main: [], side: [], other: [] };
-    for (const s of selectedSlots) {
-      slots[recipeSegment(s.recipe)].push({ recipe: s.recipe, slotIndex: s.slotIndex });
-    }
-    const grouped: Record<RecipeSegment, Array<{ recipe: Recipe; count: number }>> = {
-      main: [],
-      side: [],
-      other: [],
-    };
-    for (const seg of SEGMENT_ORDER) {
-      grouped[seg] = groupSlotsByRecipeId(slots[seg]);
-    }
-    return grouped;
-  }, [selectedSlots]);
+  // Flat, ungrouped list of selected recipes (deduplicated; count = portion total). The
+  // top-of-page recipe list no longer separates mains/sides — one list is friendlier on
+  // mobile and the meal nature is already implied by the recipe title.
+  const groupedSelected = React.useMemo(
+    () => groupSlotsByRecipeId(selectedSlots),
+    [selectedSlots],
+  );
 
   const { combinedItems, byRecipe } = buildShoppingListData(
     selectedRecipes,
@@ -238,8 +220,152 @@ export function ShoppingListPage({
   );
 
   React.useEffect(() => {
-    prunePurchasedToValidLines(combinedLines);
-  }, [combinedLines, prunePurchasedToValidLines]);
+    // Include free-text additional items so their purchased marks survive the prune sweep.
+    prunePurchasedToValidLines([...combinedLines, ...additionalItems]);
+  }, [combinedLines, additionalItems, prunePurchasedToValidLines]);
+
+  // Free-text items split by whether they've been checked off (checked → Purchased section).
+  const unpurchasedAdditional = React.useMemo(
+    () => additionalItems.filter((t) => !isPurchased(t)),
+    [additionalItems, isPurchased],
+  );
+  const purchasedAdditional = React.useMemo(
+    () => additionalItems.filter((t) => isPurchased(t)),
+    [additionalItems, isPurchased],
+  );
+
+  const [additionalInput, setAdditionalInput] = React.useState("");
+  const submitAdditional = React.useCallback(() => {
+    const t = additionalInput.trim();
+    if (!t) return;
+    addAdditionalItem(t);
+    setAdditionalInput("");
+  }, [additionalInput, addAdditionalItem]);
+
+  // Reusable JSX for the Additional items section so we can mount it in both the empty
+  // state (so users can capture non-recipe items without first selecting a recipe) and the
+  // populated state.
+  const additionalItemsSection = (
+    <section className="detail-section">
+      <h2>
+        Additional items
+        {unpurchasedAdditional.length > 0 ? (
+          <span className="shopping-segment-count"> ({unpurchasedAdditional.length})</span>
+        ) : null}
+      </h2>
+      <form
+        className="shopping-additional-input"
+        onSubmit={(e) => {
+          e.preventDefault();
+          submitAdditional();
+        }}
+      >
+        <input
+          type="text"
+          className="shopping-additional-input-field"
+          placeholder="Add anything — e.g. coffee filters"
+          value={additionalInput}
+          onChange={(e) => setAdditionalInput(e.target.value)}
+          aria-label="Add an additional item to the shopping list"
+        />
+        <button
+          type="submit"
+          className="btn-primary btn-compact"
+          disabled={additionalInput.trim().length === 0}
+        >
+          Add
+        </button>
+      </form>
+      {unpurchasedAdditional.length > 0 ? (
+        <ul className="shopping-combined shopping-checklist">
+          {unpurchasedAdditional.map((text) => (
+            <li key={`additional-${text}`}>
+              <label className="shopping-check-row">
+                <input
+                  type="checkbox"
+                  className="shopping-check-input"
+                  checked={false}
+                  onChange={() => togglePurchasedWithToast(text)}
+                  aria-label={`Purchased: ${text}`}
+                />
+                <span className="shopping-check-label">
+                  <span className="shopping-check-primary">{text}</span>
+                </span>
+                <button
+                  type="button"
+                  className="shopping-additional-remove"
+                  aria-label={`Remove ${text} from additional items`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    removeAdditionalItem(text);
+                  }}
+                >
+                  ×
+                </button>
+              </label>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
+  );
+
+  // Purchased section, also reusable across empty and populated states. Combines
+  // recipe-derived purchased items and free-text purchased items.
+  const purchasedSection =
+    (purchasedItems.length + purchasedAdditional.length) > 0 ? (
+      <section className="detail-section">
+        <h2>
+          Purchased
+          <span className="shopping-segment-count">
+            {" "}
+            ({purchasedItems.length + purchasedAdditional.length})
+          </span>
+        </h2>
+        <ul className="shopping-combined shopping-checklist">
+          {purchasedItems.map((item, i) => {
+            const line = item.line;
+            const alt = altConversionsForItem(item);
+            const visibleLabel = alt ? `${line} (${alt})` : line;
+            return (
+              <li key={`purchased-${line}-${i}`}>
+                <label className="shopping-check-row shopping-check-row--bought">
+                  <input
+                    type="checkbox"
+                    className="shopping-check-input"
+                    checked
+                    onChange={() => togglePurchased(line)}
+                    aria-label={`Restore to list: ${visibleLabel}`}
+                  />
+                  <span className="shopping-check-label">
+                    <span className="shopping-check-primary">{line}</span>
+                    {alt ? (
+                      <span className="shopping-inline-alt"> ({alt})</span>
+                    ) : null}
+                  </span>
+                </label>
+              </li>
+            );
+          })}
+          {purchasedAdditional.map((text) => (
+            <li key={`purchased-additional-${text}`}>
+              <label className="shopping-check-row shopping-check-row--bought">
+                <input
+                  type="checkbox"
+                  className="shopping-check-input"
+                  checked
+                  onChange={() => togglePurchased(text)}
+                  aria-label={`Restore to additional items: ${text}`}
+                />
+                <span className="shopping-check-label">
+                  <span className="shopping-check-primary">{text}</span>
+                </span>
+              </label>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ) : null;
 
   const sortedByRecipe = React.useMemo(() => {
     return [...byRecipe].sort((a, b) => {
@@ -259,7 +385,9 @@ export function ShoppingListPage({
     <>
       {selectedRecipes.length === 0 ? (
         <>
-          <p className="empty">Your shopping list is empty, browse recipes to add.</p>
+          <p className="empty">
+            Your shopping list is empty. Add recipes to build your list, or add items below.
+          </p>
           <div className="shopping-list-empty-cta cta-panel">
             <Link
               to={shopMenuBuildListHref}
@@ -269,98 +397,85 @@ export function ShoppingListPage({
               Browse recipes
             </Link>
           </div>
+          {/* Free-text capture works even before any recipes are selected. */}
+          {additionalItemsSection}
+          {purchasedSection}
         </>
       ) : null}
 
       {selectedRecipes.length > 0 ? (
         <>
           <section className="detail-section">
-            {SEGMENT_ORDER.map((seg) => {
-              const list = selectedBySegment[seg];
-              if (list.length === 0) {
-                return null;
-              }
-              const n = segmentSlotTotal(list);
-              return (
-                <div key={seg} className="shopping-segment">
-                  <h3 className="shopping-segment-heading">
-                    {SEGMENT_LABEL[seg]}{" "}
-                    <span className="shopping-segment-count">({n})</span>
-                  </h3>
-                  <ul className="selected-recipes">
-                    {list.map(({ recipe: r, count }) => {
-                      return (
-                      <li
-                        key={r.id}
-                        className="selected-recipe-row selected-recipe-row--slot"
+            <h2>Recipes</h2>
+            <ul className="selected-recipes">
+              {groupedSelected.map(({ recipe: r, count }) => (
+                <li
+                  key={r.id}
+                  className="selected-recipe-row selected-recipe-row--slot"
+                >
+                  <div className="selected-recipe-row-top">
+                    <div className="selected-recipe-check-cell">
+                      <SelectedRecipePurchasedCheckbox
+                        recipeTitle={r.title}
+                        lines={combinedLinesContributedByRecipe(combinedItems, r.id)}
+                        isPurchased={isPurchased}
+                        setPurchasedBatch={setPurchasedBatch}
+                      />
+                    </div>
+                    <Link
+                      to={recipeDetailPath(
+                        r.id,
+                        planPreserveForRecipeLinks,
+                        false,
+                        false,
+                        true,
+                      )}
+                      className="selected-recipe-link"
+                    >
+                      {r.title}
+                    </Link>
+                    <div
+                      className="selected-recipe-qty-stepper"
+                      role="group"
+                      aria-label={`Shopping list quantity for ${r.title}`}
+                    >
+                      <button
+                        type="button"
+                        className="selected-recipe-qty-btn"
+                        aria-label={`Remove one ${r.title} from shopping list`}
+                        onClick={() => removeFromList(r.id)}
                       >
-                        <div className="selected-recipe-row-top">
-                          <div className="selected-recipe-check-cell">
-                            <SelectedRecipePurchasedCheckbox
-                              recipeTitle={r.title}
-                              lines={combinedLinesContributedByRecipe(combinedItems, r.id)}
-                              isPurchased={isPurchased}
-                              setPurchasedBatch={setPurchasedBatch}
-                            />
-                          </div>
-                          <Link
-                            to={recipeDetailPath(
-                              r.id,
-                              planPreserveForRecipeLinks,
-                              false,
-                              false,
-                              true,
-                            )}
-                            className="selected-recipe-link"
-                          >
-                            {r.title}
-                          </Link>
-                          <div
-                            className="selected-recipe-qty-stepper"
-                            role="group"
-                            aria-label={`Shopping list quantity for ${r.title}`}
-                          >
-                            <button
-                              type="button"
-                              className="selected-recipe-qty-btn"
-                              aria-label={`Remove one ${r.title} from shopping list`}
-                              onClick={() => removeFromList(r.id)}
-                            >
-                              −
-                            </button>
-                            <span className="selected-recipe-qty-value">{count}</span>
-                            <button
-                              type="button"
-                              className="selected-recipe-qty-btn"
-                              aria-label={`Add one ${r.title} to shopping list`}
-                              onClick={() => addToList(r.id)}
-                            >
-                              +
-                            </button>
-                          </div>
-                          <div className="selected-recipe-actions">
-                            <button
-                              type="button"
-                              className="btn-remove selected-recipe-remove-btn"
-                              title={`Remove ${r.title} from shopping list (${count} portion${
-                                count === 1 ? "" : "s"
-                              })`}
-                              aria-label={`Remove ${r.title} from shopping list (${count} portion${
-                                count === 1 ? "" : "s"
-                              })`}
-                              onClick={() => removeAllSlotsForRecipe(r.id)}
-                            >
-                              ×
-                            </button>
-                          </div>
-                        </div>
-                      </li>
-                    );
-                    })}
-                  </ul>
-                </div>
-              );
-            })}
+                        −
+                      </button>
+                      <span className="selected-recipe-qty-value">{count}</span>
+                      <button
+                        type="button"
+                        className="selected-recipe-qty-btn"
+                        aria-label={`Add one ${r.title} to shopping list`}
+                        onClick={() => addToList(r.id)}
+                      >
+                        +
+                      </button>
+                    </div>
+                    <div className="selected-recipe-actions">
+                      <button
+                        type="button"
+                        className="btn-remove selected-recipe-remove-btn"
+                        title={`Remove ${r.title} from shopping list (${count} portion${
+                          count === 1 ? "" : "s"
+                        })`}
+                        aria-label={`Remove ${r.title} from shopping list (${count} portion${
+                          count === 1 ? "" : "s"
+                        })`}
+                        onClick={() => removeAllSlotsForRecipe(r.id)}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
           </section>
 
           <div
@@ -381,10 +496,7 @@ export function ShoppingListPage({
           </div>
 
           <section className="detail-section">
-            <h2>Combined list</h2>
-            <p className="muted shopping-combined-intro">
-              Grouped by grocery section (same categories as ingredients in your library).
-            </p>
+            <h2>Shopping list</h2>
             {combinedItems.length === 0 ? (
               <p className="muted">
                 No mergeable ingredient rows in the selected recipes (empty or
@@ -444,75 +556,28 @@ export function ShoppingListPage({
             )}
           </section>
 
-          {purchasedItems.length > 0 ? (
-            <section className="detail-section">
-              <h2>
-                Purchased
-                <span className="shopping-segment-count"> ({purchasedItems.length})</span>
-              </h2>
-              <ul className="shopping-combined shopping-checklist">
-                {purchasedItems.map((item, i) => {
-                  const line = item.line;
-                  const alt = altConversionsForItem(item);
-                  const visibleLabel = alt ? `${line} (${alt})` : line;
-                  return (
-                    <li key={`purchased-${line}-${i}`}>
-                      <label className="shopping-check-row shopping-check-row--bought">
-                        <input
-                          type="checkbox"
-                          className="shopping-check-input"
-                          checked
-                          onChange={() => togglePurchased(line)}
-                          aria-label={`Restore to list: ${visibleLabel}`}
-                        />
-                        <span className="shopping-check-label">
-                          <span className="shopping-check-primary">{line}</span>
-                          {alt ? (
-                            <span className="shopping-inline-alt"> ({alt})</span>
-                          ) : null}
-                        </span>
-                      </label>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          ) : null}
+          {additionalItemsSection}
+          {purchasedSection}
 
           <section className="detail-section">
             <h2>By recipe</h2>
-            {SEGMENT_ORDER.map((seg) => {
-              const blocks = sortedByRecipe.filter((b) => {
-                const r = recipeById.get(b.recipeId);
-                return (r ? recipeSegment(r) : "main") === seg;
-              });
-              const mergedBlocks = mergeBreakdownsByRecipeId(blocks);
-              if (mergedBlocks.length === 0) {
-                return null;
-              }
-              return (
-                <div key={seg} className="shopping-segment">
-                  <h3 className="shopping-segment-heading">{SEGMENT_LABEL[seg]}</h3>
-                  {mergedBlocks.map((block) => (
-                    <div key={block.recipeId} className="by-recipe-block">
-                      <h4 className="by-recipe-title">
-                        {block.title}
-                        {block.portionCount > 1 ? ` × ${block.portionCount}` : ""}
-                      </h4>
-                      {block.items.length === 0 ? (
-                        <p className="muted">No ingredient lines in data.</p>
-                      ) : (
-                        <ul>
-                          {block.items.map((line, i) => (
-                            <li key={i}>{line}</li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
+            {mergeBreakdownsByRecipeId(sortedByRecipe).map((block) => (
+              <div key={block.recipeId} className="by-recipe-block">
+                <h4 className="by-recipe-title">
+                  {block.title}
+                  {block.portionCount > 1 ? ` × ${block.portionCount}` : ""}
+                </h4>
+                {block.items.length === 0 ? (
+                  <p className="muted">No ingredient lines in data.</p>
+                ) : (
+                  <ul>
+                    {block.items.map((line, i) => (
+                      <li key={i}>{line}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ))}
           </section>
         </>
       ) : null}
