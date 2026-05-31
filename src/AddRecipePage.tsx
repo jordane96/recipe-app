@@ -2,12 +2,13 @@ import * as React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import type { Recipe } from "./types";
 
-type Tab = "paste" | "screenshot";
+type Tab = "paste" | "screenshot" | "url";
 
 export function AddRecipePage() {
   const navigate = useNavigate();
   const [tab, setTab] = React.useState<Tab>("paste");
   const [pasteText, setPasteText] = React.useState("");
+  const [urlText, setUrlText] = React.useState("");
   const [imageFile, setImageFile] = React.useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(false);
@@ -15,7 +16,12 @@ export function AddRecipePage() {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const canSubmit =
-    !loading && (tab === "paste" ? pasteText.trim().length > 0 : imageFile != null);
+    !loading &&
+    (tab === "paste"
+      ? pasteText.trim().length > 0
+      : tab === "screenshot"
+        ? imageFile != null
+        : /^https?:\/\/.+/i.test(urlText.trim()));
 
   function handleFileChange(file: File | null) {
     if (!file) return;
@@ -47,6 +53,8 @@ export function AddRecipePage() {
 
       if (tab === "paste") {
         body = { text: pasteText };
+      } else if (tab === "url") {
+        body = { url: urlText.trim() };
       } else {
         const imageBase64 = await fileToBase64(imageFile!);
         body = { imageBase64, mimeType: imageFile!.type };
@@ -93,6 +101,15 @@ export function AddRecipePage() {
           onClick={() => { setTab("screenshot"); setError(null); }}
         >
           Share screenshot
+        </button>
+        <button
+          role="tab"
+          aria-selected={tab === "url"}
+          className="add-recipe-tab"
+          data-on={tab === "url"}
+          onClick={() => { setTab("url"); setError(null); }}
+        >
+          From URL
         </button>
       </div>
 
@@ -152,19 +169,19 @@ export function AddRecipePage() {
         </div>
       )}
 
-      <div className="add-recipe-url-section">
-        <div className="add-recipe-url-label">
-          Import from URL
-          <span className="add-recipe-badge-soon">Coming soon</span>
+      {tab === "url" && (
+        <div className="add-recipe-panel">
+          <input
+            className="add-recipe-url-input"
+            type="url"
+            inputMode="url"
+            placeholder="https://www.allrecipes.com/recipe/…"
+            value={urlText}
+            onChange={(e) => { setUrlText(e.target.value); setError(null); }}
+            aria-label="Recipe URL to import"
+          />
         </div>
-        <input
-          className="add-recipe-url-input"
-          type="url"
-          placeholder="https://..."
-          disabled
-          aria-label="Import from URL (coming soon)"
-        />
-      </div>
+      )}
 
       {error && (
         <p className="add-recipe-error" role="alert">

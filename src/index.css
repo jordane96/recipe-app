@@ -6337,16 +6337,28 @@ button.history-day-card-select:focus-visible {
 
 .add-recipe-url-input {
   width: 100%;
+  box-sizing: border-box;
   padding: 0.6rem 0.75rem;
   font-family: var(--font-sans);
-  font-size: var(--fs-body);
-  color: var(--muted);
-  background: var(--bg);
+  /* 16px exactly so iOS Safari doesn't auto-zoom on focus. */
+  font-size: 16px;
+  color: var(--text);
+  background: var(--surface);
   border: 1.5px solid var(--border);
   border-radius: 8px;
   outline: none;
-  opacity: 0.6;
-  cursor: not-allowed;
+}
+
+.add-recipe-url-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.add-recipe-url-hint {
+  margin: 0.6rem 0 0;
+  font-size: var(--fs-ui);
+  color: var(--muted);
+  line-height: 1.45;
 }
 
 .add-recipe-error {

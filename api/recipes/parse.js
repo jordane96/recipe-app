@@ -5,6 +5,133 @@ import { z } from 'zod'
 
 const sql = neon(process.env.DATABASE_URL)
 
+const BROWSER_UA =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15'
+
+/** Pull schema.org/Recipe JSON-LD out of raw HTML without a DOM parser. */
+function extractRecipeJsonLd(html) {
+  const blocks = html.matchAll(
+    /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi,
+  )
+  for (const m of blocks) {
+    let data
+    try {
+      data = JSON.parse(m[1].trim())
+    } catch {
+      continue
+    }
+    const recipe = findRecipeNode(data)
+    if (recipe) return recipe
+  }
+  return null
+}
+
+function findRecipeNode(data) {
+  if (!data) return null
+  if (Array.isArray(data)) {
+    for (const x of data) {
+      const r = findRecipeNode(x)
+      if (r) return r
+    }
+    return null
+  }
+  if (typeof data !== 'object') return null
+  const t = data['@type']
+  if (t === 'Recipe' || (Array.isArray(t) && t.includes('Recipe'))) return data
+  if (data['@graph']) return findRecipeNode(data['@graph'])
+  return null
+}
+
+/** Flatten recipeInstructions (HowToStep / HowToSection / strings) into ordered step strings. */
+function flattenInstructions(instr) {
+  if (!instr) return []
+  if (typeof instr === 'string') {
+    return instr.split(/\r?\n+/).map((s) => s.trim()).filter(Boolean)
+  }
+  if (!Array.isArray(instr)) return []
+  const out = []
+  for (const s of instr) {
+    if (typeof s === 'string') {
+      out.push(s)
+    } else if (s['@type'] === 'HowToSection') {
+      for (const i of s.itemListElement ?? []) out.push(i.text ?? i.name)
+    } else {
+      out.push(s.text ?? s.name)
+    }
+  }
+  return out.map((x) => (typeof x === 'string' ? x.trim() : '')).filter(Boolean)
+}
+
+/** Render a JSON-LD recipe into plain text for the AI extractor (which handles catalog matching). */
+function recipeJsonLdToText(recipe, sourceUrl) {
+  const lines = []
+  if (recipe.name) lines.push(recipe.name)
+  if (recipe.recipeYield != null) {
+    lines.push(`Servings: ${Array.isArray(recipe.recipeYield) ? recipe.recipeYield[0] : recipe.recipeYield}`)
+  }
+  if (recipe.description && typeof recipe.description === 'string') {
+    lines.push('', recipe.description)
+  }
+  const ings = recipe.recipeIngredient ?? []
+  if (ings.length) {
+    lines.push('', 'Ingredients:')
+    for (const i of ings) lines.push(`- ${i}`)
+  }
+  const steps = flattenInstructions(recipe.recipeInstructions)
+  if (steps.length) {
+    lines.push('', 'Instructions:')
+    steps.forEach((s, i) => lines.push(`${i + 1}. ${s}`))
+  }
+  if (sourceUrl) lines.push('', `Source: ${sourceUrl}`)
+  return lines.join('\n')
+}
+
+/**
+ * Resolve a recipe URL to plain text the AI can parse.
+ * 1. Direct fetch with a realistic browser UA (works for Condé Nast, Food Network, NYT, blogs).
+ * 2. Fall back to the Internet Archive's latest snapshot — defeats the TLS-fingerprint bot walls
+ *    on the Dotdash Meredith network (AllRecipes, SeriousEats, SimplyRecipes, EatingWell).
+ * Returns { text, sourceUrl } or null if neither path yields a JSON-LD Recipe.
+ */
+async function resolveRecipeTextFromUrl(url) {
+  // Tier 1: direct
+  try {
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': BROWSER_UA,
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+      redirect: 'follow',
+    })
+    if (res.ok) {
+      const recipe = extractRecipeJsonLd(await res.text())
+      if (recipe) return { text: recipeJsonLdToText(recipe, url), sourceUrl: url }
+    }
+  } catch {
+    /* fall through to Wayback */
+  }
+
+  // Tier 2: Internet Archive snapshot
+  try {
+    const api = await fetch(
+      `https://archive.org/wayback/available?url=${encodeURIComponent(url)}`,
+    )
+    const snap = (await api.json())?.archived_snapshots?.closest?.url
+    if (snap) {
+      const res = await fetch(snap)
+      if (res.ok) {
+        const recipe = extractRecipeJsonLd(await res.text())
+        if (recipe) return { text: recipeJsonLdToText(recipe, url), sourceUrl: url }
+      }
+    }
+  } catch {
+    /* fall through */
+  }
+
+  return null
+}
+
 function slugify(name) {
   return name.trim().toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
@@ -84,9 +211,28 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  const { text, imageBase64, mimeType } = req.body ?? {}
-  if (!text && !imageBase64) {
-    return res.status(400).json({ error: 'Provide text or imageBase64' })
+  const { text, imageBase64, mimeType, url } = req.body ?? {}
+  if (!text && !imageBase64 && !url) {
+    return res.status(400).json({ error: 'Provide text, imageBase64, or url' })
+  }
+
+  // URL import: resolve to clean recipe text (direct fetch → Wayback fallback), then run it
+  // through the same AI extractor below so catalog matching / verify-match all work the same.
+  let resolvedText = text
+  let importedSourceUrl = null
+  if (url && !text && !imageBase64) {
+    if (!/^https?:\/\//i.test(url)) {
+      return res.status(400).json({ error: 'Enter a valid http(s) URL.' })
+    }
+    const resolved = await resolveRecipeTextFromUrl(url)
+    if (!resolved) {
+      return res.status(422).json({
+        error:
+          "Couldn't read a recipe from that link. Open the page, copy the recipe, and use Paste text instead.",
+      })
+    }
+    resolvedText = resolved.text
+    importedSourceUrl = resolved.sourceUrl
   }
 
   const rows = await sql`SELECT id, name FROM ingredients ORDER BY name`
@@ -102,7 +248,7 @@ export default async function handler(req, res) {
   }
   userContent.push({
     type: 'text',
-    text: `Ingredient library:\n${libraryText}\n\n${text ? `Recipe text:\n${text}` : 'Extract the recipe from the image above.'}`,
+    text: `Ingredient library:\n${libraryText}\n\n${resolvedText ? `Recipe text:\n${resolvedText}` : 'Extract the recipe from the image above.'}`,
   })
 
   let object
@@ -197,7 +343,9 @@ export default async function handler(req, res) {
       ...(s.note ? { note: s.note } : {}),
     })),
     ...(customIngredientDefs.length ? { customIngredientDefs } : {}),
-    ...(object.sourceUrl ? { sourceUrl: object.sourceUrl } : {}),
+    ...((importedSourceUrl || object.sourceUrl)
+      ? { sourceUrl: importedSourceUrl || object.sourceUrl }
+      : {}),
     ...(object.notes ? { notes: object.notes } : {}),
   }
 
