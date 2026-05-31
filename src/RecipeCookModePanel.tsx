@@ -459,7 +459,18 @@ export function RecipeCookModePanel({
     }
     // Any tap on the timer acknowledges/silences a ringing alarm.
     stopTimerAlert();
-    if (clock.phase === "idle" || clock.phase === "done") {
+    if (clock.phase === "done") {
+      // "Stop": silence + reset to full duration, idle (not running). The readout then shows
+      // the full time with "Start", so the user can run it again if they choose.
+      persistClock({
+        phase: "idle",
+        totalSeconds: durationForActive,
+        runEndsAt: null,
+        remainingSeconds: null,
+      });
+      return;
+    }
+    if (clock.phase === "idle") {
       onStartTimer();
       return;
     }
@@ -927,7 +938,7 @@ export function RecipeCookModePanel({
                           : clock.phase === "paused"
                             ? "Resume step timer"
                             : clock.phase === "done"
-                              ? "Restart step timer"
+                              ? "Stop alarm and reset step timer"
                               : "Start step timer"
                       }
                       {...isolateNestedTouchFromSwipePaneProps}
@@ -945,7 +956,7 @@ export function RecipeCookModePanel({
                           : clock.phase === "paused"
                             ? "Resume"
                             : clock.phase === "done"
-                              ? "Restart"
+                              ? "Stop"
                               : "Start"}
                       </span>
                     </button>
