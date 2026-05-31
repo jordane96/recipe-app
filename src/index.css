@@ -2022,6 +2022,25 @@ button.cook-mode-v2-meal-banner--in-chrome,
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Visual cue when the step timer hits 0:00 — a few attention pulses (pairs with the
+   sound + vibration alert). Settles to a steady tinted state so it stays noticeable
+   without animating forever. Respects reduced-motion. */
+.cook-mode-v2-timer-main--done {
+  animation: cook-timer-done-pulse 0.9s ease-in-out 3;
+  background: #fbe3c4;
+}
+
+@keyframes cook-timer-done-pulse {
+  0%, 100% { background: #fbe3c4; }
+  50% { background: #f5c27a; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cook-mode-v2-timer-main--done {
+    animation: none;
+  }
+}
+
 .cook-mode-v2-timer-main:hover {
   filter: brightness(0.985);
 }

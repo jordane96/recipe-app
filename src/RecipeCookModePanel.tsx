@@ -3,6 +3,8 @@ import { flushSync } from "react-dom";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import type { IngredientDef, Recipe } from "./types";
 import { formatIngredientLine, ingredientMapWithRecipes } from "./ingredientDisplay";
+import { useWakeLock } from "./useWakeLock";
+import { playTimerAlert, unlockTimerAudio } from "./timerAlert";
 import {
   EDIT_RECIPE_STEP_QUERY,
   recipeEditPath,
@@ -162,6 +164,9 @@ export function RecipeCookModePanel({
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { logCooked } = useCookHistory();
+  // Keep the screen awake the whole time the cook panel is mounted so the recipe stays
+  // visible and step timers keep ticking in the foreground. Released automatically on exit.
+  useWakeLock(true);
   // Recipe-aware so custom-* ids render as human names during cook mode.
   const byId = React.useMemo(
     () => ingredientMapWithRecipes(ingredients, [recipe]),
@@ -268,12 +273,18 @@ export function RecipeCookModePanel({
     };
     const msUntilExpiry = clock.runEndsAt - Date.now();
     if (msUntilExpiry <= 0) {
+      // Already expired (e.g. reopening a timer that finished earlier / in a prior session).
+      // Transition silently — don't alert for an expiry the user already missed.
       transitionToDone();
       return;
     }
     // Schedule a transition at the exact expiry moment so phase flips to "done" on its own,
     // not on the next user interaction. Without this, the UI shows "0:00 Pause" until tapped.
-    const id = window.setTimeout(transitionToDone, msUntilExpiry);
+    // This is the genuine "timer just finished while you were watching" moment — alert here.
+    const id = window.setTimeout(() => {
+      transitionToDone();
+      playTimerAlert();
+    }, msUntilExpiry);
     return () => window.clearTimeout(id);
   }, [clock, recipe.id, cookDate, cookSlotRef, activeStepIndex]);
 
@@ -394,6 +405,9 @@ export function RecipeCookModePanel({
     if (!clock || durationForActive <= 0) {
       return;
     }
+    // This runs inside the user's tap — prime audio so the expiry beep can fire later (iOS
+    // only allows programmatic audio after a gesture has unlocked the AudioContext).
+    unlockTimerAudio();
     const now = Date.now();
     if (clock.phase === "running") {
       return;
@@ -901,7 +915,7 @@ export function RecipeCookModePanel({
                   <div className="cook-mode-v2-timer-layout">
                     <button
                       type="button"
-                      className="cook-mode-v2-timer-main"
+                      className={`cook-mode-v2-timer-main${clock.phase === "done" ? " cook-mode-v2-timer-main--done" : ""}`}
                       onClick={onTapReadout}
                       aria-label={
                         clock.phase === "running"

@@ -55,6 +55,7 @@ export function flattenUncookedPlanRecipeIdsInOrder(
       }
     }
   }
+  const unassigned = plan[ukey] ?? [];
   for (let ui = 0; ui < unassigned.length; ui++) {
     const m = unassigned[ui]!;
     if (isUnassignedSlotCookedAllTime(history, unassigned, ui, m.id)) {
