@@ -47,6 +47,22 @@ export function unlockTimerAudio(): void {
   }
 }
 
+/** Stop the alarm if it's currently playing (e.g. the user tapped to acknowledge it). */
+export function stopTimerAlert(): void {
+  if (!alarm) return;
+  try {
+    alarm.pause();
+    alarm.currentTime = 0;
+  } catch {
+    /* no-op */
+  }
+  try {
+    navigator.vibrate?.(0); // cancel any ongoing vibration
+  } catch {
+    /* no-op */
+  }
+}
+
 /** Play the alarm clip + vibrate. Safe to call outside a gesture once audio is unlocked. */
 export function playTimerAlert(): void {
   // Vibration — urgent repeating pattern. Android honors it; iOS Safari ignores (no-op).

@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from "react-router-do
 import type { IngredientDef, Recipe } from "./types";
 import { formatIngredientLine, ingredientMapWithRecipes } from "./ingredientDisplay";
 import { useWakeLock } from "./useWakeLock";
-import { playTimerAlert, unlockTimerAudio } from "./timerAlert";
+import { playTimerAlert, stopTimerAlert, unlockTimerAudio } from "./timerAlert";
 import {
   EDIT_RECIPE_STEP_QUERY,
   recipeEditPath,
@@ -393,6 +393,8 @@ export function RecipeCookModePanel({
   }, [recipe.ingredientSections, byId]);
 
   const goStep = (delta: number) => {
+    // Moving to another step also acknowledges/silences a ringing alarm.
+    stopTimerAlert();
     setActiveStepIndex((i) => Math.min(Math.max(0, i + delta), Math.max(0, nSteps - 1)));
   };
 
@@ -455,6 +457,8 @@ export function RecipeCookModePanel({
     if (!clock || durationForActive <= 0) {
       return;
     }
+    // Any tap on the timer acknowledges/silences a ringing alarm.
+    stopTimerAlert();
     if (clock.phase === "idle" || clock.phase === "done") {
       onStartTimer();
       return;
