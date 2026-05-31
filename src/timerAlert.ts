@@ -1,62 +1,67 @@
 /**
- * Step-timer expiry alert: a short triple-beep (Web Audio, no asset) + vibration.
+ * Step-timer expiry alert: plays a bundled alarm sound + vibration.
  *
- * iOS requires audio playback to be unlocked by a user gesture before it can be triggered
- * programmatically later. So {@link unlockTimerAudio} is called when the user *starts* a timer
- * (a tap), priming the AudioContext; {@link playTimerAlert} then works at the silent expiry
- * moment. Everything is wrapped in try/catch and feature-detected so unsupported environments
- * (or autoplay-blocked contexts) just no-op.
+ * iOS only allows programmatic audio after a user gesture has "unlocked" playback. So
+ * {@link unlockTimerAudio} is called when the user *starts* a timer (a tap) — it plays the
+ * clip muted and immediately resets, which grants permission for the later silent-expiry
+ * {@link playTimerAlert}. Everything is feature-detected + try/catch so unsupported or
+ * autoplay-blocked contexts just no-op.
  */
 
-let audioCtx: AudioContext | null = null;
+const ALARM_SRC = "/sounds/timer-alarm.mp3";
 
-function ensureCtx(): AudioContext | null {
+let alarm: HTMLAudioElement | null = null;
+let unlocked = false;
+
+function ensureAudio(): HTMLAudioElement | null {
+  if (typeof Audio === "undefined") return null;
+  if (!alarm) {
+    alarm = new Audio(ALARM_SRC);
+    alarm.preload = "auto";
+  }
+  return alarm;
+}
+
+/** Prime audio from within a user gesture (timer start) so the expiry sound can fire later. */
+export function unlockTimerAudio(): void {
+  const a = ensureAudio();
+  if (!a || unlocked) return;
   try {
-    if (!audioCtx) {
-      const Ctor =
-        window.AudioContext ||
-        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (!Ctor) return null;
-      audioCtx = new Ctor();
+    a.muted = true;
+    const p = a.play();
+    const finish = () => {
+      a.pause();
+      a.currentTime = 0;
+      a.muted = false;
+      unlocked = true;
+    };
+    if (p && typeof p.then === "function") {
+      p.then(finish).catch(() => {
+        a.muted = false;
+      });
+    } else {
+      finish();
     }
-    if (audioCtx.state === "suspended") void audioCtx.resume();
-    return audioCtx;
   } catch {
-    return null;
+    a.muted = false;
   }
 }
 
-/** Prime audio from within a user gesture (timer start) so the expiry beep can fire later. */
-export function unlockTimerAudio(): void {
-  ensureCtx();
-}
-
-/** Triple-beep + vibrate. Safe to call outside a gesture once audio has been unlocked. */
+/** Play the alarm clip + vibrate. Safe to call outside a gesture once audio is unlocked. */
 export function playTimerAlert(): void {
-  // Vibration — Android honors it; iOS Safari ignores (no-op, not an error).
+  // Vibration — urgent repeating pattern. Android honors it; iOS Safari ignores (no-op).
   try {
-    navigator.vibrate?.([200, 120, 200, 120, 300]);
+    navigator.vibrate?.([300, 150, 300, 150, 300, 150, 500]);
   } catch {
     /* no-op */
   }
 
-  const ctx = ensureCtx();
-  if (!ctx) return;
+  const a = ensureAudio();
+  if (!a) return;
   try {
-    const now = ctx.currentTime;
-    // Three short pleasant pips at 880 Hz.
-    for (const offset of [0, 0.32, 0.64]) {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.value = 880;
-      gain.gain.setValueAtTime(0.0001, now + offset);
-      gain.gain.exponentialRampToValueAtTime(0.3, now + offset + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.22);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(now + offset);
-      osc.stop(now + offset + 0.25);
-    }
+    a.muted = false;
+    a.currentTime = 0;
+    void a.play();
   } catch {
     /* no-op */
   }
