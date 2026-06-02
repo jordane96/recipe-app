@@ -615,6 +615,49 @@ a {
   outline-offset: 2px;
 }
 
+/* Search field with an in-field clear (×) button. Wrapper owns the bottom margin so the
+   absolutely-positioned button can center against the input box only. */
+.search-wrap {
+  position: relative;
+  margin-bottom: 0.75rem;
+}
+
+.search--with-clear {
+  margin-bottom: 0;
+  padding-right: 2.5rem;
+}
+
+/* Hide the browser's native search clear (×) so it doesn't double up with our custom button. */
+.search--with-clear::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.search-clear {
+  position: absolute;
+  top: calc(var(--tap) / 2);
+  right: 0.5rem;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.search-clear:hover {
+  color: var(--text);
+  background: var(--bg);
+}
+
 .recipe-filters-toggle {
   display: inline-flex;
   align-items: center;
@@ -1173,7 +1216,11 @@ a {
   margin: 0 -1rem -0.65rem -1rem;
   padding: 6px 10px 6px;
   border-radius: 0 0 17.5px 17.5px;
-  overflow: hidden;
+  /* The footer's prev/next arrows use a 40px glyph inside a 34px button; `overflow: hidden`
+     clipped the top/bottom of the arrows on small/mobile viewports. `visible` lets the glyph
+     show in full — the teal background still rounds via border-radius (only child content was
+     being clipped, not the element's own paint). */
+  overflow: visible;
   background: var(--cook-teal);
   display: flex;
   flex-direction: column;
@@ -4372,6 +4419,12 @@ a.recipe-detail-back-cta {
 .planner-read-sheet {
   max-width: 32rem;
   max-height: 88vh;
+}
+
+/* Recipe-picker sheets (e.g. "Log a meal") keep a stable height so the sheet doesn't visibly
+   shrink as the filtered result list gets shorter while typing. The body still scrolls. */
+.planner-sheet--fixed-tall {
+  height: 85vh;
 }
 
 .planner-sheet-head {

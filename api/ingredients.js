@@ -8,7 +8,7 @@ export default async function handler(req, res) {
     res.json({
       version: 2,
       units: {
-        volume: ['tsp', 'tbsp', 'cup'],
+        volume: ['tsp', 'tbsp', 'cup', 'to taste'],
         weight: ['oz', 'lb'],
         count: ['each', 'clove', 'pouch', 'pack', 'bunch', 'box', 'container', 'bottle', 'steak', 'piece', 'slice', 'peppers', 'handful', 'sqz'],
       },

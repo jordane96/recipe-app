@@ -144,6 +144,7 @@ export function ShoppingListPage({
     removeAdditionalItem,
     servingsByRecipe,
     setRecipeServings,
+    clearList,
   } = useShoppingList();
   const { showToast } = useToast();
 
@@ -521,6 +522,17 @@ export function ShoppingListPage({
             >
               Add more
             </Link>
+            <button
+              type="button"
+              className="btn-secondary btn-compact shopping-clear-list-btn"
+              aria-label="Clear the entire shopping list"
+              onClick={() => {
+                clearList();
+                showToast("Shopping list cleared.");
+              }}
+            >
+              Clear list
+            </button>
           </div>
 
           <section className="detail-section">

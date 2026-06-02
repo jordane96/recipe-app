@@ -302,6 +302,7 @@ export function ShoppingListProvider({ children }: { children: React.ReactNode }
     setSelectedIds([]);
     setPurchased([]);
     setServingsByRecipe({});
+    setAdditionalItems([]);
   }, []);
 
   const isPurchased = React.useCallback(

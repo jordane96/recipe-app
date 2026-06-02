@@ -16,6 +16,14 @@ export interface IngredientSection {
 
 export type IngredientKind = "volume" | "weight" | "count" | "other";
 
+/**
+ * Sentinel "unit" for amount-less seasoning lines (salt, pepper, oil drizzle, …). Listed among the
+ * volume units so it's pickable in the unit dropdown for measurable ingredients without having to
+ * reclassify the ingredient itself. A line using it stores `amount: null` and is treated as
+ * qualitative everywhere (display, shopping merge, servings scaling).
+ */
+export const TO_TASTE_UNIT = "to taste";
+
 export type IngredientCategory =
   | "produce"
   | "proteins"

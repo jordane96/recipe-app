@@ -67,7 +67,7 @@ function planMealHasCookLogLine(meal: PlannedMeal, logged: CookedMeal[]): boolea
   return logged.some((l) => l.planSlotRef == null && l.id === meal.id);
 }
 
-const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
 /** Compare local calendar dates as YYYY-MM-DD. */
 function dayRelativeToToday(dayIso: string, todayIso: string): "past" | "today" | "future" {
@@ -80,9 +80,9 @@ function dayRelativeToToday(dayIso: string, todayIso: string): "past" | "today" 
   return "today";
 }
 
-function mondayPaddingFirstOfMonth(year: number, monthIndex: number): number {
-  const dow = new Date(year, monthIndex, 1).getDay();
-  return (dow + 6) % 7;
+/** Leading blank cells before day 1 for a Sunday-first calendar (Sun=0 → no offset). */
+function sundayPaddingFirstOfMonth(year: number, monthIndex: number): number {
+  return new Date(year, monthIndex, 1).getDay();
 }
 
 function daysInMonth(year: number, monthIndex: number): number {
@@ -168,7 +168,7 @@ export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
   const y = viewMonth.getFullYear();
   const m = viewMonth.getMonth();
   const dim = daysInMonth(y, m);
-  const pad = mondayPaddingFirstOfMonth(y, m);
+  const pad = sundayPaddingFirstOfMonth(y, m);
 
   const monthKeys = React.useMemo(() => monthDateKeys(y, m), [y, m]);
 
@@ -499,7 +499,7 @@ export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
           }
         }}
       >
-        <div className="planner-sheet" role="dialog" aria-labelledby="historyPickTitle" aria-modal="true">
+        <div className="planner-sheet planner-sheet--fixed-tall" role="dialog" aria-labelledby="historyPickTitle" aria-modal="true">
           <div className="planner-sheet-head">
             <h2 id="historyPickTitle">Log a meal</h2>
             <p className="muted picker-subtitle" style={{ marginTop: 0 }}>

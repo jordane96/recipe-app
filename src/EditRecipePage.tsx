@@ -13,6 +13,7 @@ import type {
 import {
   grocerySectionLabel as categoryLabel,
   INGREDIENT_CATEGORY_ORDER as CATEGORY_ORDER,
+  TO_TASTE_UNIT,
 } from "./types";
 import { ingredientMap } from "./ingredientDisplay";
 import {
@@ -146,10 +147,24 @@ function ensureIngredientSections(recipe: Recipe): IngredientSection[] {
   if (recipe.ingredientSections?.length) {
     return recipe.ingredientSections.map((s) => ({
       name: s.name,
-      lines: s.lines.map((l) => ({ ...l })),
+      lines: (s.lines ?? []).map((l) => ({ ...l })),
     }));
   }
   return [{ name: "Main", lines: [] }];
+}
+
+/**
+ * The Servings stepper renders a fallback of 1 when `servings` is unset, but that 1 is purely
+ * visual — `draft.servings` stays undefined, so saving without touching the stepper persists NULL
+ * (the user had to bump to 2 then back to 1 to make it "stick"). Normalize on load so the persisted
+ * value matches what's shown. Only fills a missing/invalid value; a real yield is preserved.
+ */
+function withDefaultServings(recipe: Recipe): Recipe {
+  const s = recipe.servings;
+  if (typeof s === "number" && s > 0) {
+    return recipe;
+  }
+  return { ...recipe, servings: 1 };
 }
 
 function ensureInstructions(recipe: Recipe): RecipeInstructionStep[] {
@@ -170,7 +185,11 @@ function unitChoices(
   if (k === "other") {
     return [];
   }
-  return [...units[k]];
+  // Defensive: `def.unit` can drift to a value that isn't a key in `units` (e.g. a legacy/bad
+  // ingredient kind like "piece" stored in the DB). `[...undefined]` would throw and crash the
+  // whole editor render. Treat an unknown kind as "no concrete unit choices".
+  const list = units[k];
+  return Array.isArray(list) ? [...list] : [];
 }
 
 /**
@@ -187,6 +206,10 @@ function repairQualitativeLinesWhenMeasurable(
     ...sec,
     lines: sec.lines.map((line) => {
       if (!line.ingredientId) {
+        return line;
+      }
+      // "To taste" lines are intentionally amount-less; don't auto-fill a quantity onto them.
+      if (line.unit === TO_TASTE_UNIT) {
         return line;
       }
       const def = byId.get(line.ingredientId);
@@ -424,7 +447,7 @@ export function EditRecipePage({
         instructions: [{ text: "" }],
       };
       const defs = [...ingredients, ...(base.customIngredientDefs ?? [])];
-      setDraft(repairQualitativeLinesWhenMeasurable(base, defs, ingredientsFile.units));
+      setDraft(withDefaultServings(repairQualitativeLinesWhenMeasurable(base, defs, ingredientsFile.units)));
       return;
     }
     if (!recipe) {
@@ -434,7 +457,7 @@ export function EditRecipePage({
     const stored = loadStoredDraft(recipe.id);
     const base = stored ?? cloneRecipe(recipe);
     const defs = [...ingredients, ...(base.customIngredientDefs ?? [])];
-    setDraft(repairQualitativeLinesWhenMeasurable(base, defs, ingredientsFile.units));
+    setDraft(withDefaultServings(repairQualitativeLinesWhenMeasurable(base, defs, ingredientsFile.units)));
   }, [recipe?.id, ingredients, ingredientsFile, isCreate, parsedDraft]);
 
   React.useEffect(() => {
@@ -737,6 +760,17 @@ export function EditRecipePage({
         return;
       }
 
+      if (addIngredientUnit === TO_TASTE_UNIT) {
+        setDraft((d) =>
+          commitLine(d, { ingredientId: picked!.id, amount: null, unit: TO_TASTE_UNIT }),
+        );
+        closeAddIngredientModal();
+        showToast(
+          replaceSlot ? `Updated row to “${picked.name}”.` : `Added “${picked.name}” to the recipe.`,
+        );
+        return;
+      }
+
       const qtyRaw = addIngredientQuantity.trim();
       if (qtyRaw === "") {
         showToast("Enter a quantity.");
@@ -778,15 +812,20 @@ export function EditRecipePage({
       showToast("For a new ingredient, choose Volume, Weight, or Count—or pick an existing row above.");
       return;
     }
-    const qtyRaw = addIngredientQuantity.trim();
-    if (qtyRaw === "") {
-      showToast("Enter a quantity.");
-      return;
-    }
-    const amount = Number.parseFloat(qtyRaw);
-    if (!Number.isFinite(amount) || amount <= 0) {
-      showToast("Enter a positive number for quantity.");
-      return;
+    const isToTaste = addIngredientUnit === TO_TASTE_UNIT;
+    let amount: number | null = null;
+    if (!isToTaste) {
+      const qtyRaw = addIngredientQuantity.trim();
+      if (qtyRaw === "") {
+        showToast("Enter a quantity.");
+        return;
+      }
+      const parsed = Number.parseFloat(qtyRaw);
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        showToast("Enter a positive number for quantity.");
+        return;
+      }
+      amount = parsed;
     }
     const unitList = ingredientsFile.units[kind];
     const firstUnit = unitList?.[0] ?? "each";
@@ -1176,6 +1215,9 @@ export function EditRecipePage({
               const choices = unitChoices(def, ingredientsFile.units);
               /** Catalog "other" = no amount/unit UI. Do not treat empty amount while editing as qualitative or the qty field locks. */
               const catalogQualitative = def?.unit === "other";
+              /** "To taste" line: measurable ingredient, but this line has no quantity. Lock the amount field. */
+              const lineIsToTaste = line.unit === TO_TASTE_UNIT;
+              const amountDisabled = catalogQualitative || lineIsToTaste;
               const rowKey = `${secIndex}-${lineIndex}`;
               const unitKey = `u-${secIndex}-${lineIndex}`;
               const comboOpen = ingredientPickerKey === rowKey;
@@ -1238,9 +1280,10 @@ export function EditRecipePage({
                       type="text"
                       inputMode="decimal"
                       className="edit-recipe-ing-amt"
-                      disabled={catalogQualitative}
+                      disabled={amountDisabled}
+                      placeholder={lineIsToTaste ? "—" : undefined}
                       value={
-                        catalogQualitative
+                        amountDisabled
                           ? ""
                           : line.amount != null
                             ? String(line.amount)
@@ -1275,6 +1318,10 @@ export function EditRecipePage({
                         setUnitPickerKey((k) => (k === unitKey ? null : k))
                       }
                       onSelect={(u) => {
+                        if (u === TO_TASTE_UNIT) {
+                          updateLine(secIndex, lineIndex, { unit: TO_TASTE_UNIT, amount: null });
+                          return;
+                        }
                         updateLine(secIndex, lineIndex, {
                           unit: u || null,
                           amount: line.amount ?? 1,
@@ -1770,12 +1817,12 @@ export function EditRecipePage({
                 type="text"
                 inputMode="decimal"
                 className="edit-recipe-input"
-                value={addIngredientQuantity}
+                value={addIngredientUnit === TO_TASTE_UNIT ? "" : addIngredientQuantity}
                 onChange={(e) => setAddIngredientQuantity(e.target.value)}
-                placeholder="e.g. 2 or 0.5"
+                placeholder={addIngredientUnit === TO_TASTE_UNIT ? "—" : "e.g. 2 or 0.5"}
                 autoComplete="off"
                 aria-label="Quantity"
-                disabled={addModalIsQualitativePick}
+                disabled={addModalIsQualitativePick || addIngredientUnit === TO_TASTE_UNIT}
               />
             </div>
 

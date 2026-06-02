@@ -1,4 +1,5 @@
 import type { IngredientDef, Recipe, RecipeIngredientLine } from "./ingredientTypes";
+import { TO_TASTE_UNIT } from "./ingredientTypes";
 
 /** Whole numbers without decimals (e.g. 1); otherwise two decimal places (e.g. 1.30). */
 export function formatQuantityDisplay(n: number): string {
@@ -42,6 +43,9 @@ export function formatIngredientLine(
   const def = byId.get(line.ingredientId);
   const name = def?.name ?? line.ingredientId;
   const note = line.note ? ` ${line.note}` : "";
+  if (line.unit === TO_TASTE_UNIT) {
+    return `${name} - to taste${note}`.trim();
+  }
   if (line.amount == null || line.unit == null) {
     return `${name}${note}`.trim();
   }

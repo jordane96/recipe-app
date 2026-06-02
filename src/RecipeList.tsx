@@ -167,6 +167,19 @@ export function RecipeList({
   );
   const [filtersOpen, setFiltersOpen] = React.useState(persistedFiltersRef.current.filtersOpen);
 
+  // Forward nav to /recipes (e.g. tapping the "Recipes" tab) should start fresh — clear any search
+  // and tag filters left over from a previous visit. Back-nav (POP) from a recipe detail keeps them
+  // so list↔detail round-trips feel continuous. Layout effect so the stale query never paints.
+  React.useLayoutEffect(() => {
+    if (navigationType === "PUSH") {
+      setQ("");
+      setSelectedTags(new Set());
+      setFiltersOpen(false);
+    }
+    // Mount-only: navigationType is stable for this RecipeList instance.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Persist filter state on every change. Lightweight (one sessionStorage write per change).
   React.useEffect(() => {
     saveRecipeListFilters({
@@ -499,16 +512,28 @@ export function RecipeList({
   const addFlow = inPlanFlow;
 
   const searchInput = (
-    <input
-      className="search"
-      type="search"
-      placeholder="Search titles, ingredients, steps…"
-      value={q}
-      onChange={(e) => setQ(e.target.value)}
-      enterKeyHint="search"
-      autoComplete="off"
-      autoCorrect="off"
-    />
+    <div className="search-wrap">
+      <input
+        className="search search--with-clear"
+        type="search"
+        placeholder="Search titles, ingredients, steps…"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        enterKeyHint="search"
+        autoComplete="off"
+        autoCorrect="off"
+      />
+      {q ? (
+        <button
+          type="button"
+          className="search-clear"
+          aria-label="Clear search"
+          onClick={() => setQ("")}
+        >
+          ×
+        </button>
+      ) : null}
+    </div>
   );
 
   return (
