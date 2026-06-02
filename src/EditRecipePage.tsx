@@ -237,18 +237,23 @@ function repairQualitativeLinesWhenMeasurable(
 
 function formatDuration(sec: number): string {
   const s = Math.max(0, Math.floor(sec));
-  const m = Math.floor(s / 60);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
   const r = s % 60;
+  if (h > 0) {
+    return `${h}:${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
+  }
   return `${m}:${String(r).padStart(2, "0")}`;
 }
 
-type TimerDraftFields = { minutes: string; seconds: string };
+type TimerDraftFields = { hours: string; minutes: string; seconds: string };
 
 function secondsToTimerDraftFields(totalSec: number): TimerDraftFields {
   const s = Math.max(0, Math.floor(totalSec));
-  const m = Math.floor(s / 60);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
   const r = s % 60;
-  return { minutes: String(m), seconds: String(r) };
+  return { hours: String(h), minutes: String(m), seconds: String(r) };
 }
 
 /** Digits only for timer inputs (empty allowed while editing). */
@@ -256,18 +261,22 @@ function sanitizeTimerDigits(raw: string): string {
   return raw.replace(/\D/g, "");
 }
 
+/** True when all three timer fields are blank (nothing entered). */
+function timerDraftIsEmpty(d: TimerDraftFields): boolean {
+  return d.hours.trim() === "" && d.minutes.trim() === "" && d.seconds.trim() === "";
+}
+
 function parseTimerDraftFields(d: TimerDraftFields): number | null {
-  const minRaw = d.minutes.trim();
-  const secRaw = d.seconds.trim();
-  if (minRaw === "" && secRaw === "") {
+  if (timerDraftIsEmpty(d)) {
     return null;
   }
-  const min = minRaw === "" ? 0 : Number.parseInt(minRaw, 10);
-  const sec = secRaw === "" ? 0 : Number.parseInt(secRaw, 10);
-  if (!Number.isFinite(min) || !Number.isFinite(sec) || min < 0 || sec < 0 || sec > 59) {
+  const hrs = d.hours.trim() === "" ? 0 : Number.parseInt(d.hours.trim(), 10);
+  const min = d.minutes.trim() === "" ? 0 : Number.parseInt(d.minutes.trim(), 10);
+  const sec = d.seconds.trim() === "" ? 0 : Number.parseInt(d.seconds.trim(), 10);
+  if (![hrs, min, sec].every(Number.isFinite) || hrs < 0 || min < 0 || sec < 0 || min > 59 || sec > 59) {
     return null;
   }
-  return min * 60 + sec;
+  return hrs * 3600 + min * 60 + sec;
 }
 
 function stepToParts(step: RecipeInstructionStep): {
@@ -310,6 +319,41 @@ function partsToStep(parts: {
     return { text: "" };
   }
   return out;
+}
+
+/**
+ * Fold any open per-step timer drafts into the recipe's instructions. Timer entry no longer
+ * commits on blur (so moving hours→min→sec doesn't save mid-edit); instead the values are read
+ * here, when the recipe is saved. Empty drafts clear the step's timer; a non-empty but invalid
+ * draft (e.g. seconds > 59) is reported so the save can be blocked rather than silently dropping it.
+ */
+function foldTimerDraftsIntoDraft(
+  draft: Recipe,
+  timerDrafts: Record<number, TimerDraftFields>,
+): { draft: Recipe; invalidStepIndexes: number[] } {
+  const entries = Object.entries(timerDrafts);
+  if (entries.length === 0) {
+    return { draft, invalidStepIndexes: [] };
+  }
+  const steps = ensureInstructions(draft);
+  const invalidStepIndexes: number[] = [];
+  const nextSteps = steps.map((step, i) => {
+    const td = timerDrafts[i];
+    if (!td) {
+      return step;
+    }
+    const parts = stepToParts(step);
+    if (timerDraftIsEmpty(td)) {
+      return partsToStep({ ...parts, durationSeconds: undefined });
+    }
+    const parsed = parseTimerDraftFields(td);
+    if (parsed == null || parsed <= 0) {
+      invalidStepIndexes.push(i);
+      return step;
+    }
+    return partsToStep({ ...parts, durationSeconds: parsed });
+  });
+  return { draft: { ...draft, instructions: nextSteps }, invalidStepIndexes };
 }
 
 export function EditRecipePage({
@@ -1045,13 +1089,20 @@ export function EditRecipePage({
       showToast("Add a recipe name before saving.");
       return;
     }
+    // Step timers commit here (not on blur), so fold any open timer drafts into the recipe now.
+    const { draft: draftToSave, invalidStepIndexes } = foldTimerDraftsIntoDraft(draft, timerDraft);
+    if (invalidStepIndexes.length > 0) {
+      const first = invalidStepIndexes[0]! + 1;
+      showToast(`Step ${first}'s timer isn't valid — minutes and seconds must be 0–59.`);
+      return;
+    }
     setSaving(true);
     try {
       if (isCreate) {
         const res = await fetch(`/api/recipes`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...draft, currentUser }),
+          body: JSON.stringify({ ...draftToSave, currentUser }),
         });
         if (!res.ok) {
           const body = await res.json().catch(() => ({})) as { error?: string };
@@ -1061,7 +1112,7 @@ export function EditRecipePage({
         const { id: newId } = await res.json() as { id: string };
         clearStoredDraft("new");
         const created: Recipe = {
-          ...draft,
+          ...draftToSave,
           id: newId,
           owner: currentUser,
           visibility: "public",
@@ -1074,7 +1125,7 @@ export function EditRecipePage({
       const res = await fetch(`/api/recipes/${recipe!.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...draft, currentUser }),
+        body: JSON.stringify({ ...draftToSave, currentUser }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({})) as { error?: string };
@@ -1084,12 +1135,12 @@ export function EditRecipePage({
       const body = await res.json() as { ok: boolean; forked?: boolean; newId?: string };
       clearStoredDraft(recipe!.id);
       if (body.forked && body.newId) {
-        const forkedDraft: Recipe = { ...draft, id: body.newId, owner: currentUser, forkedFromRecipeId: recipe!.id, visibility: "private" };
+        const forkedDraft: Recipe = { ...draftToSave, id: body.newId, owner: currentUser, forkedFromRecipeId: recipe!.id, visibility: "private" };
         onSaved?.(forkedDraft);
         showToast("Saved as your own copy.");
         navigate(`/recipe/${body.newId}`);
       } else {
-        onSaved?.(draft);
+        onSaved?.(draftToSave);
         navigate(backTo);
       }
     } catch {
@@ -1540,7 +1591,7 @@ export function EditRecipePage({
                     </div>
                   </div>
                 ) : null}
-                {hasTimer ? (
+                {hasTimer && !timerOpenKey ? (
                   <div className="edit-recipe-step-timer">
                     <span className="edit-recipe-step-timer-label">
                       Timer: {formatDuration(parts.durationSeconds!)}
@@ -1576,6 +1627,31 @@ export function EditRecipePage({
                 {timerOpenKey ? (
                   <div className="edit-recipe-step-timer-form">
                     <div className="edit-recipe-step-timer-field">
+                      <label className="edit-recipe-step-timer-field-label" htmlFor={`edit-step-${i}-timer-hr`}>
+                        Hours
+                      </label>
+                      <input
+                        id={`edit-step-${i}-timer-hr`}
+                        type="text"
+                        inputMode="numeric"
+                        className="edit-recipe-input edit-recipe-input--timer-part"
+                        placeholder="0"
+                        autoComplete="off"
+                        value={timerDraft[i]?.hours ?? ""}
+                        onChange={(e) =>
+                          setTimerDraft((m) => ({
+                            ...m,
+                            [i]: {
+                              hours: sanitizeTimerDigits(e.target.value),
+                              minutes: m[i]?.minutes ?? "",
+                              seconds: m[i]?.seconds ?? "",
+                            },
+                          }))
+                        }
+                        aria-label={`Step ${i + 1} timer hours`}
+                      />
+                    </div>
+                    <div className="edit-recipe-step-timer-field">
                       <label className="edit-recipe-step-timer-field-label" htmlFor={`edit-step-${i}-timer-min`}>
                         Minutes
                       </label>
@@ -1591,6 +1667,7 @@ export function EditRecipePage({
                           setTimerDraft((m) => ({
                             ...m,
                             [i]: {
+                              hours: m[i]?.hours ?? "",
                               minutes: sanitizeTimerDigits(e.target.value),
                               seconds: m[i]?.seconds ?? "",
                             },
@@ -1615,6 +1692,7 @@ export function EditRecipePage({
                           setTimerDraft((m) => ({
                             ...m,
                             [i]: {
+                              hours: m[i]?.hours ?? "",
                               minutes: m[i]?.minutes ?? "",
                               seconds: sanitizeTimerDigits(e.target.value),
                             },
@@ -1624,26 +1702,6 @@ export function EditRecipePage({
                       />
                     </div>
                     <div className="edit-recipe-step-timer-form-actions">
-                      <button
-                        type="button"
-                        className="btn-primary btn-compact"
-                        onClick={() => {
-                          const fields = timerDraft[i] ?? { minutes: "", seconds: "" };
-                          const parsed = parseTimerDraftFields(fields);
-                          if (parsed == null || parsed <= 0) {
-                            showToast("Enter minutes and seconds (0–59 for seconds). Total time must be greater than zero.");
-                            return;
-                          }
-                          updateStep(i, { durationSeconds: parsed });
-                          setTimerDraft((m) => {
-                            const n = { ...m };
-                            delete n[i];
-                            return n;
-                          });
-                        }}
-                      >
-                        Set
-                      </button>
                       <button
                         type="button"
                         className="btn-ghost btn-compact"
@@ -1658,6 +1716,9 @@ export function EditRecipePage({
                         Cancel
                       </button>
                     </div>
+                    <p className="edit-recipe-field-hint edit-recipe-step-timer-hint">
+                      Timer saves when you tap “Save changes”.
+                    </p>
                   </div>
                 ) : null}
                 <div className="edit-recipe-step-subactions">
@@ -1682,7 +1743,7 @@ export function EditRecipePage({
                       onClick={() =>
                         setTimerDraft((m) => ({
                           ...m,
-                          [i]: { minutes: "", seconds: "" },
+                          [i]: { hours: "", minutes: "", seconds: "" },
                         }))
                       }
                     >

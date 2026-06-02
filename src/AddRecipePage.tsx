@@ -100,7 +100,7 @@ export function AddRecipePage() {
           data-on={tab === "screenshot"}
           onClick={() => { setTab("screenshot"); setError(null); }}
         >
-          Share screenshot
+          Share photo
         </button>
         <button
           role="tab"
@@ -129,7 +129,7 @@ export function AddRecipePage() {
         <div className="add-recipe-panel">
           {imagePreviewUrl ? (
             <div className="add-recipe-preview">
-              <img src={imagePreviewUrl} alt="Recipe screenshot" />
+              <img src={imagePreviewUrl} alt="Recipe photo" />
               <button
                 className="add-recipe-preview-remove"
                 onClick={removeImage}
@@ -159,9 +159,9 @@ export function AddRecipePage() {
                   <polyline points="21 15 16 10 5 21" />
                 </svg>
               </div>
-              <p className="add-recipe-upload-label">Drop a screenshot here</p>
+              <p className="add-recipe-upload-label">Drop a photo here</p>
               <p className="add-recipe-upload-sub">
-                Photo of a recipe, cookbook page, or app screenshot
+                Photo of a recipe, cookbook page, or app screen
               </p>
               <span className="add-recipe-upload-browse">Browse files</span>
             </div>

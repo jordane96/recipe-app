@@ -109,38 +109,25 @@ function computeMonthStats(history: CookHistoryByDate, year: number, monthIndex:
   const keys = monthDateKeys(year, monthIndex);
   let daysWithCooks = 0;
   let totalMeals = 0;
-  const idCounts = new Map<string, { title: string; count: number }>();
   for (const k of keys) {
     const arr = history[k] ?? [];
     if (arr.length > 0) {
       daysWithCooks += 1;
     }
-    for (const m of arr) {
-      totalMeals += 1;
-      const prev = idCounts.get(m.id);
-      if (prev) {
-        prev.count += 1;
-      } else {
-        idCounts.set(m.id, { title: m.title, count: 1 });
-      }
-    }
-  }
-  let most: { title: string; count: number } | null = null;
-  for (const v of idCounts.values()) {
-    if (!most || v.count > most.count) {
-      most = { title: v.title, count: v.count };
-    }
+    totalMeals += arr.length;
   }
   const dim = keys.length;
+  // Rough "money saved vs. eating out" — assume each serving cooked saves a flat amount.
+  const DOLLARS_SAVED_PER_SERVING = 10;
 
   return {
     daysWithCooks,
     dim,
     totalMeals,
-    most,
     secondLabel: "Total servings" as const,
     secondValue: totalMeals,
     secondSub: "this month" as const,
+    moneySaved: totalMeals * DOLLARS_SAVED_PER_SERVING,
   };
 }
 
@@ -361,19 +348,9 @@ export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
           <div className="history-summary-sub">{stats.secondSub}</div>
         </div>
         <div className="history-summary-card">
-          {stats.most ? (
-            <>
-              <div className="history-summary-most">{stats.most.title}</div>
-              <div className="history-summary-label">Most cooked</div>
-              <div className="history-summary-sub">{stats.most.count} times</div>
-            </>
-          ) : (
-            <>
-              <div className="history-summary-most history-summary-most--muted">—</div>
-              <div className="history-summary-label">Most cooked</div>
-              <div className="history-summary-sub">No data yet</div>
-            </>
-          )}
+          <div className="history-summary-value">${stats.moneySaved}</div>
+          <div className="history-summary-label">Saved</div>
+          <div className="history-summary-sub">~$10/serving</div>
         </div>
       </section>
 
