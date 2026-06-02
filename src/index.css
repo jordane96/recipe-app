@@ -4576,6 +4576,9 @@ a.recipe-detail-back-cta {
   width: 100%;
   text-align: left;
   font: inherit;
+  /* Explicit color so iOS doesn't render button text as the system link blue. */
+  color: var(--text);
+  -webkit-text-fill-color: currentColor;
   padding: 0.65rem 0.75rem;
   border: none;
   border-radius: 10px;
