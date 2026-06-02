@@ -413,7 +413,7 @@ export function MealPlannerPage({
                 −
               </button>
               <span className="meal-chip-portion-value" aria-label={`Servings: ${portionCountOf(m)}`}>
-                {portionCountOf(m)}
+                {portionCountOf(m)} {portionCountOf(m) === 1 ? "serving" : "servings"}
               </span>
               <button
                 type="button"

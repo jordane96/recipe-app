@@ -438,7 +438,7 @@ export function ShoppingListPage({
       {selectedRecipes.length > 0 ? (
         <>
           <section className="detail-section">
-            <h2>Recipes</h2>
+            <h2>Recipes (# of servings)</h2>
             <ul className="selected-recipes">
               {groupedSelected.map(({ recipe: r }) => (
                 <li
