@@ -519,6 +519,7 @@ export function RecipeList({
               onChange={() => {
                 if (alreadyInList) {
                   removeAllSlotsForRecipe(r.id);
+                  showToast(`Removed “${r.title}” from your shopping list.`);
                 } else if (inAddFlowCart) {
                   removeFromAddFlowCart(r);
                 } else {
