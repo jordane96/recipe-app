@@ -385,6 +385,12 @@ function AppLayout({
     if (prev.search === search) {
       return;
     }
+    // The recipe list owns its own scroll (search/filters live in component state, not the URL).
+    // Search-only URL changes here are transient flow params — e.g. stripping the one-shot
+    // addToCart after "Add to shopping list" — and must not yank the restored scroll to the top.
+    if (pathname === "/recipes") {
+      return;
+    }
     const onRecipeEdit = /^\/recipe\/[^/]+\/edit$/.test(pathname);
     if (onRecipeEdit) {
       const before = new URLSearchParams(

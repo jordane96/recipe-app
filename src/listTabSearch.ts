@@ -413,6 +413,12 @@ export function recipeDetailBackPath(
   if (readFromDiscover(searchParams)) {
     return "/recipes/discover";
   }
+  // Shop-build pick flow (carries shopBuild=1): the detail was opened from the recipe-list picker,
+  // so Back returns to that picker — not the still-empty shopping list. Checked before the
+  // navigate-back-to-shopping rule because the picker also carries from=shopping.
+  if (readShopMenuBuild(searchParams)) {
+    return recipesShopMenuBuildPath(searchParams.get(PLAN_WEEK_START_QUERY) ?? "");
+  }
   if (readNavigateBackToShoppingList(searchParams)) {
     return shoppingListPath(preserveParams ?? searchParams);
   }
