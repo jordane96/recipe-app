@@ -8,7 +8,9 @@
  * autoplay-blocked contexts just no-op.
  */
 
-const ALARM_SRC = "/sounds/timer-alarm.mp3";
+// Versioned filename: bump the suffix whenever the audio changes so PWA/browser caches
+// can't serve a stale clip (files in public/ keep their literal URL, unlike hashed bundles).
+const ALARM_SRC = "/sounds/timer-alarm-2.mp3";
 
 let alarm: HTMLAudioElement | null = null;
 let unlocked = false;
