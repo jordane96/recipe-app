@@ -40,6 +40,7 @@ import {
   clearActiveAddFlowSessionStorage,
   isAddFlowBuilderLocation,
 } from "./addFlowCartSession";
+import { isRecipeDetailPathname, recordNavigation } from "./navHistory";
 
 function appChromeSectionTitle(pathname: string): string {
   if (pathname === "/" || pathname === "") {
@@ -240,6 +241,9 @@ function AppLayout({
 }) {
   const { pathname, search } = useLocation();
   const navigationType = useNavigationType();
+  // Record nav during render so child routes (e.g. RecipeList) see the correct previous pathname
+  // in their own mount effects, which run before this parent component's effects.
+  React.useMemo(() => recordNavigation(pathname), [pathname]);
   const { count } = useShoppingList();
   const [menuOpen, setMenuOpen] = React.useState(false);
   const menuBtnRef = React.useRef<HTMLButtonElement>(null);
@@ -335,6 +339,11 @@ function AppLayout({
       // Forward nav (PUSH/REPLACE) snaps to top. The initial mount (`!prev`) always snaps —
       // its keyboard-dismiss retries below are needed even though the first load reports POP.
       if (prev && navigationType === "POP") {
+        return;
+      }
+      // The recipe detail's "Back" is a <Link> (a PUSH, not a POP). When returning to the recipe
+      // list from a detail, skip the snap so RecipeList can restore the prior scroll position.
+      if (prev && pathname === "/recipes" && isRecipeDetailPathname(prev.pathname)) {
         return;
       }
       snapToTop();

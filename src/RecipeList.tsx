@@ -22,6 +22,7 @@ import {
   saveRecipeListFilters,
   saveRecipeListScrollY,
 } from "./recipeListPersistence";
+import { getPreviousPathname, isRecipeDetailPathname } from "./navHistory";
 import { iso } from "./mealPlanDates";
 import { instructionStepText } from "./recipeInstructions";
 import {
@@ -171,7 +172,11 @@ export function RecipeList({
   // and tag filters left over from a previous visit. Back-nav (POP) from a recipe detail keeps them
   // so list↔detail round-trips feel continuous. Layout effect so the stale query never paints.
   React.useLayoutEffect(() => {
-    if (navigationType === "PUSH") {
+    // Returning from a recipe detail (an in-app "Back" <Link>, i.e. a PUSH) must preserve the
+    // search/filters so the list looks the same as when you left it. Only a genuine fresh visit
+    // from another tab clears them.
+    const returningFromDetail = isRecipeDetailPathname(getPreviousPathname());
+    if (navigationType === "PUSH" && !returningFromDetail) {
       setQ("");
       setSelectedTags(new Set());
       setFiltersOpen(false);
@@ -189,16 +194,23 @@ export function RecipeList({
     });
   }, [q, selectedTags, filtersOpen]);
 
-  // Scroll restore on back-nav (POP). Forward nav (PUSH/REPLACE) lets App.tsx snap-to-top win.
-  // We schedule restore through 2x rAF so it lands after App.tsx's snap-to-top rAF re-snap.
-  React.useEffect(() => {
-    if (navigationType !== "POP") {
+  // Restore scroll when returning to the list from a recipe. Two ways back qualify:
+  //  - browser Back (POP), and
+  //  - the detail page's in-app "Back" <Link>, which is a PUSH whose previous path is the detail.
+  // A fresh visit from another tab (previous path is some other route) intentionally stays at top.
+  // App.tsx skips its snap-to-top for both of these so this restore isn't overridden.
+  React.useLayoutEffect(() => {
+    const returningFromDetail = isRecipeDetailPathname(getPreviousPathname());
+    if (navigationType !== "POP" && !returningFromDetail) {
       return;
     }
     const y = loadRecipeListScrollY();
     if (y == null) {
       return;
     }
+    // Immediate restore (list renders synchronously, so layout height is already correct), with a
+    // 2x rAF backstop in case mobile URL-bar collapse shifts layout after the first paint.
+    window.scrollTo(0, y);
     let raf1 = 0;
     let raf2 = 0;
     raf1 = window.requestAnimationFrame(() => {
@@ -214,11 +226,12 @@ export function RecipeList({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Capture scrollY on unmount so the next back-nav can restore it.
-  React.useEffect(() => {
-    return () => {
-      saveRecipeListScrollY(window.scrollY);
-    };
+  // Persist the scroll position when leaving the list for a recipe, captured synchronously on the
+  // link click while the DOM is still intact. (Saving in an unmount cleanup is too late — the long
+  // list has already been replaced by the short detail page, so the browser has clamped scrollY
+  // back toward 0.) The matching restore runs when returning to the list from a detail.
+  const rememberScrollOnLeave = React.useCallback(() => {
+    saveRecipeListScrollY(window.scrollY);
   }, []);
 
   const toggleTag = React.useCallback((t: string) => {
@@ -464,7 +477,7 @@ export function RecipeList({
     if (!inPlanFlow) {
       return (
         <li key={r.id} className="recipe-row">
-          <Link className="recipe-link" to={detailPath}>
+          <Link className="recipe-link" to={detailPath} onClick={rememberScrollOnLeave}>
             {titleAndMeta}
           </Link>
         </li>
@@ -490,6 +503,7 @@ export function RecipeList({
             <Link
               to={detailPath}
               className="recipe-row-view-link"
+              onClick={rememberScrollOnLeave}
               aria-label={
                 isShopMenuBuildFlow
                   ? `View recipe: ${r.title} (ingredients, steps)`
