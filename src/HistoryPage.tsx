@@ -6,6 +6,7 @@ import { recipeDetailPath, recipesAddToPlanPath } from "./listTabSearch";
 import { useCookHistory } from "./CookHistoryContext";
 import type { CookHistoryByDate, CookedMeal } from "./cookHistoryStorage";
 import { useMealPlan } from "./MealPlanContext";
+import { portionCountOf } from "./mealPlanStorage";
 import type { MealPlanByDate, PlannedMeal } from "./mealPlanStorage";
 
 /**
@@ -108,13 +109,16 @@ function monthDateKeys(year: number, monthIndex: number): string[] {
 function computeMonthStats(history: CookHistoryByDate, year: number, monthIndex: number) {
   const keys = monthDateKeys(year, monthIndex);
   let daysWithCooks = 0;
-  let totalMeals = 0;
+  let totalServings = 0;
   for (const k of keys) {
     const arr = history[k] ?? [];
     if (arr.length > 0) {
       daysWithCooks += 1;
     }
-    totalMeals += arr.length;
+    for (const m of arr) {
+      // Legacy entries (logged before servings were captured) count as 1.
+      totalServings += typeof m.servings === "number" && m.servings > 0 ? m.servings : 1;
+    }
   }
   const dim = keys.length;
   // Rough "money saved vs. eating out" — assume each serving cooked saves a flat amount.
@@ -123,11 +127,11 @@ function computeMonthStats(history: CookHistoryByDate, year: number, monthIndex:
   return {
     daysWithCooks,
     dim,
-    totalMeals,
+    totalServings,
     secondLabel: "Total servings" as const,
-    secondValue: totalMeals,
+    secondValue: totalServings,
     secondSub: "this month" as const,
-    moneySaved: totalMeals * DOLLARS_SAVED_PER_SERVING,
+    moneySaved: totalServings * DOLLARS_SAVED_PER_SERVING,
   };
 }
 
@@ -202,6 +206,7 @@ export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
         title: meal.title,
         kind: meal.kind,
         ...(meal.planSlotRef ? { planSlotRef: meal.planSlotRef } : {}),
+        servings: portionCountOf(meal),
       });
     },
     [history, logCooked, todayIso],

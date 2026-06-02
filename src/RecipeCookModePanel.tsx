@@ -40,6 +40,8 @@ import { iso, startOfWeekMonday } from "./mealPlanDates";
 import { normalizeInstructions } from "./recipeInstructions";
 import { useCookHistory } from "./CookHistoryContext";
 import { recipeSegment } from "./recipeCourse";
+import { useMealPlan } from "./MealPlanContext";
+import { portionCountOf } from "./mealPlanStorage";
 
 const SWIPE_PX = 56;
 
@@ -164,6 +166,7 @@ export function RecipeCookModePanel({
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { logCooked } = useCookHistory();
+  const { plan } = useMealPlan();
   // Keep the screen awake the whole time the cook panel is mounted so the recipe stays
   // visible and step timers keep ticking in the foreground. Released automatically on exit.
   useWakeLock(true);
@@ -602,12 +605,23 @@ export function RecipeCookModePanel({
       return;
     }
     celebrationExitOnceRef.current = false;
+    // Servings come from the plan slot we're cooking (its portionCount), falling back to the
+    // recipe's base servings when cooking something not tied to a slot.
+    const slotMeal = cookSlotRef
+      ? (plan[cookDate] ?? []).find((m) => m.planSlotRef === cookSlotRef)
+      : undefined;
+    const servings = slotMeal
+      ? portionCountOf(slotMeal)
+      : typeof recipe.servings === "number" && recipe.servings > 0
+        ? recipe.servings
+        : 1;
     flushSync(() => {
       logCooked(cookDate, {
         id: recipe.id,
         title: recipe.title,
         kind: recipeSegment(recipe) === "side" ? "side" : "main",
         ...(cookSlotRef ? { planSlotRef: cookSlotRef } : {}),
+        servings,
       });
     });
     setCelebrationOpen(true);

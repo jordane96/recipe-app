@@ -6,7 +6,6 @@ import {
   type CookedMeal,
   type CookHistoryByDate,
 } from "./cookHistoryStorage";
-import { recipeToPlannedMeal } from "./MealPlanContext";
 import { isMealPlanDateKey } from "./mealPlanStorage";
 import { recipeSegment } from "./recipeCourse";
 
@@ -37,6 +36,9 @@ export function CookHistoryProvider({ children }: { children: React.ReactNode })
         title: meal.title,
         kind: meal.kind,
         ...(meal.planSlotRef ? { planSlotRef: meal.planSlotRef } : {}),
+        ...(typeof meal.servings === "number" && meal.servings > 0
+          ? { servings: meal.servings }
+          : {}),
       };
       next[dateIso] = [...(prev[dateIso] ?? []), entry];
       saveCookHistory(next);
@@ -50,6 +52,9 @@ export function CookHistoryProvider({ children }: { children: React.ReactNode })
         id: recipe.id,
         title: recipe.title,
         kind: recipeSegment(recipe) === "side" ? "side" : "main",
+        ...(typeof recipe.servings === "number" && recipe.servings > 0
+          ? { servings: recipe.servings }
+          : {}),
       });
     },
     [logCooked],

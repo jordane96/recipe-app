@@ -12,6 +12,12 @@ export type CookedMeal = {
    * to the menu). Optional for backward-compat with legacy entries written before this field.
    */
   planSlotRef?: string;
+  /**
+   * Servings made — taken from the plan slot's count (or the recipe's base servings when logged
+   * directly). Drives the monthly "Total servings" / "$ saved" stats. Optional for backward-compat
+   * with legacy entries written before this field; those count as 1.
+   */
+  servings?: number;
 };
 
 export type CookHistoryByDate = Record<string, CookedMeal[]>;
@@ -30,11 +36,15 @@ function parseStored(raw: Record<string, unknown>): CookHistoryByDate {
         ((x as CookedMeal).kind === "main" || (x as CookedMeal).kind === "side")
       ) {
         const ref = (x as CookedMeal).planSlotRef;
+        const sv = (x as CookedMeal).servings;
         arr.push({
           id: (x as CookedMeal).id,
           title: (x as CookedMeal).title,
           kind: (x as CookedMeal).kind,
           ...(typeof ref === "string" && ref.length > 0 ? { planSlotRef: ref } : {}),
+          ...(typeof sv === "number" && Number.isFinite(sv) && sv > 0
+            ? { servings: Math.floor(sv) }
+            : {}),
         });
       }
     }
