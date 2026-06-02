@@ -6,6 +6,7 @@ import {
   Route,
   Routes,
   useLocation,
+  useNavigationType,
 } from "react-router-dom";
 import { applyQualitativeOverrides, loadQualitativeOverrides } from "./qualitativeOverrides";
 import { loadIngredientsFile, loadRecipeBundle } from "./loadRecipes";
@@ -238,6 +239,7 @@ function AppLayout({
   onSignOut?: () => void;
 }) {
   const { pathname, search } = useLocation();
+  const navigationType = useNavigationType();
   const { count } = useShoppingList();
   const [menuOpen, setMenuOpen] = React.useState(false);
   const menuBtnRef = React.useRef<HTMLButtonElement>(null);
@@ -328,6 +330,13 @@ function AppLayout({
     };
 
     if (!prev || prev.pathname !== pathname) {
+      // Back/forward nav (POP) to a different page: let the destination restore its own
+      // scroll position (e.g. RecipeList returning from a recipe) instead of forcing top.
+      // Forward nav (PUSH/REPLACE) snaps to top. The initial mount (`!prev`) always snaps —
+      // its keyboard-dismiss retries below are needed even though the first load reports POP.
+      if (prev && navigationType === "POP") {
+        return;
+      }
       snapToTop();
       // Re-snap after first paint in case mobile URL bar / async content shifts layout.
       const raf = window.requestAnimationFrame(snapToTop);
