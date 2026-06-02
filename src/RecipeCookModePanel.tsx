@@ -168,7 +168,7 @@ export function RecipeCookModePanel({
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { logCooked } = useCookHistory();
-  const { plan } = useMealPlan();
+  const { plan, unassignedKey } = useMealPlan();
   // Keep the screen awake the whole time the cook panel is mounted so the recipe stays
   // visible and step timers keep ticking in the foreground. Released automatically on exit.
   useWakeLock(true);
@@ -204,10 +204,19 @@ export function RecipeCookModePanel({
   // Servings for this cook session: drives ingredient scaling and the servings logged on "It's
   // ready". Defaults to the plan slot's servings (or the recipe's base), and is remembered per
   // session. Ingredient amounts scale by cookServings / base; with no base servings, scale is 1.
-  const slotMeal = React.useMemo(
-    () => (cookSlotRef ? (plan[cookDate] ?? []).find((m) => m.planSlotRef === cookSlotRef) : undefined),
-    [plan, cookDate, cookSlotRef],
-  );
+  // The slot we're cooking can live on the calendar day (planner "Cook now") or in the menu's
+  // unassigned pool ("Cook now" from the menu). Match its planSlotRef in either place.
+  const slotMeal = React.useMemo(() => {
+    if (!cookSlotRef) {
+      return undefined;
+    }
+    const dayMeals = plan[cookDate] ?? [];
+    const menuMeals = plan[unassignedKey] ?? [];
+    return (
+      dayMeals.find((m) => m.planSlotRef === cookSlotRef) ??
+      menuMeals.find((m) => m.planSlotRef === cookSlotRef)
+    );
+  }, [plan, cookDate, cookSlotRef, unassignedKey]);
   const baseServings =
     typeof recipe.servings === "number" && recipe.servings > 0 ? recipe.servings : null;
   const [cookServings, setCookServings] = React.useState(() => {
