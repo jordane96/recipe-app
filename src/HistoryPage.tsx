@@ -137,8 +137,9 @@ function computeMonthStats(history: CookHistoryByDate, year: number, monthIndex:
 
 export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
   const navigate = useNavigate();
-  const { history, logCooked, logRecipeCooked, removeCookedAt } = useCookHistory();
-  const { plan, removeMealAt } = useMealPlan();
+  const { history, logCooked, logRecipeCooked, removeCookedAt, setCookedServingsAt } =
+    useCookHistory();
+  const { plan, removeMealAt, adjustCalendarPortionCount } = useMealPlan();
   const todayIso = iso(new Date());
 
   const [viewMonth, setViewMonth] = React.useState(() => {
@@ -230,6 +231,35 @@ export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
       }
     },
     [history, removeMealAt, removeCookedAt],
+  );
+
+  /** Adjust servings for a planned slot; if it's already logged cooked, keep the log entry in sync. */
+  const adjustPlannedRowServings = React.useCallback(
+    (dayIso: string, planIndex: number, meal: PlannedMeal, delta: number) => {
+      adjustCalendarPortionCount(dayIso, planIndex, delta);
+      const logged = history[dayIso] ?? [];
+      let logIdx = -1;
+      if (meal.planSlotRef) {
+        logIdx = logged.findIndex((l) => l.planSlotRef === meal.planSlotRef);
+      }
+      if (logIdx < 0) {
+        logIdx = logged.findIndex((l) => l.planSlotRef == null && l.id === meal.id);
+      }
+      if (logIdx >= 0) {
+        const next = Math.min(99, Math.max(1, portionCountOf(meal) + delta));
+        setCookedServingsAt(dayIso, logIdx, next);
+      }
+    },
+    [adjustCalendarPortionCount, history, setCookedServingsAt],
+  );
+
+  /** Adjust servings on a cook-log-only row (no plan slot). */
+  const adjustLoggedRowServings = React.useCallback(
+    (dayIso: string, logIndex: number, meal: CookedMeal, delta: number) => {
+      const cur = meal.servings && meal.servings > 0 ? meal.servings : 1;
+      setCookedServingsAt(dayIso, logIndex, cur + delta);
+    },
+    [setCookedServingsAt],
   );
 
   const openPicker = () => {
@@ -394,11 +424,37 @@ export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
                       hasCookLog ? "" : " history-day-meal-row--planned"
                     }`}
                   >
+                    <span className="history-day-meal-title">{meal.title}</span>
+                    <div className="history-day-meal-servings">
+                      <button
+                        type="button"
+                        className="meal-chip-portion-btn"
+                        aria-label={`Decrease servings for ${meal.title}`}
+                        onClick={() => adjustPlannedRowServings(selectedIso, planIndex, meal, -1)}
+                      >
+                        −
+                      </button>
+                      <span
+                        className="meal-chip-portion-value"
+                        aria-label={`Servings: ${portionCountOf(meal)}`}
+                      >
+                        {portionCountOf(meal)}
+                      </span>
+                      <button
+                        type="button"
+                        className="meal-chip-portion-btn"
+                        aria-label={`Increase servings for ${meal.title}`}
+                        onClick={() => adjustPlannedRowServings(selectedIso, planIndex, meal, 1)}
+                      >
+                        +
+                      </button>
+                    </div>
                     <Link
                       to={recipeDetailPath(meal.id, undefined, false, true, false)}
-                      className="history-day-meal-title"
+                      className="history-day-meal-view"
+                      aria-label={`View ${meal.title}`}
                     >
-                      {meal.title}
+                      View
                     </Link>
                     {showMarkCooked ? (
                       <button
@@ -427,11 +483,37 @@ export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
                 plannedIdsOnDay(plan, selectedIso),
               ).map(({ meal, logIndex }) => (
                 <li key={`${selectedIso}-log-${logIndex}-${meal.id}`} className="history-day-meal-row">
+                  <span className="history-day-meal-title">{meal.title}</span>
+                  <div className="history-day-meal-servings">
+                    <button
+                      type="button"
+                      className="meal-chip-portion-btn"
+                      aria-label={`Decrease servings for ${meal.title}`}
+                      onClick={() => adjustLoggedRowServings(selectedIso, logIndex, meal, -1)}
+                    >
+                      −
+                    </button>
+                    <span
+                      className="meal-chip-portion-value"
+                      aria-label={`Servings: ${meal.servings && meal.servings > 0 ? meal.servings : 1}`}
+                    >
+                      {meal.servings && meal.servings > 0 ? meal.servings : 1}
+                    </span>
+                    <button
+                      type="button"
+                      className="meal-chip-portion-btn"
+                      aria-label={`Increase servings for ${meal.title}`}
+                      onClick={() => adjustLoggedRowServings(selectedIso, logIndex, meal, 1)}
+                    >
+                      +
+                    </button>
+                  </div>
                   <Link
                     to={recipeDetailPath(meal.id, undefined, false, true, false)}
-                    className="history-day-meal-title"
+                    className="history-day-meal-view"
+                    aria-label={`View ${meal.title}`}
                   >
-                    {meal.title}
+                    View
                   </Link>
                   <button
                     type="button"

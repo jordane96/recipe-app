@@ -61,6 +61,8 @@ type MealPlanCtx = {
   removeMealAt: (dateKey: string, index: number) => void;
   moveMealToDay: (fromKey: string, fromIndex: number, toKey: string) => void;
   adjustUnassignedPortionCount: (unassignedIndex: number, delta: number) => void;
+  /** Adjust a calendar-day slot's servings (clamped 1–99). */
+  adjustCalendarPortionCount: (dateKey: string, planIndex: number, delta: number) => void;
   /**
    * Ensures a calendar-day plan row has {@link PlannedMeal.planSlotRef} so cook logs can link to it.
    * Returns existing or newly assigned ref; undefined if the slot does not exist.
@@ -172,6 +174,27 @@ export function MealPlanProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
+  const adjustCalendarPortionCount = React.useCallback(
+    (dateKey: string, planIndex: number, delta: number) => {
+      setPlan((prev) => {
+        const row = [...(prev[dateKey] ?? [])];
+        if (planIndex < 0 || planIndex >= row.length) {
+          return prev;
+        }
+        const meal = row[planIndex];
+        const cur = portionCountOf(meal);
+        const nextCount = Math.min(99, Math.max(1, cur + delta));
+        if (nextCount === cur) {
+          return prev;
+        }
+        markRecipeSourcePlan(meal.id);
+        row[planIndex] = { ...meal, portionCount: nextCount };
+        return { ...prev, [dateKey]: sortMealsMainBeforeSide(row) };
+      });
+    },
+    [],
+  );
+
   const ensureCalendarSlotRef = React.useCallback(
     (dateKey: string, planIndex: number): string | undefined => {
       if (!isMealPlanDateKey(dateKey)) {
@@ -235,6 +258,7 @@ export function MealPlanProvider({ children }: { children: React.ReactNode }) {
       removeMealAt,
       moveMealToDay,
       adjustUnassignedPortionCount,
+      adjustCalendarPortionCount,
       ensureCalendarSlotRef,
       ensureUnassignedSlotRef,
     }),
@@ -245,6 +269,7 @@ export function MealPlanProvider({ children }: { children: React.ReactNode }) {
       removeMealAt,
       moveMealToDay,
       adjustUnassignedPortionCount,
+      adjustCalendarPortionCount,
       ensureCalendarSlotRef,
       ensureUnassignedSlotRef,
     ],

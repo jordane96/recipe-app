@@ -14,6 +14,8 @@ type CookHistoryCtx = {
   logCooked: (dateIso: string, meal: CookedMeal) => void;
   logRecipeCooked: (dateIso: string, recipe: Recipe) => void;
   removeCookedAt: (dateIso: string, index: number) => void;
+  /** Set the servings recorded for a cook-log entry (clamped 1–99). */
+  setCookedServingsAt: (dateIso: string, index: number, servings: number) => void;
 };
 
 const CookHistoryContext = React.createContext<CookHistoryCtx | null>(null);
@@ -60,6 +62,24 @@ export function CookHistoryProvider({ children }: { children: React.ReactNode })
     [logCooked],
   );
 
+  const setCookedServingsAt = React.useCallback(
+    (dateIso: string, index: number, servings: number) => {
+      setHistory((prev) => {
+        const row = prev[dateIso];
+        if (!row || index < 0 || index >= row.length) return prev;
+        const clamped = Math.min(99, Math.max(1, Math.floor(servings)));
+        if ((row[index].servings ?? 1) === clamped) return prev;
+        const next: CookHistoryByDate = { ...prev };
+        const cur = [...row];
+        cur[index] = { ...cur[index], servings: clamped };
+        next[dateIso] = cur;
+        saveCookHistory(next);
+        return next;
+      });
+    },
+    [],
+  );
+
   const removeCookedAt = React.useCallback((dateIso: string, index: number) => {
     setHistory((prev) => {
       const row = prev[dateIso];
@@ -78,8 +98,8 @@ export function CookHistoryProvider({ children }: { children: React.ReactNode })
   }, []);
 
   const value = React.useMemo(
-    () => ({ history, logCooked, logRecipeCooked, removeCookedAt }),
-    [history, logCooked, logRecipeCooked, removeCookedAt],
+    () => ({ history, logCooked, logRecipeCooked, removeCookedAt, setCookedServingsAt }),
+    [history, logCooked, logRecipeCooked, removeCookedAt, setCookedServingsAt],
   );
 
   return <CookHistoryContext.Provider value={value}>{children}</CookHistoryContext.Provider>;
