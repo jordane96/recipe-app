@@ -1964,8 +1964,8 @@ button.cook-mode-v2-meal-banner--in-chrome,
 .cook-mode-v2-overview-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem 0.75rem;
+  justify-content: flex-start;
+  gap: 0.5rem 1rem;
   flex-wrap: wrap;
   margin: 0 0 1.05rem;
 }
