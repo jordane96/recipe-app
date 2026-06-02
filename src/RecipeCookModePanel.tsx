@@ -2,7 +2,7 @@ import * as React from "react";
 import { flushSync } from "react-dom";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import type { IngredientDef, Recipe } from "./types";
-import { formatIngredientLine, ingredientMapWithRecipes } from "./ingredientDisplay";
+import { formatIngredientLine, ingredientMapWithRecipes, scaleIngredientLine } from "./ingredientDisplay";
 import { useWakeLock } from "./useWakeLock";
 import { playTimerAlert, stopTimerAlert, unlockTimerAudio } from "./timerAlert";
 import {
@@ -25,6 +25,8 @@ import {
   clearCookModeForRecipeDate,
   displaySecondsForClock,
   ensureCookSessionTotalStarted,
+  loadCookServings,
+  saveCookServings,
   loadCookSessionTotalPersist,
   loadCookUi,
   readStepClockPersistIfAny,
@@ -198,6 +200,30 @@ export function RecipeCookModePanel({
   /** Persisted session total clock (Total time) + pause state. */
   const [sessionTotalPersist, setSessionTotalPersist] = React.useState<CookSessionTotalPersist | null>(null);
   const [cookIngredientsOpen, setCookIngredientsOpen] = React.useState(false);
+
+  // Servings for this cook session: drives ingredient scaling and the servings logged on "It's
+  // ready". Defaults to the plan slot's servings (or the recipe's base), and is remembered per
+  // session. Ingredient amounts scale by cookServings / base; with no base servings, scale is 1.
+  const slotMeal = React.useMemo(
+    () => (cookSlotRef ? (plan[cookDate] ?? []).find((m) => m.planSlotRef === cookSlotRef) : undefined),
+    [plan, cookDate, cookSlotRef],
+  );
+  const baseServings =
+    typeof recipe.servings === "number" && recipe.servings > 0 ? recipe.servings : null;
+  const [cookServings, setCookServings] = React.useState(() => {
+    const stored = loadCookServings(recipe.id, cookDate, cookSlotRef);
+    if (stored != null) {
+      return stored;
+    }
+    if (slotMeal) {
+      return portionCountOf(slotMeal);
+    }
+    return baseServings ?? 1;
+  });
+  React.useEffect(() => {
+    saveCookServings(recipe.id, cookDate, cookSlotRef, cookServings);
+  }, [recipe.id, cookDate, cookSlotRef, cookServings]);
+  const ingredientScale = baseServings ? cookServings / baseServings : 1;
   const [celebrationOpen, setCelebrationOpen] = React.useState(false);
   const celebrationExitTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const celebrationExitOnceRef = React.useRef(false);
@@ -605,23 +631,14 @@ export function RecipeCookModePanel({
       return;
     }
     celebrationExitOnceRef.current = false;
-    // Servings come from the plan slot we're cooking (its portionCount), falling back to the
-    // recipe's base servings when cooking something not tied to a slot.
-    const slotMeal = cookSlotRef
-      ? (plan[cookDate] ?? []).find((m) => m.planSlotRef === cookSlotRef)
-      : undefined;
-    const servings = slotMeal
-      ? portionCountOf(slotMeal)
-      : typeof recipe.servings === "number" && recipe.servings > 0
-        ? recipe.servings
-        : 1;
     flushSync(() => {
       logCooked(cookDate, {
         id: recipe.id,
         title: recipe.title,
         kind: recipeSegment(recipe) === "side" ? "side" : "main",
         ...(cookSlotRef ? { planSlotRef: cookSlotRef } : {}),
-        servings,
+        // The servings the user is actually cooking (stepper value, defaulted from the slot).
+        servings: cookServings,
       });
     });
     setCelebrationOpen(true);
@@ -716,6 +733,30 @@ export function RecipeCookModePanel({
     </div>
   );
 
+  const servingsStepper = (
+    <div className="cook-mode-v2-servings" role="group" aria-label="Servings for this cook">
+      <button
+        type="button"
+        className="cook-mode-v2-servings-btn"
+        aria-label="Decrease servings"
+        onClick={() => setCookServings((s) => Math.max(1, s - 1))}
+      >
+        −
+      </button>
+      <span className="cook-mode-v2-servings-value">
+        {cookServings} {cookServings === 1 ? "serving" : "servings"}
+      </span>
+      <button
+        type="button"
+        className="cook-mode-v2-servings-btn"
+        aria-label="Increase servings"
+        onClick={() => setCookServings((s) => Math.min(99, s + 1))}
+      >
+        +
+      </button>
+    </div>
+  );
+
   return (
     <div className="cook-mode-v2">
       {!isConfirmStep ? (
@@ -767,13 +808,16 @@ export function RecipeCookModePanel({
                     <h2 className="cook-mode-v2-ing-heading" id={`cook-ingredients-heading-confirm-${recipe.id}`}>
                       Ingredients
                     </h2>
+                    {servingsStepper}
                     <div className="cook-mode-v2-ing-expanded muted">
                       {recipe.ingredientSections?.map((sec) => (
                         <div key={sec.name}>
                           <strong className="cook-mode-v2-ing-sec-name">{sec.name}</strong>
                           <ul className="cook-mode-v2-ing-list">
                             {sec.lines.map((line, i) => (
-                              <li key={`${line.ingredientId}-${i}`}>{formatIngredientLine(line, byId)}</li>
+                              <li key={`${line.ingredientId}-${i}`}>
+                                {formatIngredientLine(scaleIngredientLine(line, ingredientScale), byId)}
+                              </li>
                             ))}
                           </ul>
                         </div>
@@ -923,12 +967,15 @@ export function RecipeCookModePanel({
                     role="region"
                     aria-labelledby={`cook-ingredients-heading-${recipe.id}`}
                   >
+                    {servingsStepper}
                     {recipe.ingredientSections?.map((sec) => (
                       <div key={sec.name}>
                         <strong className="cook-mode-v2-ing-sec-name">{sec.name}</strong>
                         <ul className="cook-mode-v2-ing-list">
                           {sec.lines.map((line, i) => (
-                            <li key={`${line.ingredientId}-${i}`}>{formatIngredientLine(line, byId)}</li>
+                            <li key={`${line.ingredientId}-${i}`}>
+                              {formatIngredientLine(scaleIngredientLine(line, ingredientScale), byId)}
+                            </li>
                           ))}
                         </ul>
                       </div>

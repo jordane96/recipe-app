@@ -17,6 +17,17 @@ export function ingredientMap(ingredients: IngredientDef[]): Map<string, Ingredi
   return new Map(ingredients.map((i) => [i.id, i]));
 }
 
+/** Copy of a line with its amount multiplied by `scale`. Null amounts (e.g. "to taste") pass through. */
+export function scaleIngredientLine(
+  line: RecipeIngredientLine,
+  scale: number,
+): RecipeIngredientLine {
+  if (scale === 1 || line.amount == null) {
+    return line;
+  }
+  return { ...line, amount: line.amount * scale };
+}
+
 const VULGAR_FRACTIONS: Record<string, number> = {
   "¼": 1 / 4,
   "½": 1 / 2,

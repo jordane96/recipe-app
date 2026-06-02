@@ -10,6 +10,45 @@ const UI_PREFIX_LEGACY = "recipe-app-cook-ui-v1:";
 const CLOCK_PREFIX_LEGACY = "recipe-app-cook-step-clock-v1:";
 /** Wall-clock ms when user first advanced past step 0 (confirm ingredients). */
 const TOTAL_ELAPSED_PREFIX = "recipe-app-cook-total-elapsed-v2:";
+/** Target servings for this cook session (drives ingredient scaling + the logged servings). */
+const SERVINGS_PREFIX = "recipe-app-cook-servings-v2:";
+
+function servingsKey(recipeId: string, cookDate: string, cookSlotRef: string | null): string {
+  return `${SERVINGS_PREFIX}${recipeId}\x1e${cookDate}\x1e${cookSlotRef ?? ""}`;
+}
+
+export function loadCookServings(
+  recipeId: string,
+  cookDate: string,
+  cookSlotRef: string | null,
+): number | null {
+  try {
+    const s = sessionStorage.getItem(servingsKey(recipeId, cookDate, cookSlotRef));
+    if (!s) {
+      return null;
+    }
+    const n = Number(s);
+    return Number.isFinite(n) && n > 0 ? Math.floor(n) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveCookServings(
+  recipeId: string,
+  cookDate: string,
+  cookSlotRef: string | null,
+  servings: number,
+): void {
+  try {
+    sessionStorage.setItem(
+      servingsKey(recipeId, cookDate, cookSlotRef),
+      String(Math.max(1, Math.floor(servings))),
+    );
+  } catch {
+    /* ignore */
+  }
+}
 
 export type CookUiPersist = {
   activeStepIndex: number;
@@ -308,6 +347,7 @@ function matchesCookStorageKey(k: string, needle: string): boolean {
     CLOCK_PREFIX,
     CLOCK_PREFIX_LEGACY,
     TOTAL_ELAPSED_PREFIX,
+    SERVINGS_PREFIX,
   ];
   for (const p of prefixes) {
     if (k.startsWith(p) && k.slice(p.length).startsWith(needle)) {
