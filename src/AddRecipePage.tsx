@@ -109,7 +109,7 @@ export function AddRecipePage() {
           data-on={tab === "url"}
           onClick={() => { setTab("url"); setError(null); }}
         >
-          From URL
+          Link URL
         </button>
       </div>
 
