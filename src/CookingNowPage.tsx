@@ -334,6 +334,13 @@ export function CookingNowPage() {
             >
               Cook now
             </button>
+            <Link
+              to={pickToCookListHref}
+              className="btn-secondary btn-cta-wide"
+              aria-label="Browse recipes to add another meal to cook"
+            >
+              + Add meal
+            </Link>
           </div>
         </div>
       ) : null}
