@@ -520,22 +520,25 @@ export function ShoppingListPage({
             </ul>
           </section>
 
-          {renderAdditionalItemsEntry("Additional items")}
+          <div className="shopping-add-more-row">
+            <Link
+              to={addItemsFromShoppingHref}
+              className="btn-secondary btn-compact shopping-add-more-recipes"
+              aria-label="Browse recipes to add more to your shopping list"
+            >
+              Add more recipes
+            </Link>
+          </div>
+
+          {renderAdditionalItemsEntry("Add something else")}
 
           <div
             className="shopping-meal-list-actions"
             role="region"
-            aria-label="Place order or add more recipes"
+            aria-label="Place order or clear the shopping list"
           >
             <Link to="/place-order" className="btn-primary btn-compact">
               Place order
-            </Link>
-            <Link
-              to={addItemsFromShoppingHref}
-              className="btn-secondary btn-compact"
-              aria-label="Browse recipes to add more to your shopping list"
-            >
-              Add more
             </Link>
             <button
               type="button"

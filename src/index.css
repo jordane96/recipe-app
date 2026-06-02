@@ -3095,6 +3095,13 @@ a.recipe-detail-back-cta {
   box-sizing: border-box;
 }
 
+/* Standalone "Add more recipes" button under the recipes list (left-aligned, hugs its label). */
+.shopping-add-more-row {
+  display: flex;
+  justify-content: flex-start;
+  margin: 0.85rem 0 0.25rem;
+}
+
 .shopping-meal-list-actions a.btn-primary,
 .shopping-meal-list-actions a.btn-secondary {
   display: inline-flex;
