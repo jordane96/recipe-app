@@ -15,7 +15,7 @@ import {
   INGREDIENT_CATEGORY_ORDER as CATEGORY_ORDER,
   TO_TASTE_UNIT,
 } from "./types";
-import { ingredientMap } from "./ingredientDisplay";
+import { ingredientMap, parseQuantity } from "./ingredientDisplay";
 import {
   ADD_TO_PLAN_QUERY,
   EDIT_RECIPE_STEP_QUERY,
@@ -357,6 +357,13 @@ export function EditRecipePage({
   const [stepNoteExpanded, setStepNoteExpanded] = React.useState<Record<number, boolean>>({});
   /** Ingredient row keys `secIndex-lineIndex` with note editor expanded (shown even when note is empty). */
   const [ingredientNoteExpanded, setIngredientNoteExpanded] = React.useState<Record<string, boolean>>({});
+  /**
+   * Raw text being typed into an ingredient amount field, keyed by `secIndex-lineIndex`. The
+   * committed `line.amount` is a number, so binding the input straight to `String(line.amount)`
+   * destroyed in-progress input ("0." → 0 → "0", "1/2" → 1). While a row is focused we show its
+   * draft string verbatim and only parse/commit on blur. Cleared once committed.
+   */
+  const [amountDrafts, setAmountDrafts] = React.useState<Record<string, string>>({});
   /** Which ingredient row has the search combobox open (`secIndex-lineIndex`). */
   const [ingredientPickerKey, setIngredientPickerKey] = React.useState<string | null>(null);
   /** Which row has the unit combobox open (`u-secIndex-lineIndex`). */
@@ -776,9 +783,9 @@ export function EditRecipePage({
         showToast("Enter a quantity.");
         return;
       }
-      const amount = Number.parseFloat(qtyRaw);
-      if (!Number.isFinite(amount) || amount <= 0) {
-        showToast("Enter a positive number for quantity.");
+      const amount = parseQuantity(qtyRaw);
+      if (amount == null || amount <= 0) {
+        showToast("Enter a positive quantity (e.g. 2, 0.5, or 1/2).");
         return;
       }
       const unitList = ingredientsFile.units[picked.unit];
@@ -820,9 +827,9 @@ export function EditRecipePage({
         showToast("Enter a quantity.");
         return;
       }
-      const parsed = Number.parseFloat(qtyRaw);
-      if (!Number.isFinite(parsed) || parsed <= 0) {
-        showToast("Enter a positive number for quantity.");
+      const parsed = parseQuantity(qtyRaw);
+      if (parsed == null || parsed <= 0) {
+        showToast("Enter a positive quantity (e.g. 2, 0.5, or 1/2).");
         return;
       }
       amount = parsed;
@@ -1281,28 +1288,41 @@ export function EditRecipePage({
                       inputMode="decimal"
                       className="edit-recipe-ing-amt"
                       disabled={amountDisabled}
-                      placeholder={lineIsToTaste ? "—" : undefined}
+                      placeholder={lineIsToTaste ? "—" : "e.g. 2 or 0.5"}
                       value={
                         amountDisabled
                           ? ""
-                          : line.amount != null
-                            ? String(line.amount)
-                            : ""
+                          : (amountDrafts[rowKey] ??
+                            (line.amount != null ? String(line.amount) : ""))
                       }
                       onChange={(e) => {
-                        const v = e.target.value.trim();
+                        const raw = e.target.value;
+                        setAmountDrafts((m) => ({ ...m, [rowKey]: raw }));
+                      }}
+                      onBlur={() => {
+                        const draft = amountDrafts[rowKey];
+                        if (draft === undefined) {
+                          return;
+                        }
+                        const v = draft.trim();
                         if (v === "") {
                           if (catalogQualitative) {
                             updateLine(secIndex, lineIndex, { amount: null, unit: null });
                           } else {
                             updateLine(secIndex, lineIndex, { amount: null });
                           }
-                          return;
+                        } else {
+                          const n = parseQuantity(v);
+                          if (n != null && n > 0) {
+                            updateLine(secIndex, lineIndex, { amount: n });
+                          }
+                          // Unparseable / ≤0: keep the previously committed amount (draft is dropped).
                         }
-                        const n = Number.parseFloat(v);
-                        if (Number.isFinite(n)) {
-                          updateLine(secIndex, lineIndex, { amount: n });
-                        }
+                        setAmountDrafts((m) => {
+                          const next = { ...m };
+                          delete next[rowKey];
+                          return next;
+                        });
                       }}
                       aria-label="Amount"
                     />
