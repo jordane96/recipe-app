@@ -151,7 +151,7 @@ export function RecipeList({
     [myRecipes],
   );
   const { showToast } = useToast();
-  const { addToList } = useShoppingList();
+  const { addToList, selectedIds, removeAllSlotsForRecipe } = useShoppingList();
   const navigate = useNavigate();
   const navigationType = useNavigationType();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -257,6 +257,12 @@ export function RecipeList({
   const pickExperience = readRecipeListPickExperience(searchParams);
   const isShopMenuBuildFlow = pickExperience === "shop";
   const isCookNowPickFlow = pickExperience === "cook";
+  // In the "add more recipes" (shop-build) flow, recipes already on the shopping list show as
+  // checked but are not part of the "Add (N)" count — unchecking one removes it from the list.
+  const alreadyInListIds = React.useMemo(
+    () => new Set(isShopMenuBuildFlow ? selectedIds : []),
+    [isShopMenuBuildFlow, selectedIds],
+  );
   const cookOnAdd = inPlanFlow && searchParams.get(COOK_ON_ADD_QUERY) === COOK_ON_ADD_VALUE;
   const addFlowBack = React.useCallback(() => {
     if (isShopMenuBuildFlow) {
@@ -478,6 +484,8 @@ export function RecipeList({
 
   const renderRecipeRow = (r: Recipe) => {
     const inAddFlowCart = addFlowSelectedIds.has(r.id);
+    const alreadyInList = alreadyInListIds.has(r.id);
+    const rowChecked = inAddFlowCart || alreadyInList;
     const detailPath = recipeDetailPath(
       r.id,
       inPlanFlow ? searchParams : undefined,
@@ -507,11 +515,21 @@ export function RecipeList({
             <input
               type="checkbox"
               className="recipe-row-pick-cb"
-              checked={inAddFlowCart}
-              onChange={() =>
-                inAddFlowCart ? removeFromAddFlowCart(r) : addToAddFlowCart(r)
+              checked={rowChecked}
+              onChange={() => {
+                if (alreadyInList) {
+                  removeAllSlotsForRecipe(r.id);
+                } else if (inAddFlowCart) {
+                  removeFromAddFlowCart(r);
+                } else {
+                  addToAddFlowCart(r);
+                }
+              }}
+              aria-label={
+                alreadyInList
+                  ? `${r.title} is already on your shopping list — uncheck to remove`
+                  : pickListAria(r, inAddFlowCart)
               }
-              aria-label={pickListAria(r, inAddFlowCart)}
             />
             <span className="recipe-row-add-card-text">{titleAndMeta}</span>
           </label>
