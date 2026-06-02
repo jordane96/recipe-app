@@ -14,6 +14,8 @@ import {
 } from "./mealPlanStorage";
 import { recipeSegment } from "./recipeCourse";
 import { markRecipeSourcePlan, markRecipeSourcePlanMany } from "./planShoppingAuthority";
+import { loadCookHistory } from "./cookHistoryStorage";
+import { iso } from "./mealPlanDates";
 
 export function recipeToPlannedMeal(r: Recipe): PlannedMeal {
   return {
@@ -82,6 +84,44 @@ export function MealPlanProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     saveMealPlan(plan);
   }, [plan]);
+
+  // On load, drop calendar-day plan slots whose day has already passed and that were never cooked.
+  // (Planning a meal also copies it to the menu pool; that menu copy is kept — only the dated
+  // calendar copy is pruned here.) Runs once on mount.
+  React.useEffect(() => {
+    const hist = loadCookHistory();
+    const today = iso(new Date());
+    setPlan((prev) => {
+      let changed = false;
+      const next: MealPlanByDate = { ...prev };
+      for (const [dateKey, meals] of Object.entries(prev)) {
+        if (dateKey === MEAL_PLAN_UNASSIGNED_KEY || !isMealPlanDateKey(dateKey)) {
+          continue;
+        }
+        if (dateKey >= today) {
+          continue;
+        }
+        const logged = hist[dateKey] ?? [];
+        const isCooked = (m: PlannedMeal) => {
+          if (m.planSlotRef && logged.some((l) => l.planSlotRef === m.planSlotRef)) {
+            return true;
+          }
+          return logged.some((l) => l.planSlotRef == null && l.id === m.id);
+        };
+        const kept = meals.filter(isCooked);
+        if (kept.length !== meals.length) {
+          changed = true;
+          if (kept.length === 0) {
+            delete next[dateKey];
+          } else {
+            next[dateKey] = kept;
+          }
+        }
+      }
+      return changed ? next : prev;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const addPlannedMealsToKey = React.useCallback((key: string, entries: PlannedMeal[]) => {
     if (entries.length === 0) {

@@ -26,6 +26,7 @@ import { getPreviousPathname, isRecipeDetailPathname } from "./navHistory";
 import { iso } from "./mealPlanDates";
 import { instructionStepText } from "./recipeInstructions";
 import {
+  isMealPlanDateKey,
   MEAL_PLAN_UNASSIGNED_KEY,
   newPlanSlotRef,
   type PlannedMeal,
@@ -385,6 +386,15 @@ export function RecipeList({
         ? baseEntries.map((e) => ({ ...e, planSlotRef: newPlanSlotRef() }))
         : baseEntries;
     addPlannedMealsToKey(planKey, withSlots);
+    // Planning onto a calendar day should also surface the meal on the menu so it can be cooked
+    // from there. These are independent copies (their own slot refs) — editing/cooking one doesn't
+    // affect the other; the calendar copy is pruned if its day passes uncooked.
+    if (planKey !== MEAL_PLAN_UNASSIGNED_KEY && isMealPlanDateKey(planKey)) {
+      addPlannedMealsToKey(
+        MEAL_PLAN_UNASSIGNED_KEY,
+        baseEntries.map((e) => ({ ...e })),
+      );
+    }
     const n = withSlots.length;
     if (addFlowStorageKey) {
       try {
