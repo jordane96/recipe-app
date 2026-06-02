@@ -3315,6 +3315,49 @@ a.recipe-detail-back-cta {
   background: var(--accent-soft);
 }
 
+/* Recipe detail: static "Serves N" line under the description. */
+.recipe-detail-servings {
+  margin: 0.5rem 0 1rem;
+  font-size: var(--fs-ui);
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* Editor: base-servings stepper (mirrors the shopping qty stepper). */
+.edit-recipe-servings-stepper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.edit-recipe-servings-btn {
+  width: 2.25rem;
+  min-height: 2.25rem;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  font: inherit;
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.edit-recipe-servings-btn:active {
+  background: var(--accent-soft);
+}
+
+.edit-recipe-servings-value {
+  min-width: 2rem;
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
 .btn-remove {
   flex-shrink: 0;
   padding: 0.4rem 0.65rem;

@@ -72,7 +72,8 @@ export default async function handler(req, res) {
         UPDATE recipes
         SET title       = ${recipe.title.trim()},
             description = ${recipe.description ?? null},
-            tags        = ${recipe.tags ?? []}
+            tags        = ${recipe.tags ?? []},
+            servings    = ${recipe.servings ?? null}
         WHERE id = ${targetId}
       `
     }

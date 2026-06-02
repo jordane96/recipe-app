@@ -542,6 +542,15 @@ export function EditRecipePage({
     setDraft((d) => (d ? { ...d, description } : d));
   };
 
+  const adjustServings = (delta: number) => {
+    setDraft((d) => {
+      if (!d) return d;
+      const cur = typeof d.servings === "number" && d.servings > 0 ? d.servings : 1;
+      const next = Math.min(99, Math.max(1, cur + delta));
+      return { ...d, servings: next };
+    });
+  };
+
   const updateLine = (
     secIndex: number,
     lineIndex: number,
@@ -1120,6 +1129,40 @@ export function EditRecipePage({
           placeholder="e.g. Crispy air-fried chicken with a simple spice rub."
           aria-labelledby="edit-recipe-desc-label"
         />
+      </section>
+
+      <section className="edit-recipe-section" aria-labelledby="edit-recipe-servings-label">
+        <h2 id="edit-recipe-servings-label" className="edit-recipe-label">
+          Servings
+        </h2>
+        <p className="edit-recipe-field-hint">
+          How many servings the ingredient amounts above make. Used to scale the recipe.
+        </p>
+        <div
+          className="edit-recipe-servings-stepper"
+          role="group"
+          aria-label="Base servings"
+        >
+          <button
+            type="button"
+            className="edit-recipe-servings-btn"
+            aria-label="Decrease servings"
+            onClick={() => adjustServings(-1)}
+          >
+            −
+          </button>
+          <span className="edit-recipe-servings-value">
+            {typeof draft.servings === "number" && draft.servings > 0 ? draft.servings : 1}
+          </span>
+          <button
+            type="button"
+            className="edit-recipe-servings-btn"
+            aria-label="Increase servings"
+            onClick={() => adjustServings(1)}
+          >
+            +
+          </button>
+        </div>
       </section>
 
       <section className="edit-recipe-section" aria-labelledby="edit-recipe-ing-label">
