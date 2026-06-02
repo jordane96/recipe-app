@@ -10,8 +10,12 @@ const UI_PREFIX_LEGACY = "recipe-app-cook-ui-v1:";
 const CLOCK_PREFIX_LEGACY = "recipe-app-cook-step-clock-v1:";
 /** Wall-clock ms when user first advanced past step 0 (confirm ingredients). */
 const TOTAL_ELAPSED_PREFIX = "recipe-app-cook-total-elapsed-v2:";
-/** Target servings for this cook session (drives ingredient scaling + the logged servings). */
-const SERVINGS_PREFIX = "recipe-app-cook-servings-v2:";
+/**
+ * Explicit user-chosen target servings for this cook session (drives ingredient scaling + logged
+ * servings). Only written when the user adjusts the stepper; the default is derived reactively from
+ * the slot. v3 intentionally ignores v2 values, which were polluted by auto-persisting the default.
+ */
+const SERVINGS_PREFIX = "recipe-app-cook-servings-v3:";
 
 function servingsKey(recipeId: string, cookDate: string, cookSlotRef: string | null): string {
   return `${SERVINGS_PREFIX}${recipeId}\x1e${cookDate}\x1e${cookSlotRef ?? ""}`;

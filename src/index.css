@@ -1957,7 +1957,7 @@ button.cook-mode-v2-meal-banner--in-chrome,
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  margin: 0 0 0.7rem;
+  margin: 0.55rem 0 0.7rem;
 }
 
 .cook-mode-v2-servings-btn {

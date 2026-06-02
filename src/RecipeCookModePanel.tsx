@@ -219,19 +219,19 @@ export function RecipeCookModePanel({
   }, [plan, cookDate, cookSlotRef, unassignedKey]);
   const baseServings =
     typeof recipe.servings === "number" && recipe.servings > 0 ? recipe.servings : null;
-  const [cookServings, setCookServings] = React.useState(() => {
-    const stored = loadCookServings(recipe.id, cookDate, cookSlotRef);
-    if (stored != null) {
-      return stored;
-    }
-    if (slotMeal) {
-      return portionCountOf(slotMeal);
-    }
-    return baseServings ?? 1;
-  });
+  // Default servings derive *reactively* from the slot (or recipe base / 1). Don't capture this in
+  // a once-only useState initializer — the slot may not be resolved on the very first render, and a
+  // wrong value would then get persisted and stick. We only persist an explicit user override.
+  const slotDefaultServings = slotMeal ? portionCountOf(slotMeal) : baseServings ?? 1;
+  const [servingsOverride, setServingsOverride] = React.useState<number | null>(() =>
+    loadCookServings(recipe.id, cookDate, cookSlotRef),
+  );
+  const cookServings = servingsOverride ?? slotDefaultServings;
   React.useEffect(() => {
-    saveCookServings(recipe.id, cookDate, cookSlotRef, cookServings);
-  }, [recipe.id, cookDate, cookSlotRef, cookServings]);
+    if (servingsOverride != null) {
+      saveCookServings(recipe.id, cookDate, cookSlotRef, servingsOverride);
+    }
+  }, [recipe.id, cookDate, cookSlotRef, servingsOverride]);
   const ingredientScale = baseServings ? cookServings / baseServings : 1;
   const [celebrationOpen, setCelebrationOpen] = React.useState(false);
   const celebrationExitTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -748,7 +748,7 @@ export function RecipeCookModePanel({
         type="button"
         className="cook-mode-v2-servings-btn"
         aria-label="Decrease servings"
-        onClick={() => setCookServings((s) => Math.max(1, s - 1))}
+        onClick={() => setServingsOverride(Math.max(1, cookServings - 1))}
       >
         −
       </button>
@@ -759,7 +759,7 @@ export function RecipeCookModePanel({
         type="button"
         className="cook-mode-v2-servings-btn"
         aria-label="Increase servings"
-        onClick={() => setCookServings((s) => Math.min(99, s + 1))}
+        onClick={() => setServingsOverride(Math.min(99, cookServings + 1))}
       >
         +
       </button>
@@ -807,6 +807,7 @@ export function RecipeCookModePanel({
                 </div>
               </div>
               <h1 className="cook-mode-v2-confirm-title">{COOK_MODE_CONFIRM_OVERVIEW_TITLE}</h1>
+              {servingsStepper}
               {flatIngredientChips.length > 0 ? (
                 <>
                   <div className="cook-mode-v2-confirm-ing-rule-line" aria-hidden />
@@ -817,7 +818,6 @@ export function RecipeCookModePanel({
                     <h2 className="cook-mode-v2-ing-heading" id={`cook-ingredients-heading-confirm-${recipe.id}`}>
                       Ingredients
                     </h2>
-                    {servingsStepper}
                     <div className="cook-mode-v2-ing-expanded muted">
                       {recipe.ingredientSections?.map((sec) => (
                         <div key={sec.name}>
