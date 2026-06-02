@@ -320,6 +320,15 @@ export function CookingNowPage() {
               );
             })}
           </ul>
+          <div className="add-meal add-meal--this-week">
+            <Link
+              to={pickToCookListHref}
+              className="cooking-now-add-meal"
+              aria-label="Browse recipes to add another meal to cook"
+            >
+              + Add meal
+            </Link>
+          </div>
           <div className="cooking-now-page-cta cta-panel">
             <button
               type="button"
@@ -334,13 +343,6 @@ export function CookingNowPage() {
             >
               Cook now
             </button>
-            <Link
-              to={pickToCookListHref}
-              className="btn-secondary btn-cta-wide"
-              aria-label="Browse recipes to add another meal to cook"
-            >
-              + Add meal
-            </Link>
           </div>
         </div>
       ) : null}

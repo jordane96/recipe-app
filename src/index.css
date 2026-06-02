@@ -3694,6 +3694,29 @@ a.recipe-detail-back-cta {
   cursor: pointer;
 }
 
+/* Dashed "+ Add meal" on the Cooking now page — matches the menu's add-meal button (it's a Link). */
+.cooking-now-add-meal {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+  font: inherit;
+  font-weight: 700;
+  font-size: var(--fs-ui);
+  padding: 0.4rem;
+  border-radius: 8px;
+  border: 1px dashed var(--border);
+  background: transparent;
+  color: var(--accent);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.cooking-now-add-meal:hover {
+  border-style: solid;
+  background: var(--accent-soft);
+}
+
 .cooking-now-menu-chip .meal-chip-title--cooking-now-text {
   cursor: inherit;
   user-select: none;
