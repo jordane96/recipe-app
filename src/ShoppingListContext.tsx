@@ -10,6 +10,28 @@ import { normalizeShoppingLineKey } from "./shoppingLineKey";
 const STORAGE_SELECTED = "recipe-app-shopping-v1";
 const STORAGE_PURCHASED = "recipe-app-purchased-v1";
 const STORAGE_ADDITIONAL = "recipe-app-additional-items-v1";
+const STORAGE_SERVINGS = "recipe-app-shopping-servings-v1";
+
+/** Per-recipe servings override on the shopping list (independent of the menu). */
+function readServings(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(STORAGE_SERVINGS);
+    if (!raw) return {};
+    const p = JSON.parse(raw) as unknown;
+    if (p == null || typeof p !== "object" || Array.isArray(p)) return {};
+    const out: Record<string, number> = {};
+    for (const [k, v] of Object.entries(p as Record<string, unknown>)) {
+      if (typeof v === "number" && Number.isFinite(v) && v > 0) out[k] = Math.floor(v);
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+function writeServings(map: Record<string, number>) {
+  localStorage.setItem(STORAGE_SERVINGS, JSON.stringify(map));
+}
 
 function readAdditional(): string[] {
   try {
@@ -87,7 +109,7 @@ type Ctx = {
    * Meal plan "Shop ingredients": replace the list with this snapshot, clear plan/shop
    * count authority, and clear purchased (new run from the menu).
    */
-  pushFromMenu: (ids: string[]) => void;
+  pushFromMenu: (entries: Array<{ recipeId: string; servings: number }>) => void;
   /**
    * Set how many shopping slots this recipe has: removes all occurrences of recipeId,
    * then appends targetCount copies at the end (other recipes keep relative order).
@@ -113,6 +135,14 @@ type Ctx = {
   addAdditionalItem: (text: string) => void;
   /** Remove a free-text item by exact text. Also clears any purchased mark for that line. */
   removeAdditionalItem: (text: string) => void;
+  /**
+   * Per-recipe servings override for the shopping list. Independent of the menu. When a
+   * recipe has no entry here, the UI falls back to the recipe's own base servings. Used to
+   * scale ingredient quantities: multiple = thisServings ÷ recipeBaseServings.
+   */
+  servingsByRecipe: Record<string, number>;
+  /** Set the shopping-list servings for a recipe (clamped 1–99). */
+  setRecipeServings: (recipeId: string, servings: number) => void;
 };
 
 const ShoppingListContext = React.createContext<Ctx | null>(null);
@@ -123,6 +153,9 @@ export function ShoppingListProvider({ children }: { children: React.ReactNode }
   );
   const [purchased, setPurchased] = React.useState<string[]>(() =>
     typeof window === "undefined" ? [] : readPurchased(),
+  );
+  const [servingsByRecipe, setServingsByRecipe] = React.useState<Record<string, number>>(() =>
+    typeof window === "undefined" ? {} : readServings(),
   );
   const [additionalItems, setAdditionalItems] = React.useState<string[]>(() =>
     typeof window === "undefined" ? [] : readAdditional(),
@@ -139,6 +172,18 @@ export function ShoppingListProvider({ children }: { children: React.ReactNode }
   React.useEffect(() => {
     writeAdditional(additionalItems);
   }, [additionalItems]);
+
+  React.useEffect(() => {
+    writeServings(servingsByRecipe);
+  }, [servingsByRecipe]);
+
+  const setRecipeServings = React.useCallback((recipeId: string, servings: number) => {
+    const n = Math.min(99, Math.max(1, Math.floor(Number(servings))));
+    setServingsByRecipe((prev) => {
+      if (prev[recipeId] === n) return prev;
+      return { ...prev, [recipeId]: n };
+    });
+  }, []);
 
   const addAdditionalItem = React.useCallback((text: string) => {
     const t = text.trim();
@@ -194,6 +239,13 @@ export function ShoppingListProvider({ children }: { children: React.ReactNode }
   const removeAllSlotsForRecipe = React.useCallback((id: string) => {
     markRecipeSourceShopping(id);
     setSelectedIds((prev) => prev.filter((x) => x !== id));
+    // Drop any servings override for a recipe no longer on the list.
+    setServingsByRecipe((prev) => {
+      if (!(id in prev)) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
   }, []);
 
   const hydrateShoppingIfEmpty = React.useCallback((ids: string[]) => {
@@ -217,11 +269,23 @@ export function ShoppingListProvider({ children }: { children: React.ReactNode }
     });
   }, []);
 
-  const pushFromMenu = React.useCallback((ids: string[]) => {
-    resetAllCountSources();
-    setPurchased([]);
-    setSelectedIds([...ids]);
-  }, []);
+  const pushFromMenu = React.useCallback(
+    (entries: Array<{ recipeId: string; servings: number }>) => {
+      resetAllCountSources();
+      setPurchased([]);
+      // One membership entry per recipe; seed its shopping servings from the menu.
+      const ids: string[] = [];
+      const servings: Record<string, number> = {};
+      for (const { recipeId, servings: s } of entries) {
+        if (!(recipeId in servings)) ids.push(recipeId);
+        const n = Math.min(99, Math.max(1, Math.floor(Number(s))));
+        servings[recipeId] = (servings[recipeId] ?? 0) + n;
+      }
+      setSelectedIds(ids);
+      setServingsByRecipe(servings);
+    },
+    [],
+  );
 
   const syncRecipeSlotsToCount = React.useCallback((recipeId: string, targetCount: number) => {
     const n = Math.max(0, Math.min(999, Math.floor(Number(targetCount))));
@@ -237,6 +301,7 @@ export function ShoppingListProvider({ children }: { children: React.ReactNode }
     resetAllCountSources();
     setSelectedIds([]);
     setPurchased([]);
+    setServingsByRecipe({});
   }, []);
 
   const isPurchased = React.useCallback(
@@ -315,6 +380,8 @@ export function ShoppingListProvider({ children }: { children: React.ReactNode }
       additionalItems,
       addAdditionalItem,
       removeAdditionalItem,
+      servingsByRecipe,
+      setRecipeServings,
     };
   }, [
     selectedIds,
@@ -328,6 +395,8 @@ export function ShoppingListProvider({ children }: { children: React.ReactNode }
     pushFromMenu,
     syncRecipeSlotsToCount,
     clearList,
+    servingsByRecipe,
+    setRecipeServings,
     purchasedSet,
     isPurchased,
     togglePurchased,

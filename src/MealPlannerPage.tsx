@@ -267,7 +267,6 @@ export function MealPlannerPage({
     if (!hasShopableSelection) {
       return;
     }
-    const flat: string[] = [];
     const uIndices = [...unassignedCookSelect]
       .filter((idx) => idx >= 0 && idx < unassignedMeals.length)
       .filter((idx) => {
@@ -275,17 +274,15 @@ export function MealPlannerPage({
         return !isUnassignedSlotCookedAllTime(history, unassignedMeals, idx, m.id);
       })
       .sort((a, b) => a - b);
-    for (const idx of uIndices) {
+    // Seed the shopping list with each selected meal's servings (portionCount now = servings).
+    const entries = uIndices.map((idx) => {
       const m = unassignedMeals[idx]!;
-      const n = portionCountOf(m);
-      for (let p = 0; p < n; p += 1) {
-        flat.push(m.id);
-      }
-    }
-    if (flat.length === 0) {
+      return { recipeId: m.id, servings: portionCountOf(m) };
+    });
+    if (entries.length === 0) {
       return;
     }
-    pushFromMenu(flat);
+    pushFromMenu(entries);
     navigate(shoppingListPath());
   }, [hasShopableSelection, history, navigate, pushFromMenu, unassignedCookSelect, unassignedMeals]);
 
@@ -407,7 +404,7 @@ export function MealPlannerPage({
                 type="button"
                 className="meal-chip-portion-btn"
                 draggable={false}
-                aria-label={`Remove one portion for ${m.title}`}
+                aria-label={`Decrease servings for ${m.title}`}
                 onClick={(e) => {
                   e.stopPropagation();
                   adjustUnassignedPortionCount(planIdx, -1);
@@ -415,14 +412,14 @@ export function MealPlannerPage({
               >
                 −
               </button>
-              <span className="meal-chip-portion-value" aria-label={`Portions: ${portionCountOf(m)}`}>
+              <span className="meal-chip-portion-value" aria-label={`Servings: ${portionCountOf(m)}`}>
                 {portionCountOf(m)}
               </span>
               <button
                 type="button"
                 className="meal-chip-portion-btn"
                 draggable={false}
-                aria-label={`Add one portion for ${m.title}`}
+                aria-label={`Increase servings for ${m.title}`}
                 onClick={(e) => {
                   e.stopPropagation();
                   adjustUnassignedPortionCount(planIdx, 1);

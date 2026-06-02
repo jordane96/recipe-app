@@ -284,14 +284,21 @@ export function formatWeightConversions(
   return `${fmtQty(oz)} oz`;
 }
 
+/** Return a copy of the line with its amount multiplied by `scale` (null amounts pass through). */
+function scaleLine(line: RecipeIngredientLine, scale: number): RecipeIngredientLine {
+  if (scale === 1 || line.amount == null) return line;
+  return { ...line, amount: line.amount * scale };
+}
+
 function collectLines(
   recipe: Recipe,
   byId: Map<string, IngredientDef>,
+  scale: number,
 ): string[] {
   const out: string[] = [];
   for (const sec of recipe.ingredientSections ?? []) {
     for (const line of sec.lines) {
-      out.push(formatIngredientLine(line, byId));
+      out.push(formatIngredientLine(scaleLine(line, scale), byId));
     }
   }
   return out;
@@ -378,9 +385,12 @@ function lineToBucket(line: RecipeIngredientLine, byId: Map<string, IngredientDe
 
 /**
  * Build combined shopping list from selected recipes using library kinds + units.
+ *
+ * Each entry carries a `scale` (= target servings ÷ recipe base servings); every ingredient
+ * amount for that recipe is multiplied by it before merging. Pass scale 1 for no scaling.
  */
 export function buildShoppingListData(
-  recipesInOrder: Recipe[],
+  entries: Array<{ recipe: Recipe; scale: number }>,
   allIngredients: IngredientDef[],
 ): {
   combinedItems: CombinedShoppingItem[];
@@ -388,7 +398,10 @@ export function buildShoppingListData(
 } {
   // Include recipe-scoped customIngredientDefs so a recipe using e.g. "custom-spinach"
   // resolves to its human name on the combined list instead of leaking the raw id.
-  const byId = ingredientMapWithRecipes(allIngredients, recipesInOrder);
+  const byId = ingredientMapWithRecipes(
+    allIngredients,
+    entries.map((e) => e.recipe),
+  );
 
   const vol = new Map<
     string,
@@ -408,10 +421,16 @@ export function buildShoppingListData(
   >();
   const rawOrderKeys: string[] = [];
 
-  for (const recipe of recipesInOrder) {
+  for (const { recipe, scale } of entries) {
     for (const sec of recipe.ingredientSections ?? []) {
       for (const line of sec.lines) {
         const b = lineToBucket(line, byId);
+        // Scale measurable amounts by this recipe's servings multiple before merging.
+        if (scale !== 1) {
+          if (b.kind === "volume") b.tsp *= scale;
+          else if (b.kind === "weight") b.oz *= scale;
+          else if (b.kind === "count") b.amount *= scale;
+        }
         if (b.kind === "raw") {
           const k = b.text.trim().toLowerCase().replace(/\s+/g, " ");
           let ex = rawMap.get(k);
@@ -526,11 +545,11 @@ export function buildShoppingListData(
   const combinedItems: CombinedShoppingItem[] = [...mergedItems, ...rawItems];
   sortCombinedBySectionThenLine(combinedItems);
 
-  const byRecipe: IngredientBreakdown[] = recipesInOrder.map((r, instanceIndex) => ({
+  const byRecipe: IngredientBreakdown[] = entries.map(({ recipe: r, scale }, instanceIndex) => ({
     instanceKey: `${r.id}@${instanceIndex}`,
     recipeId: r.id,
     title: r.title,
-    items: collectLines(r, byId),
+    items: collectLines(r, byId, scale),
   }));
 
   return { combinedItems, byRecipe };

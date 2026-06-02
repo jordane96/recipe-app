@@ -134,8 +134,6 @@ export function ShoppingListPage({
 
   const {
     selectedIds,
-    addToList,
-    removeFromList,
     removeAllSlotsForRecipe,
     isPurchased,
     togglePurchased,
@@ -144,8 +142,34 @@ export function ShoppingListPage({
     additionalItems,
     addAdditionalItem,
     removeAdditionalItem,
+    servingsByRecipe,
+    setRecipeServings,
   } = useShoppingList();
   const { showToast } = useToast();
+
+  /** Recipe's base servings (canonical) or null when unset (legacy recipes). */
+  const baseServingsOf = React.useCallback((r: Recipe): number | null => {
+    return typeof r.servings === "number" && r.servings > 0 ? r.servings : null;
+  }, []);
+
+  /** Effective shopping-list servings for a recipe: override → base → 1. */
+  const servingsFor = React.useCallback(
+    (r: Recipe): number => {
+      const override = servingsByRecipe[r.id];
+      if (typeof override === "number" && override > 0) return override;
+      return baseServingsOf(r) ?? 1;
+    },
+    [servingsByRecipe, baseServingsOf],
+  );
+
+  /** Ingredient scale multiple: servings ÷ base. 1 when the recipe has no base servings. */
+  const scaleFor = React.useCallback(
+    (r: Recipe): number => {
+      const base = baseServingsOf(r);
+      return base == null ? 1 : servingsFor(r) / base;
+    },
+    [baseServingsOf, servingsFor],
+  );
 
   /** Toggle + toast wrapper. Only toasts on the unpurchased → purchased transition. */
   const togglePurchasedWithToast = React.useCallback(
@@ -186,8 +210,14 @@ export function ShoppingListPage({
     [selectedSlots],
   );
 
+  // One entry per distinct recipe (deduped), each scaled by its shopping-list servings.
+  const shoppingEntries = React.useMemo(
+    () => groupedSelected.map(({ recipe }) => ({ recipe, scale: scaleFor(recipe) })),
+    [groupedSelected, scaleFor],
+  );
+
   const { combinedItems, byRecipe } = buildShoppingListData(
-    selectedRecipes,
+    shoppingEntries,
     ingredients,
   );
 
@@ -410,7 +440,7 @@ export function ShoppingListPage({
           <section className="detail-section">
             <h2>Recipes</h2>
             <ul className="selected-recipes">
-              {groupedSelected.map(({ recipe: r, count }) => (
+              {groupedSelected.map(({ recipe: r }) => (
                 <li
                   key={r.id}
                   className="selected-recipe-row selected-recipe-row--slot"
@@ -439,22 +469,22 @@ export function ShoppingListPage({
                     <div
                       className="selected-recipe-qty-stepper"
                       role="group"
-                      aria-label={`Shopping list quantity for ${r.title}`}
+                      aria-label={`Servings for ${r.title}`}
                     >
                       <button
                         type="button"
                         className="selected-recipe-qty-btn"
-                        aria-label={`Remove one ${r.title} from shopping list`}
-                        onClick={() => removeFromList(r.id)}
+                        aria-label={`Decrease servings for ${r.title}`}
+                        onClick={() => setRecipeServings(r.id, servingsFor(r) - 1)}
                       >
                         −
                       </button>
-                      <span className="selected-recipe-qty-value">{count}</span>
+                      <span className="selected-recipe-qty-value">{servingsFor(r)}</span>
                       <button
                         type="button"
                         className="selected-recipe-qty-btn"
-                        aria-label={`Add one ${r.title} to shopping list`}
-                        onClick={() => addToList(r.id)}
+                        aria-label={`Increase servings for ${r.title}`}
+                        onClick={() => setRecipeServings(r.id, servingsFor(r) + 1)}
                       >
                         +
                       </button>
@@ -463,12 +493,8 @@ export function ShoppingListPage({
                       <button
                         type="button"
                         className="btn-remove selected-recipe-remove-btn"
-                        title={`Remove ${r.title} from shopping list (${count} portion${
-                          count === 1 ? "" : "s"
-                        })`}
-                        aria-label={`Remove ${r.title} from shopping list (${count} portion${
-                          count === 1 ? "" : "s"
-                        })`}
+                        title={`Remove ${r.title} from shopping list`}
+                        aria-label={`Remove ${r.title} from shopping list`}
                         onClick={() => removeAllSlotsForRecipe(r.id)}
                       >
                         ×

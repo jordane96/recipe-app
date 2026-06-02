@@ -20,6 +20,9 @@ export function recipeToPlannedMeal(r: Recipe): PlannedMeal {
     id: r.id,
     title: r.title,
     kind: recipeSegment(r) === "side" ? "side" : "main",
+    // portionCount now carries the slot's servings. Default to the recipe's base servings so a
+    // newly-added menu item starts "as written"; falls through to 1 when the recipe has no base.
+    ...(typeof r.servings === "number" && r.servings > 0 ? { portionCount: r.servings } : {}),
   };
 }
 
