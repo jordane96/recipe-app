@@ -1960,6 +1960,24 @@ button.cook-mode-v2-meal-banner--in-chrome,
   margin: 0.55rem 0 0.7rem;
 }
 
+/* "Recipe overview" title + servings stepper on one row */
+.cook-mode-v2-overview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+  flex-wrap: wrap;
+  margin: 0 0 1.05rem;
+}
+
+.cook-mode-v2-overview-head .cook-mode-v2-confirm-title {
+  margin: 0;
+}
+
+.cook-mode-v2-overview-head .cook-mode-v2-servings {
+  margin: 0;
+}
+
 .cook-mode-v2-servings-btn {
   width: 2rem;
   height: 2rem;

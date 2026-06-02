@@ -806,8 +806,10 @@ export function RecipeCookModePanel({
                   <span className="cook-mode-v2-meal-banner-title cook-mode-v2-meal-banner-title--solo">{recipe.title}</span>
                 </div>
               </div>
-              <h1 className="cook-mode-v2-confirm-title">{COOK_MODE_CONFIRM_OVERVIEW_TITLE}</h1>
-              {servingsStepper}
+              <div className="cook-mode-v2-overview-head">
+                <h1 className="cook-mode-v2-confirm-title">{COOK_MODE_CONFIRM_OVERVIEW_TITLE}</h1>
+                {servingsStepper}
+              </div>
               {flatIngredientChips.length > 0 ? (
                 <>
                   <div className="cook-mode-v2-confirm-ing-rule-line" aria-hidden />
