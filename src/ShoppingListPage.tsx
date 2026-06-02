@@ -283,14 +283,11 @@ export function ShoppingListPage({
   // populated state. The heading differs between the two: in the empty state the section
   // is the primary affordance, so it's labeled "Build your own list" instead of the
   // catalog-style "Additional items".
-  const renderAdditionalItemsSection = (heading: string) => (
+  // Entry box for free-text "additional items": heading + input. Mounted near the top so it's the
+  // primary capture affordance; the added items render separately via renderAdditionalItemsList.
+  const renderAdditionalItemsEntry = (heading: string) => (
     <section className="detail-section">
-      <h2>
-        {heading}
-        {unpurchasedAdditional.length > 0 ? (
-          <span className="shopping-segment-count"> ({unpurchasedAdditional.length})</span>
-        ) : null}
-      </h2>
+      <h2>{heading}</h2>
       <form
         className="shopping-additional-input"
         onSubmit={(e) => {
@@ -315,7 +312,17 @@ export function ShoppingListPage({
           Add
         </button>
       </form>
-      {unpurchasedAdditional.length > 0 ? (
+    </section>
+  );
+
+  // The added free-text items, shown in their own section below the entry box.
+  const renderAdditionalItemsList = () =>
+    unpurchasedAdditional.length > 0 ? (
+      <section className="detail-section">
+        <h2>
+          Additional items
+          <span className="shopping-segment-count"> ({unpurchasedAdditional.length})</span>
+        </h2>
         <ul className="shopping-combined shopping-checklist">
           {unpurchasedAdditional.map((text) => (
             <li key={`additional-${text}`}>
@@ -345,9 +352,8 @@ export function ShoppingListPage({
             </li>
           ))}
         </ul>
-      ) : null}
-    </section>
-  );
+      </section>
+    ) : null;
 
   // Purchased section, also reusable across empty and populated states. Combines
   // recipe-derived purchased items and free-text purchased items.
@@ -437,7 +443,8 @@ export function ShoppingListPage({
             </Link>
           </div>
           {/* Free-text capture works even before any recipes are selected. */}
-          {renderAdditionalItemsSection("Build your own list")}
+          {renderAdditionalItemsEntry("Build your own list")}
+          {renderAdditionalItemsList()}
           {purchasedSection}
         </>
       ) : null}
@@ -513,6 +520,8 @@ export function ShoppingListPage({
             </ul>
           </section>
 
+          {renderAdditionalItemsEntry("Additional items")}
+
           <div
             className="shopping-meal-list-actions"
             role="region"
@@ -541,8 +550,9 @@ export function ShoppingListPage({
             </button>
           </div>
 
+          {renderAdditionalItemsList()}
+
           <section className="detail-section">
-            <h2>Shopping list</h2>
             {combinedItems.length === 0 ? (
               <p className="muted">
                 No mergeable ingredient rows in the selected recipes (empty or
@@ -602,7 +612,6 @@ export function ShoppingListPage({
             )}
           </section>
 
-          {renderAdditionalItemsSection("Additional items")}
           {purchasedSection}
 
           <section className="detail-section">
