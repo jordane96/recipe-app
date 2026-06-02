@@ -429,7 +429,13 @@ export function RecipeList({
       return;
     }
     showToast(`Added ${n} ${n === 1 ? "meal" : "meals"} to your menu`);
-    navigate("/");
+    // Planning onto a calendar day → return to the calendar (with that day selected). Adding to
+    // the menu pool from the menu → return to the menu.
+    if (planKey !== MEAL_PLAN_UNASSIGNED_KEY && isMealPlanDateKey(planKey)) {
+      navigate(`/history?day=${planKey}`);
+    } else {
+      navigate("/");
+    }
   }, [
     addFlowSelectedIds,
     addFlowStorageKey,

@@ -1,12 +1,12 @@
 import * as React from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import type { Recipe } from "./types";
 import { iso } from "./mealPlanDates";
 import { recipeDetailPath, recipesAddToPlanPath } from "./listTabSearch";
 import { useCookHistory } from "./CookHistoryContext";
 import type { CookHistoryByDate, CookedMeal } from "./cookHistoryStorage";
 import { useMealPlan } from "./MealPlanContext";
-import { portionCountOf } from "./mealPlanStorage";
+import { isMealPlanDateKey, portionCountOf } from "./mealPlanStorage";
 import type { MealPlanByDate, PlannedMeal } from "./mealPlanStorage";
 
 /**
@@ -142,14 +142,22 @@ export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
   const { plan, removeMealAt, adjustCalendarPortionCount } = useMealPlan();
   const todayIso = iso(new Date());
 
+  // Optional `?day=YYYY-MM-DD` deep link (e.g. returning here after planning a meal) — preselect
+  // that day and open its month.
+  const [searchParams] = useSearchParams();
+  const initialDay = (() => {
+    const d = searchParams.get("day");
+    return d && isMealPlanDateKey(d) ? d : null;
+  })();
+
   const [viewMonth, setViewMonth] = React.useState(() => {
-    const d = new Date();
+    const d = initialDay ? new Date(`${initialDay}T12:00:00`) : new Date();
     d.setDate(1);
     d.setHours(12, 0, 0, 0);
     return d;
   });
 
-  const [selectedIso, setSelectedIso] = React.useState<string | null>(null);
+  const [selectedIso, setSelectedIso] = React.useState<string | null>(initialDay);
   const [pickOpen, setPickOpen] = React.useState(false);
   const [pickQ, setPickQ] = React.useState("");
 
