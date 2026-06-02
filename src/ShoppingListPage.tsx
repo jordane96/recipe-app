@@ -319,10 +319,10 @@ export function ShoppingListPage({
   const renderAdditionalItemsList = () =>
     unpurchasedAdditional.length > 0 ? (
       <section className="detail-section">
-        <h2>
+        <h3 className="shopping-grocery-section-heading">
           Additional items
           <span className="shopping-segment-count"> ({unpurchasedAdditional.length})</span>
-        </h2>
+        </h3>
         <ul className="shopping-combined shopping-checklist">
           {unpurchasedAdditional.map((text) => (
             <li key={`additional-${text}`}>
