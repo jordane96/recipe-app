@@ -266,11 +266,16 @@ export function ShoppingListPage({
   );
 
   const [additionalInput, setAdditionalInput] = React.useState("");
+  const additionalInputRef = React.useRef<HTMLInputElement>(null);
   const submitAdditional = React.useCallback(() => {
     const t = additionalInput.trim();
     if (!t) return;
     addAdditionalItem(t);
     setAdditionalInput("");
+    // Keep focus on the field so the mobile keyboard stays open and the page doesn't scroll
+    // away after each add. preventScroll stops the browser re-scrolling the input into view.
+    // Runs inside the submit gesture, so iOS keeps the keyboard up.
+    additionalInputRef.current?.focus({ preventScroll: true });
   }, [additionalInput, addAdditionalItem]);
 
   // Reusable JSX for the Additional items section so we can mount it in both the empty
@@ -294,6 +299,7 @@ export function ShoppingListPage({
         }}
       >
         <input
+          ref={additionalInputRef}
           type="text"
           className="shopping-additional-input-field"
           placeholder="Add anything — e.g. coffee filters"
