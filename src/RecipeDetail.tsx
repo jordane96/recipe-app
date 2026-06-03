@@ -24,6 +24,7 @@ import { MEAL_PLAN_UNASSIGNED_KEY } from "./mealPlanStorage";
 import { useMealPlan } from "./MealPlanContext";
 import { useToast } from "./ToastContext";
 import { useSavedRecipes } from "./SavedRecipesContext";
+import { useShoppingList } from "./ShoppingListContext";
 import { RecipeCookModePanel } from "./RecipeCookModePanel";
 import { normalizeInstructionStep } from "./recipeInstructions";
 import { loadCookUi } from "./cookModeSessionStorage";
@@ -111,6 +112,7 @@ export function RecipeDetail({
   const recipe = recipes.find((r) => r.id === id);
   const cookParams = readCookModeParams(searchParams);
   const { addRecipeToPlanKey } = useMealPlan();
+  const { addToList } = useShoppingList();
   const { showToast } = useToast();
   const { isSaved, saveRecipe } = useSavedRecipes();
   // Recipe-aware so custom-* ids resolve to their human names (e.g. "Spinach", not "custom-spinach").
@@ -147,6 +149,14 @@ export function RecipeDetail({
 
   const addTargetToPlan = React.useCallback(
     (r: Recipe) => {
+      // Shopping-list "add more recipes" flow: add straight to the list (one click) and return to
+      // the picker, instead of staging it and requiring a second commit click.
+      if (isShopMenuBuildFlow) {
+        addToList(r.id);
+        showToast(`Added “${r.title}” to your shopping list.`);
+        navigate(recipeDetailBackPath(id ?? "", preserve, fromHistory, searchParams));
+        return;
+      }
       if (planKey != null) {
         navigate(recipesListAddToCartPath(searchParams, r.id));
         showToast(`Added “${r.title}” to your selection.`);
@@ -156,7 +166,18 @@ export function RecipeDetail({
       addRecipeToPlanKey(key, r);
       showToast(`Added “${r.title}” to your menu.`);
     },
-    [planKey, addRecipeToPlanKey, navigate, searchParams, showToast],
+    [
+      isShopMenuBuildFlow,
+      addToList,
+      planKey,
+      addRecipeToPlanKey,
+      navigate,
+      searchParams,
+      showToast,
+      id,
+      preserve,
+      fromHistory,
+    ],
   );
 
   /**
