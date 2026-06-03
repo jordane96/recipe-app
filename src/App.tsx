@@ -41,6 +41,7 @@ import {
   isAddFlowBuilderLocation,
 } from "./addFlowCartSession";
 import { isRecipeDetailPathname, recordNavigation } from "./navHistory";
+import { Onboarding, hasSeenOnboarding } from "./Onboarding";
 
 function appChromeSectionTitle(pathname: string): string {
   if (pathname === "/" || pathname === "") {
@@ -247,6 +248,7 @@ function AppLayout({
   const { count } = useShoppingList();
   const [menuOpen, setMenuOpen] = React.useState(false);
   const menuBtnRef = React.useRef<HTMLButtonElement>(null);
+  const [onboardingOpen, setOnboardingOpen] = React.useState(() => !hasSeenOnboarding());
 
   const isPlannerHome = pathname === "/" || pathname === "";
   const wide = isPlannerHome || pathname === "/history" || pathname === "/cooking-now";
@@ -440,6 +442,9 @@ function AppLayout({
 
   return (
     <div className={wide ? "app-shell app-shell--wide" : "app-shell"}>
+      {onboardingOpen ? (
+        <Onboarding onClose={() => setOnboardingOpen(false)} />
+      ) : null}
       <header className="app-chrome-bar">
         <button
           ref={menuBtnRef}
@@ -578,6 +583,13 @@ function AppLayout({
                 Sign out
               </button>
             ) : null}
+            <button
+              type="button"
+              className="app-chrome-nav-link app-chrome-nav-link--button"
+              onClick={() => { setMenuOpen(false); setOnboardingOpen(true); }}
+            >
+              How it works
+            </button>
           </nav>
         </>
       ) : null}
