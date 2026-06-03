@@ -5,6 +5,9 @@ dist
 .env
 .env.*.local
 .claude/
+.claire/
 .cursor/
 .vercel
 .env*.local
+CLAUDE.local.md
+data/beer_profile_and_ratings.csv
