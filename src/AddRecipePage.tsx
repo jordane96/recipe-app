@@ -9,8 +9,8 @@ export function AddRecipePage() {
   const [tab, setTab] = React.useState<Tab>("paste");
   const [pasteText, setPasteText] = React.useState("");
   const [urlText, setUrlText] = React.useState("");
-  const [imageFile, setImageFile] = React.useState<File | null>(null);
-  const [imagePreviewUrl, setImagePreviewUrl] = React.useState<string | null>(null);
+  const [imageFiles, setImageFiles] = React.useState<File[]>([]);
+  const [imagePreviewUrls, setImagePreviewUrls] = React.useState<string[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -20,27 +20,30 @@ export function AddRecipePage() {
     (tab === "paste"
       ? pasteText.trim().length > 0
       : tab === "screenshot"
-        ? imageFile != null
+        ? imageFiles.length > 0
         : /^https?:\/\/.+/i.test(urlText.trim()));
 
-  function handleFileChange(file: File | null) {
-    if (!file) return;
-    setImageFile(file);
-    setImagePreviewUrl(URL.createObjectURL(file));
+  function addFiles(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    const imgs = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    if (imgs.length === 0) return;
+    setImageFiles((prev) => [...prev, ...imgs]);
+    setImagePreviewUrls((prev) => [...prev, ...imgs.map((f) => URL.createObjectURL(f))]);
     setError(null);
   }
 
-  function removeImage() {
-    setImageFile(null);
-    if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
-    setImagePreviewUrl(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+  function removeImageAt(index: number) {
+    setImagePreviewUrls((prev) => {
+      const url = prev[index];
+      if (url) URL.revokeObjectURL(url);
+      return prev.filter((_, i) => i !== index);
+    });
+    setImageFiles((prev) => prev.filter((_, i) => i !== index));
   }
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();
-    const file = e.dataTransfer.files[0];
-    if (file?.type.startsWith("image/")) handleFileChange(file);
+    addFiles(e.dataTransfer.files);
   }
 
   async function handleParse() {
@@ -49,15 +52,17 @@ export function AddRecipePage() {
     setLoading(true);
 
     try {
-      let body: Record<string, string>;
+      let body: Record<string, unknown>;
 
       if (tab === "paste") {
         body = { text: pasteText };
       } else if (tab === "url") {
         body = { url: urlText.trim() };
       } else {
-        const imageBase64 = await fileToBase64(imageFile!);
-        body = { imageBase64, mimeType: imageFile!.type };
+        const images = await Promise.all(
+          imageFiles.map(async (f) => ({ imageBase64: await fileToBase64(f), mimeType: f.type })),
+        );
+        body = { images };
       }
 
       const res = await fetch("/api/recipes/parse", {
@@ -127,17 +132,52 @@ export function AddRecipePage() {
 
       {tab === "screenshot" && (
         <div className="add-recipe-panel">
-          {imagePreviewUrl ? (
-            <div className="add-recipe-preview">
-              <img src={imagePreviewUrl} alt="Recipe photo" />
-              <button
-                className="add-recipe-preview-remove"
-                onClick={removeImage}
-                aria-label="Remove image"
-              >
-                ✕
-              </button>
-            </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            style={{ display: "none" }}
+            onChange={(e) => {
+              addFiles(e.target.files);
+              e.target.value = "";
+            }}
+          />
+          {imagePreviewUrls.length > 0 ? (
+            <>
+              <div className="add-recipe-photo-grid">
+                {imagePreviewUrls.map((url, i) => (
+                  <div key={url} className="add-recipe-photo-thumb">
+                    <img src={url} alt={`Recipe photo ${i + 1}`} />
+                    <button
+                      type="button"
+                      className="add-recipe-photo-remove"
+                      onClick={() => removeImageAt(i)}
+                      aria-label={`Remove photo ${i + 1}`}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  className="add-recipe-photo-add"
+                  onClick={() => fileInputRef.current?.click()}
+                  aria-label="Add more photos"
+                >
+                  <span className="add-recipe-photo-add-plus" aria-hidden>
+                    +
+                  </span>
+                  <span className="add-recipe-photo-add-label">Add more</span>
+                </button>
+              </div>
+              <p className="add-recipe-upload-sub">
+                {imagePreviewUrls.length === 1
+                  ? "1 photo"
+                  : `${imagePreviewUrls.length} photos`}{" "}
+                — combined into one recipe.
+              </p>
+            </>
           ) : (
             <div
               className="add-recipe-upload-zone"
@@ -145,13 +185,6 @@ export function AddRecipePage() {
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
             >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                style={{ display: "none" }}
-                onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
-              />
               <div className="add-recipe-upload-icon" aria-hidden>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -159,9 +192,9 @@ export function AddRecipePage() {
                   <polyline points="21 15 16 10 5 21" />
                 </svg>
               </div>
-              <p className="add-recipe-upload-label">Drop a photo here</p>
+              <p className="add-recipe-upload-label">Drop photos here</p>
               <p className="add-recipe-upload-sub">
-                Photo of a recipe, cookbook page, or app screen
+                One or more photos/screenshots of a recipe
               </p>
               <span className="add-recipe-upload-browse">Browse files</span>
             </div>

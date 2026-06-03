@@ -211,16 +211,24 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  const { text, imageBase64, mimeType, url } = req.body ?? {}
-  if (!text && !imageBase64 && !url) {
-    return res.status(400).json({ error: 'Provide text, imageBase64, or url' })
+  const { text, imageBase64, mimeType, images, url } = req.body ?? {}
+  // Accept either a single image (legacy { imageBase64, mimeType }) or an array of them
+  // ({ images: [{ imageBase64, mimeType }, …] }) — e.g. multiple screenshots of one recipe.
+  const imageList = (Array.isArray(images) && images.length
+    ? images
+    : imageBase64
+      ? [{ imageBase64, mimeType }]
+      : []
+  ).filter((img) => img && typeof img.imageBase64 === 'string' && img.imageBase64.length > 0)
+  if (!text && imageList.length === 0 && !url) {
+    return res.status(400).json({ error: 'Provide text, image(s), or url' })
   }
 
   // URL import: resolve to clean recipe text (direct fetch → Wayback fallback), then run it
   // through the same AI extractor below so catalog matching / verify-match all work the same.
   let resolvedText = text
   let importedSourceUrl = null
-  if (url && !text && !imageBase64) {
+  if (url && !text && imageList.length === 0) {
     if (!/^https?:\/\//i.test(url)) {
       return res.status(400).json({ error: 'Enter a valid http(s) URL.' })
     }
@@ -239,16 +247,20 @@ export default async function handler(req, res) {
   const libraryText = rows.map(r => `${r.id}: ${r.name}`).join('\n')
 
   const userContent = []
-  if (imageBase64) {
+  for (const img of imageList) {
     userContent.push({
       type: 'image',
-      image: Buffer.from(imageBase64, 'base64'),
-      mimeType: mimeType ?? 'image/jpeg',
+      image: Buffer.from(img.imageBase64, 'base64'),
+      mimeType: img.mimeType ?? 'image/jpeg',
     })
   }
+  const imageInstruction =
+    imageList.length > 1
+      ? 'The images above are multiple photos/screenshots of ONE recipe (e.g. a recipe split across several screens). Combine them into a single recipe, in order.'
+      : 'Extract the recipe from the image above.'
   userContent.push({
     type: 'text',
-    text: `Ingredient library:\n${libraryText}\n\n${resolvedText ? `Recipe text:\n${resolvedText}` : 'Extract the recipe from the image above.'}`,
+    text: `Ingredient library:\n${libraryText}\n\n${resolvedText ? `Recipe text:\n${resolvedText}` : imageInstruction}`,
   })
 
   let object
