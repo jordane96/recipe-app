@@ -392,7 +392,7 @@ export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
         </div>
         <div className="history-summary-card">
           <div className="history-summary-value">${stats.moneySaved}</div>
-          <div className="history-summary-label">Saved</div>
+          <div className="history-summary-label">Estimated savings</div>
           <div className="history-summary-sub">~$10/serving</div>
         </div>
       </section>
