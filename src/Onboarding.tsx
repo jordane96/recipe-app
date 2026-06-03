@@ -20,14 +20,20 @@ export function markOnboardingSeen(): void {
   }
 }
 
-type Slide = { src: string; headline: string; body: string };
+type Slide = { src: string; headline: string; body: React.ReactNode };
 
 const SLIDES: Slide[] = [
   {
     src: "/onboarding/01-add-to-home.gif",
     headline: "Add us to your Home Screen",
-    body:
-      'In Safari, tap the Share button, then "Add to Home Screen" so the planner opens full-screen like a real app.',
+    body: (
+      <>
+        In Safari, tap the <strong><em>"..."</em></strong>, then tap{" "}
+        <strong><em>'Share'</em></strong>, <strong><em>'View More'</em></strong>, and{" "}
+        <strong><em>'Add to Home Screen'</em></strong> to open us full-screen like a
+        real app.
+      </>
+    ),
   },
   {
     src: "/onboarding/02-empty-menu.png",
@@ -66,6 +72,14 @@ export function Onboarding({ onClose }: { onClose: () => void }) {
   const total = SLIDES.length;
   const isLast = index === total - 1;
   const touchStartX = React.useRef<number | null>(null);
+
+  // Preload every slide image up front so swiping is instant (no blank-then-pop).
+  React.useEffect(() => {
+    SLIDES.forEach((s) => {
+      const img = new Image();
+      img.src = s.src;
+    });
+  }, []);
 
   const finish = React.useCallback(() => {
     markOnboardingSeen();
@@ -131,8 +145,13 @@ export function Onboarding({ onClose }: { onClose: () => void }) {
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
-        <div className="ob-phone" key={slide.src}>
-          <img className="ob-media" src={slide.src} alt={slide.headline} />
+        <div className="ob-phone">
+          <img
+            className="ob-media"
+            src={slide.src}
+            alt={slide.headline}
+            decoding="async"
+          />
         </div>
 
         <div className="ob-copy">

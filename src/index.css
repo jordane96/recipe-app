@@ -6722,16 +6722,16 @@ button.history-day-card-select:focus-visible {
 }
 
 .ob-phone {
-  flex: 0 1 auto;
-  min-height: 0;
+  flex: 0 0 auto;
+  /* Definite height + aspect-ratio derives the width, so the frame holds its
+     full shape even before the image loads — prevents the collapse/flicker. */
+  height: min(58vh, 460px);
   aspect-ratio: 1206 / 2622;
-  max-height: min(58vh, 460px);
   border-radius: 30px;
   background: #1c1917;
   padding: 6px;
   box-shadow: 0 18px 40px -18px rgba(28, 25, 23, 0.45);
   overflow: hidden;
-  animation: ob-fade 0.35s ease;
 }
 
 .ob-media {
