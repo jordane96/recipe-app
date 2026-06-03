@@ -6189,7 +6189,11 @@ button.history-day-card-select:focus-visible {
   font-size: 0.875rem;
   line-height: 1.45;
   font-family: var(--font-sans);
-  resize: vertical;
+  /* Auto-grows to fit its text via JS (see autoGrowTextarea); hide the scrollbar so it reads as
+     one expanding box, and disable manual resize since height is managed. */
+  overflow-y: hidden;
+  resize: none;
+  box-sizing: border-box;
 }
 
 .edit-recipe-step-note-row {

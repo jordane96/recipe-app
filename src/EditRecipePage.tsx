@@ -356,6 +356,15 @@ function foldTimerDraftsIntoDraft(
   return { draft: { ...draft, instructions: nextSteps }, invalidStepIndexes };
 }
 
+/** Resize a textarea to fit its content. The CSS min-height provides the floor. */
+function autoGrowTextarea(el: HTMLTextAreaElement | null): void {
+  if (!el) {
+    return;
+  }
+  el.style.height = "auto";
+  el.style.height = `${el.scrollHeight}px`;
+}
+
 export function EditRecipePage({
   recipes,
   ingredients,
@@ -1542,9 +1551,13 @@ export function EditRecipePage({
                   </div>
                 </div>
                 <textarea
+                  ref={autoGrowTextarea}
                   className="edit-recipe-step-text"
                   value={parts.text}
-                  onChange={(e) => updateStep(i, { text: e.target.value })}
+                  onChange={(e) => {
+                    updateStep(i, { text: e.target.value });
+                    autoGrowTextarea(e.currentTarget);
+                  }}
                   rows={3}
                   aria-label={`Step ${i + 1} instruction`}
                 />
