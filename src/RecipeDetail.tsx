@@ -149,11 +149,13 @@ export function RecipeDetail({
 
   const addTargetToPlan = React.useCallback(
     (r: Recipe) => {
-      // Shopping-list "add more recipes" flow: add straight to the list (one click) and return to
-      // the picker, instead of staging it and requiring a second commit click.
+      // Shopping-list "add more recipes" flow: add straight to the menu + shopping list (one click,
+      // matching the picker's commit) and return to the picker, instead of staging it and requiring
+      // a second commit click.
       if (isShopMenuBuildFlow) {
+        addRecipeToPlanKey(MEAL_PLAN_UNASSIGNED_KEY, r);
         addToList(r.id);
-        showToast(`Added “${r.title}” to your shopping list.`);
+        showToast(`Added “${r.title}” to your menu and shopping list.`);
         navigate(recipeDetailBackPath(id ?? "", preserve, fromHistory, searchParams));
         return;
       }
