@@ -5195,8 +5195,22 @@ a.recipe-detail-back-cta {
 }
 
 @media (max-width: 520px) {
+  /* Keep all three stats on one row on mobile — just tighten spacing and type so they fit. */
   .history-summary {
-    grid-template-columns: 1fr;
+    gap: 0.4rem;
+  }
+
+  .history-summary-card {
+    padding: 0.55rem 0.5rem;
+  }
+
+  .history-summary-value,
+  .history-summary-most {
+    font-size: 1.15rem;
+  }
+
+  .history-summary-label {
+    letter-spacing: 0.02em;
   }
 }
 
