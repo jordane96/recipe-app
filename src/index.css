@@ -5325,8 +5325,8 @@ a.history-day-meal-title:hover {
   flex-shrink: 0;
   padding: 0.25rem 0.55rem;
   border-radius: 8px;
-  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
-  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid var(--border);
+  background: var(--surface);
   color: var(--accent);
   font-size: var(--fs-caption);
   font-weight: 700;
@@ -5335,7 +5335,7 @@ a.history-day-meal-title:hover {
 }
 
 .history-day-meal-view:hover {
-  background: rgba(255, 255, 255, 0.75);
+  background: var(--accent-soft);
 }
 
 .history-day-meal-log-cooked {
