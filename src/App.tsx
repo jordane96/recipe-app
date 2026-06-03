@@ -65,7 +65,7 @@ function appChromeSectionTitle(pathname: string): string {
     return "Place order";
   }
   if (pathname.startsWith("/recipe/") && pathname.endsWith("/edit")) {
-    return "Edit recipe";
+    return pathname === "/recipe/new/edit" ? "Add recipe" : "Edit recipe";
   }
   if (pathname.startsWith("/recipe/")) {
     return "Recipe";
