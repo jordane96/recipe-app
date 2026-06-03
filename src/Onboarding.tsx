@@ -24,7 +24,7 @@ type Slide = { src: string; headline: string; body: React.ReactNode };
 
 const SLIDES: Slide[] = [
   {
-    src: "/onboarding/01-add-to-home.gif",
+    src: "/onboarding/01-add-to-home.mp4",
     headline: "Add us to your Home Screen",
     body: (
       <>
@@ -73,9 +73,11 @@ export function Onboarding({ onClose }: { onClose: () => void }) {
   const isLast = index === total - 1;
   const touchStartX = React.useRef<number | null>(null);
 
-  // Preload every slide image up front so swiping is instant (no blank-then-pop).
+  // Preload slide images up front so swiping is instant (no blank-then-pop).
+  // Skip the video (slide 1) — it streams via its own element.
   React.useEffect(() => {
     SLIDES.forEach((s) => {
+      if (s.src.endsWith(".mp4")) return;
       const img = new Image();
       img.src = s.src;
     });
@@ -146,12 +148,23 @@ export function Onboarding({ onClose }: { onClose: () => void }) {
         onTouchEnd={onTouchEnd}
       >
         <div className="ob-phone">
-          <img
-            className="ob-media"
-            src={slide.src}
-            alt={slide.headline}
-            decoding="async"
-          />
+          {slide.src.endsWith(".mp4") ? (
+            <video
+              className="ob-media"
+              src={slide.src}
+              autoPlay
+              muted
+              loop
+              playsInline
+            />
+          ) : (
+            <img
+              className="ob-media"
+              src={slide.src}
+              alt={slide.headline}
+              decoding="async"
+            />
+          )}
         </div>
 
         <div className="ob-copy">
