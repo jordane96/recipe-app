@@ -41,7 +41,7 @@ import {
   isAddFlowBuilderLocation,
 } from "./addFlowCartSession";
 import { isRecipeDetailPathname, recordNavigation } from "./navHistory";
-import { Onboarding, hasSeenOnboarding } from "./Onboarding";
+import { Onboarding } from "./Onboarding";
 
 function appChromeSectionTitle(pathname: string): string {
   if (pathname === "/" || pathname === "") {
@@ -248,7 +248,9 @@ function AppLayout({
   const { count } = useShoppingList();
   const [menuOpen, setMenuOpen] = React.useState(false);
   const menuBtnRef = React.useRef<HTMLButtonElement>(null);
-  const [onboardingOpen, setOnboardingOpen] = React.useState(() => !hasSeenOnboarding());
+  // First-run tour now shows before sign-in (see main.tsx Root); here it's only opened on demand
+  // via the menu's "replay tour" item.
+  const [onboardingOpen, setOnboardingOpen] = React.useState(false);
 
   const isPlannerHome = pathname === "/" || pathname === "";
   const wide = isPlannerHome || pathname === "/history" || pathname === "/cooking-now";

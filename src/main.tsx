@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { AuthScreen } from "./AuthScreen";
+import { Onboarding, hasSeenOnboarding } from "./Onboarding";
 import { clearSessionUser, getSessionUser, setSessionUser } from "./userSession";
 
 // Disable browser scroll restoration before React mounts; otherwise mobile
@@ -15,6 +16,8 @@ if (typeof window !== "undefined" && "scrollRestoration" in window.history) {
 
 function Root() {
   const [user, setUser] = React.useState<string | null>(() => getSessionUser());
+  // First-run product tour shows BEFORE sign-in. Finishing/skipping marks it seen.
+  const [showOnboarding, setShowOnboarding] = React.useState(() => !hasSeenOnboarding());
 
   const handleAuth = (username: string) => {
     // Persist the session, then full-reload. The in-page React tree swap was
@@ -33,6 +36,10 @@ function Root() {
     clearSessionUser();
     setUser(null);
   };
+
+  if (showOnboarding) {
+    return <Onboarding onClose={() => setShowOnboarding(false)} />;
+  }
 
   if (!user) {
     return <AuthScreen onAuth={handleAuth} />;
