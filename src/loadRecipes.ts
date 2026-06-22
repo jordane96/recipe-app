@@ -1,7 +1,7 @@
 import type { IngredientsFile, RecipeBundle, RecipeFile } from "./ingredientTypes";
 
 /** Resolve JSON URLs against the document base (GitHub Pages project paths, trailing slashes). */
-function dataFileUrl(file: string): string {
+export function dataFileUrl(file: string): string {
   const name = file.replace(/^\.\//, "");
   if (typeof document !== "undefined" && document.baseURI) {
     return new URL(name, document.baseURI).href;

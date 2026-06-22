@@ -1,0 +1,375 @@
+/* Kroger grocery-ordering flow. Scoped to .kroger-page to avoid leaking globally. */
+
+.kroger-page {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.kroger-card {
+  border: 1px solid rgba(128, 128, 128, 0.28);
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  align-items: flex-start;
+}
+
+.kroger-card h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.kroger-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: 10px;
+  font-size: 0.92rem;
+}
+
+.kroger-banner--success {
+  background: rgba(34, 139, 70, 0.12);
+  border: 1px solid rgba(34, 139, 70, 0.45);
+}
+
+.kroger-banner--error {
+  background: rgba(200, 40, 40, 0.1);
+  border: 1px solid rgba(200, 40, 40, 0.4);
+}
+
+.kroger-banner-x {
+  border: none;
+  background: transparent;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  color: inherit;
+  padding: 0 0.2rem;
+}
+
+/* Store picker */
+.kroger-zip-row {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.kroger-zip-input {
+  flex: 0 0 8rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid rgba(128, 128, 128, 0.4);
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+.kroger-store-list {
+  list-style: none;
+  margin: 0.25rem 0 0;
+  padding: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.kroger-store-option {
+  width: 100%;
+  text-align: left;
+  border: 1px solid rgba(128, 128, 128, 0.3);
+  border-radius: 10px;
+  background: transparent;
+  padding: 0.6rem 0.75rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.kroger-store-option:hover {
+  border-color: rgba(128, 128, 128, 0.6);
+}
+
+.kroger-store-name {
+  font-weight: 600;
+}
+
+.kroger-store-addr {
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+/* Store banner above the review list */
+.kroger-store-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.7rem 0.9rem;
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  border-radius: 12px;
+}
+
+.kroger-store-bar-pin {
+  flex: none;
+  color: var(--accent);
+}
+
+.kroger-store-bar-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.kroger-store-bar-name {
+  font-weight: 600;
+  font-size: 0.98rem;
+  line-height: 1.2;
+}
+
+.kroger-store-bar-change {
+  flex: none;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  background: transparent;
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.32rem 0.7rem;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.kroger-store-bar-change:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+/* Review list */
+.kroger-review-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.kroger-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.9rem 0.85rem 1rem;
+  border: 1px solid rgba(128, 128, 128, 0.22);
+  border-radius: 12px;
+  text-align: center;
+}
+
+.kroger-row-term {
+  font-weight: 600;
+  font-size: 1.02rem;
+}
+
+.kroger-row-img,
+.kroger-row-img img,
+.kroger-row-img-empty {
+  width: 132px;
+  height: 132px;
+  border-radius: 12px;
+}
+
+.kroger-row-img img {
+  object-fit: contain;
+  background: #fff;
+}
+
+.kroger-row-img-empty {
+  background: rgba(128, 128, 128, 0.15);
+}
+
+.kroger-row-product {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+}
+
+.kroger-row-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  max-width: 24rem;
+}
+
+.kroger-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+}
+
+.kroger-row-qty-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.9rem;
+}
+
+.kroger-row-change {
+  flex: none;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  background: transparent;
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.kroger-row-change:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.kroger-row-remove {
+  border: none;
+  background: transparent;
+  color: inherit;
+  opacity: 0.6;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0.3rem 0.4rem;
+}
+
+.kroger-row-remove:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.kroger-row-price {
+  font-size: 1.05rem;
+}
+
+.kroger-row-perunit {
+  font-weight: 400;
+  opacity: 0.6;
+  font-size: 0.92rem;
+}
+
+/* Product picker: each alternative is a tappable card. */
+.kroger-opt-card {
+  width: 100%;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.kroger-opt-card:hover {
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+}
+
+.kroger-opt-card--selected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.kroger-opt-current {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+/* Sticky confirm bar on the product-picker page. */
+.kroger-change-cta {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding: 0.75rem 0 calc(0.75rem + env(safe-area-inset-bottom, 0px));
+  background: var(--bg);
+  border-top: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.kroger-change-cta button {
+  width: 100%;
+  min-height: var(--tap);
+  border-radius: 12px;
+  font: inherit;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.kroger-change-cta button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.kroger-row-nomatch {
+  font-size: 0.9rem;
+  opacity: 0.7;
+  font-style: italic;
+}
+
+.kroger-qty {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.kroger-qty-btn {
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 50%;
+  border: 1px solid rgba(128, 128, 128, 0.45);
+  background: transparent;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  color: inherit;
+}
+
+.kroger-qty-val {
+  min-width: 1.2rem;
+  text-align: center;
+}
+
+/* Footer summary + send */
+.kroger-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: stretch;
+  padding-top: 0.25rem;
+}
+
+.kroger-footer-summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 0.95rem;
+}
+
+.kroger-est {
+  font-weight: 600;
+}
+
+.kroger-note {
+  margin: 0;
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+.kroger-success a.btn-primary {
+  text-decoration: none;
+}

@@ -43,6 +43,13 @@ const routes = [
   ["/api/recipes/",           "../api/recipes/[id].js"],     // /api/recipes/:id
   ["/api/recipes",            "../api/recipes.js"],
   ["/api/ingredients",        "../api/ingredients.js"],
+  ["/api/kroger/authorize",   "../api/kroger/authorize.js"],
+  ["/api/kroger/callback",    "../api/kroger/callback.js"],
+  ["/api/kroger/status",      "../api/kroger/status.js"],
+  ["/api/kroger/store",       "../api/kroger/store.js"],
+  ["/api/kroger/locations",   "../api/kroger/locations.js"],
+  ["/api/kroger/match",       "../api/kroger/match.js"],
+  ["/api/kroger/cart-add",    "../api/kroger/cart-add.js"],
 ];
 
 function makeReq(nodeReq, body) {

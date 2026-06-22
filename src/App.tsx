@@ -24,7 +24,7 @@ import { CookHistoryProvider } from "./CookHistoryContext";
 import { HistoryPage } from "./HistoryPage";
 import { ToastProvider } from "./ToastContext";
 import { SavedRecipesProvider } from "./SavedRecipesContext";
-import { InstacartPlaceholderPage } from "./InstacartPlaceholderPage";
+import { KrogerOrderPage } from "./KrogerOrderPage";
 import { CookingNowPage } from "./CookingNowPage";
 import {
   COOK_PROGRESS_CHANGED_EVENT,
@@ -641,7 +641,12 @@ function AppLayout({
         />
         <Route path="/cooking-now" element={<CookingNowPage />} />
         <Route path="/history" element={<HistoryPage recipes={recipes} />} />
-        <Route path="/place-order" element={<InstacartPlaceholderPage />} />
+        <Route
+          path="/place-order"
+          element={
+            <KrogerOrderPage recipes={recipes} ingredients={ingredients} currentUser={currentUser} />
+          }
+        />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>
