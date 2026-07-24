@@ -426,24 +426,66 @@ export function ShoppingListPage({
     });
   }, [byRecipe, recipeById]);
 
+  // Place order / Clear list — shown whenever the list has anything (recipes OR free-text items).
+  const orderActions = (
+    <div
+      className="shopping-meal-list-actions"
+      role="region"
+      aria-label="Place order or clear the shopping list"
+    >
+      <Link to="/place-order" className="btn-primary btn-compact">
+        Place order
+      </Link>
+      <button
+        type="button"
+        className="btn-secondary btn-compact shopping-clear-list-btn"
+        aria-label="Clear the entire shopping list"
+        onClick={() => {
+          clearList();
+          showToast("Shopping list cleared.");
+        }}
+      >
+        Clear list
+      </button>
+    </div>
+  );
+
   return (
     <>
       {selectedRecipes.length === 0 ? (
         <>
-          <p className="empty">
-            Your shopping list is empty. Add recipes to build your list, or add items below.
-          </p>
-          <div className="shopping-list-empty-cta cta-panel">
-            <Link
-              to={shopMenuBuildListHref}
-              className="btn-primary btn-cta-wide"
-              aria-label="Browse recipes to add to your shopping list and menu"
-            >
-              Browse recipes
-            </Link>
-          </div>
+          {additionalItems.length === 0 ? (
+            <>
+              <p className="empty">
+                Your shopping list is empty. Add recipes to build your list, or add items below.
+              </p>
+              <div className="shopping-list-empty-cta cta-panel">
+                <Link
+                  to={shopMenuBuildListHref}
+                  className="btn-primary btn-cta-wide"
+                  aria-label="Browse recipes to add to your shopping list and menu"
+                >
+                  Browse recipes
+                </Link>
+              </div>
+            </>
+          ) : (
+            <div className="shopping-add-more-row">
+              <Link
+                to={shopMenuBuildListHref}
+                className="btn-secondary btn-compact shopping-add-more-recipes"
+                aria-label="Browse recipes to add to your shopping list"
+              >
+                Add recipes
+              </Link>
+            </div>
+          )}
           {/* Free-text capture works even before any recipes are selected. */}
-          {renderAdditionalItemsEntry("Build your own list")}
+          {renderAdditionalItemsEntry(
+            additionalItems.length === 0 ? "Build your own list" : "Add something else",
+          )}
+          {/* Allow ordering / clearing a list made of only free-text items. */}
+          {additionalItems.length > 0 ? orderActions : null}
           {renderAdditionalItemsList()}
           {purchasedSection}
         </>
@@ -532,26 +574,7 @@ export function ShoppingListPage({
 
           {renderAdditionalItemsEntry("Add something else")}
 
-          <div
-            className="shopping-meal-list-actions"
-            role="region"
-            aria-label="Place order or clear the shopping list"
-          >
-            <Link to="/place-order" className="btn-primary btn-compact">
-              Place order
-            </Link>
-            <button
-              type="button"
-              className="btn-secondary btn-compact shopping-clear-list-btn"
-              aria-label="Clear the entire shopping list"
-              onClick={() => {
-                clearList();
-                showToast("Shopping list cleared.");
-              }}
-            >
-              Clear list
-            </button>
-          </div>
+          {orderActions}
 
           {renderAdditionalItemsList()}
 
@@ -601,6 +624,19 @@ export function ShoppingListPage({
                                   <span className="shopping-check-primary">{line}</span>
                                   {alt ? (
                                     <span className="shopping-inline-alt"> ({alt})</span>
+                                  ) : null}
+                                  {item.notes.length > 0 ? (
+                                    <span
+                                      className="shopping-check-note"
+                                      style={{
+                                        display: "block",
+                                        fontSize: "0.8em",
+                                        color: "#777",
+                                        fontStyle: "italic",
+                                      }}
+                                    >
+                                      {item.notes.join(", ")}
+                                    </span>
                                   ) : null}
                                 </span>
                               </label>

@@ -116,10 +116,11 @@ export function ingredientMapWithRecipes(
 export function formatIngredientLine(
   line: RecipeIngredientLine,
   byId: Map<string, IngredientDef>,
+  includeNote = true,
 ): string {
   const def = byId.get(line.ingredientId);
   const name = def?.name ?? line.ingredientId;
-  const note = line.note ? ` ${line.note}` : "";
+  const note = includeNote && line.note ? ` ${line.note}` : "";
   if (line.unit === TO_TASTE_UNIT) {
     return `${name} - to taste${note}`.trim();
   }

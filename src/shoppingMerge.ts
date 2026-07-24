@@ -191,6 +191,8 @@ export type CombinedShoppingItem =
       sourceRecipeIds: readonly string[];
       /** Grocery section (from ingredient library). */
       category: IngredientCategory;
+      /** Distinct prep notes from the contributing recipe lines (e.g. "chopped", "divided"). */
+      notes: readonly string[];
     }
   | {
       kind: "weight";
@@ -199,14 +201,22 @@ export type CombinedShoppingItem =
       weightTier: WeightPrimaryTier;
       sourceRecipeIds: readonly string[];
       category: IngredientCategory;
+      notes: readonly string[];
     }
-  | { kind: "count"; line: string; sourceRecipeIds: readonly string[]; category: IngredientCategory }
+  | {
+      kind: "count";
+      line: string;
+      sourceRecipeIds: readonly string[];
+      category: IngredientCategory;
+      notes: readonly string[];
+    }
   | {
       kind: "raw";
       line: string;
       sourceRecipeIds: readonly string[];
       /** Qualitative / unknown ingredient lines. */
       category: IngredientCategory;
+      notes: readonly string[];
     };
 
 function sortedIds(ids: Set<string>): string[] {
@@ -318,7 +328,7 @@ function lineToBucket(line: RecipeIngredientLine, byId: Map<string, IngredientDe
   if (!def) {
     return {
       kind: "raw",
-      text: formatIngredientLine(line, byId),
+      text: formatIngredientLine(line, byId, false),
       ingredientId: line.ingredientId,
     };
   }
@@ -326,7 +336,7 @@ function lineToBucket(line: RecipeIngredientLine, byId: Map<string, IngredientDe
   if (line.amount == null || line.unit == null) {
     return {
       kind: "raw",
-      text: formatIngredientLine(line, byId),
+      text: formatIngredientLine(line, byId, false),
       ingredientId: def.id,
     };
   }
@@ -337,7 +347,7 @@ function lineToBucket(line: RecipeIngredientLine, byId: Map<string, IngredientDe
     if (Number.isNaN(tsp)) {
       return {
         kind: "raw",
-        text: formatIngredientLine(line, byId),
+        text: formatIngredientLine(line, byId, false),
         ingredientId: def.id,
       };
     }
@@ -354,7 +364,7 @@ function lineToBucket(line: RecipeIngredientLine, byId: Map<string, IngredientDe
     if (Number.isNaN(oz)) {
       return {
         kind: "raw",
-        text: formatIngredientLine(line, byId),
+        text: formatIngredientLine(line, byId, false),
         ingredientId: def.id,
       };
     }
@@ -378,7 +388,7 @@ function lineToBucket(line: RecipeIngredientLine, byId: Map<string, IngredientDe
 
   return {
     kind: "raw",
-    text: formatIngredientLine(line, byId),
+    text: formatIngredientLine(line, byId, false),
     ingredientId: def.id,
   };
 }
@@ -405,19 +415,19 @@ export function buildShoppingListData(
 
   const vol = new Map<
     string,
-    { name: string; tsp: number; recipeIds: Set<string> }
+    { name: string; tsp: number; recipeIds: Set<string>; notes: Set<string> }
   >();
   const wt = new Map<
     string,
-    { name: string; oz: number; recipeIds: Set<string> }
+    { name: string; oz: number; recipeIds: Set<string>; notes: Set<string> }
   >();
   const ct = new Map<
     string,
-    { name: string; amount: number; unit: string; recipeIds: Set<string> }
+    { name: string; amount: number; unit: string; recipeIds: Set<string>; notes: Set<string> }
   >();
   const rawMap = new Map<
     string,
-    { line: string; recipeIds: Set<string>; ingredientId?: string }
+    { line: string; recipeIds: Set<string>; ingredientId?: string; notes: Set<string> }
   >();
   const rawOrderKeys: string[] = [];
 
@@ -425,6 +435,7 @@ export function buildShoppingListData(
     for (const sec of recipe.ingredientSections ?? []) {
       for (const line of sec.lines) {
         const b = lineToBucket(line, byId);
+        const note = line.note?.trim();
         // Scale measurable amounts by this recipe's servings multiple before merging.
         if (scale !== 1) {
           if (b.kind === "volume") b.tsp *= scale;
@@ -435,13 +446,14 @@ export function buildShoppingListData(
           const k = b.text.trim().toLowerCase().replace(/\s+/g, " ");
           let ex = rawMap.get(k);
           if (!ex) {
-            ex = { line: b.text, recipeIds: new Set(), ingredientId: b.ingredientId };
+            ex = { line: b.text, recipeIds: new Set(), ingredientId: b.ingredientId, notes: new Set() };
             rawMap.set(k, ex);
             rawOrderKeys.push(k);
           } else if (!ex.ingredientId && b.ingredientId) {
             ex.ingredientId = b.ingredientId;
           }
           ex.recipeIds.add(recipe.id);
+          if (note) ex.notes.add(note);
           continue;
         }
         if (b.kind === "volume") {
@@ -449,11 +461,13 @@ export function buildShoppingListData(
           if (ex) {
             ex.tsp += b.tsp;
             ex.recipeIds.add(recipe.id);
+            if (note) ex.notes.add(note);
           } else {
             vol.set(b.ingredientId, {
               name: b.name,
               tsp: b.tsp,
               recipeIds: new Set([recipe.id]),
+              notes: new Set(note ? [note] : []),
             });
           }
           continue;
@@ -463,11 +477,13 @@ export function buildShoppingListData(
           if (ex) {
             ex.oz += b.oz;
             ex.recipeIds.add(recipe.id);
+            if (note) ex.notes.add(note);
           } else {
             wt.set(b.ingredientId, {
               name: b.name,
               oz: b.oz,
               recipeIds: new Set([recipe.id]),
+              notes: new Set(note ? [note] : []),
             });
           }
           continue;
@@ -477,20 +493,25 @@ export function buildShoppingListData(
         if (ex) {
           ex.amount += b.amount;
           ex.recipeIds.add(recipe.id);
+          if (note) ex.notes.add(note);
         } else {
           ct.set(ckey, {
             name: b.name,
             amount: b.amount,
             unit: b.unit,
             recipeIds: new Set([recipe.id]),
+            notes: new Set(note ? [note] : []),
           });
         }
       }
     }
   }
 
+  const sortedNotes = (notes: Set<string>): string[] =>
+    [...notes].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+
   const mergedItems: CombinedShoppingItem[] = [];
-  for (const [ingredientId, { name, tsp, recipeIds }] of vol.entries()) {
+  for (const [ingredientId, { name, tsp, recipeIds, notes }] of vol.entries()) {
     const def = byId.get(ingredientId);
     const category: IngredientCategory = def?.category ?? "other";
     const { tier, text } = volumePrimaryDisplay(tsp);
@@ -501,9 +522,10 @@ export function buildShoppingListData(
       volumeTier: tier,
       sourceRecipeIds: sortedIds(recipeIds),
       category,
+      notes: sortedNotes(notes),
     });
   }
-  for (const [ingredientId, { name, oz, recipeIds }] of wt.entries()) {
+  for (const [ingredientId, { name, oz, recipeIds, notes }] of wt.entries()) {
     const def = byId.get(ingredientId);
     const category: IngredientCategory = def?.category ?? "other";
     const { tier, text } = weightPrimaryDisplay(oz);
@@ -514,9 +536,10 @@ export function buildShoppingListData(
       weightTier: tier,
       sourceRecipeIds: sortedIds(recipeIds),
       category,
+      notes: sortedNotes(notes),
     });
   }
-  for (const [ckey, { name, amount, unit, recipeIds }] of ct.entries()) {
+  for (const [ckey, { name, amount, unit, recipeIds, notes }] of ct.entries()) {
     const ingredientId = ckey.split("::")[0]!;
     const def = byId.get(ingredientId);
     const category: IngredientCategory = def?.category ?? "other";
@@ -525,6 +548,7 @@ export function buildShoppingListData(
       line: `${name} - ${formatCount(amount, unit)}`,
       sourceRecipeIds: sortedIds(recipeIds),
       category,
+      notes: sortedNotes(notes),
     });
   }
 
@@ -539,6 +563,7 @@ export function buildShoppingListData(
       line: ex.line,
       sourceRecipeIds: sortedIds(ex.recipeIds),
       category: (def?.category ?? "other") as IngredientCategory,
+      notes: sortedNotes(ex.notes),
     };
   });
 

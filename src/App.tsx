@@ -25,6 +25,8 @@ import { HistoryPage } from "./HistoryPage";
 import { ToastProvider } from "./ToastContext";
 import { SavedRecipesProvider } from "./SavedRecipesContext";
 import { KrogerOrderPage } from "./KrogerOrderPage";
+import { SafewayOrderPage } from "./SafewayOrderPage";
+import { PlaceOrderPage } from "./PlaceOrderPage";
 import { CookingNowPage } from "./CookingNowPage";
 import {
   COOK_PROGRESS_CHANGED_EVENT,
@@ -64,6 +66,12 @@ function appChromeSectionTitle(pathname: string): string {
   }
   if (pathname === "/place-order") {
     return "Place order";
+  }
+  if (pathname === "/order/kroger") {
+    return "Order from Kroger";
+  }
+  if (pathname === "/order/safeway") {
+    return "Order from Safeway";
   }
   if (pathname.startsWith("/recipe/") && pathname.endsWith("/edit")) {
     return pathname === "/recipe/new/edit" ? "Add recipe" : "Edit recipe";
@@ -641,11 +649,16 @@ function AppLayout({
         />
         <Route path="/cooking-now" element={<CookingNowPage />} />
         <Route path="/history" element={<HistoryPage recipes={recipes} />} />
+        <Route path="/place-order" element={<PlaceOrderPage />} />
         <Route
-          path="/place-order"
+          path="/order/kroger"
           element={
             <KrogerOrderPage recipes={recipes} ingredients={ingredients} currentUser={currentUser} />
           }
+        />
+        <Route
+          path="/order/safeway"
+          element={<SafewayOrderPage recipes={recipes} ingredients={ingredients} />}
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

@@ -17,7 +17,7 @@ export default async function handler(req, res) {
   try {
     env = krogerEnv()
   } catch {
-    return redirect(res, '/#/place-order?kroger_error=not_configured')
+    return redirect(res, '/#/order/kroger?kroger_error=not_configured')
   }
 
   const state = randomBytes(16).toString('hex')

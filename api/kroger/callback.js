@@ -8,12 +8,12 @@ import { sql, exchangeAuthCode, redirect } from './_kroger.js'
 export default async function handler(req, res) {
   const { code, state, error } = req.query
 
-  if (error) return redirect(res, `/#/place-order?kroger_error=${encodeURIComponent(error)}`)
-  if (!code || !state) return redirect(res, '/#/place-order?kroger_error=missing_code')
+  if (error) return redirect(res, `/#/order/kroger?kroger_error=${encodeURIComponent(error)}`)
+  if (!code || !state) return redirect(res, '/#/order/kroger?kroger_error=missing_code')
 
   const [stateRow] = await sql`SELECT username FROM kroger_oauth_state WHERE state = ${state}`
   await sql`DELETE FROM kroger_oauth_state WHERE state = ${state}` // single use
-  if (!stateRow) return redirect(res, '/#/place-order?kroger_error=bad_state')
+  if (!stateRow) return redirect(res, '/#/order/kroger?kroger_error=bad_state')
 
   const username = stateRow.username
   try {
@@ -29,9 +29,9 @@ export default async function handler(req, res) {
         access_token_expires_at = EXCLUDED.access_token_expires_at,
         updated_at = now()
     `
-    return redirect(res, '/#/place-order?kroger=connected')
+    return redirect(res, '/#/order/kroger?kroger=connected')
   } catch (e) {
     console.error('Kroger callback error:', e)
-    return redirect(res, '/#/place-order?kroger_error=token_exchange')
+    return redirect(res, '/#/order/kroger?kroger_error=token_exchange')
   }
 }
