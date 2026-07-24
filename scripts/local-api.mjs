@@ -43,13 +43,17 @@ const routes = [
   ["/api/recipes/",           "../api/recipes/[id].js"],     // /api/recipes/:id
   ["/api/recipes",            "../api/recipes.js"],
   ["/api/ingredients",        "../api/ingredients.js"],
-  ["/api/kroger/authorize",   "../api/kroger/authorize.js"],
-  ["/api/kroger/callback",    "../api/kroger/callback.js"],
-  ["/api/kroger/status",      "../api/kroger/status.js"],
-  ["/api/kroger/store",       "../api/kroger/store.js"],
-  ["/api/kroger/locations",   "../api/kroger/locations.js"],
-  ["/api/kroger/match",       "../api/kroger/match.js"],
-  ["/api/kroger/cart-add",    "../api/kroger/cart-add.js"],
+  // Kroger routes are consolidated into one Vercel function (api/kroger/[action].js) to stay under
+  // the Hobby 12-function limit; the actual handlers are the _-prefixed files. Local dev routes
+  // straight to them (order: more-specific first — cart-add before the others is not required, but
+  // keep authorize/callback ahead of nothing that would shadow them).
+  ["/api/kroger/authorize",   "../api/kroger/_authorize.js"],
+  ["/api/kroger/callback",    "../api/kroger/_callback.js"],
+  ["/api/kroger/status",      "../api/kroger/_status.js"],
+  ["/api/kroger/store",       "../api/kroger/_store.js"],
+  ["/api/kroger/locations",   "../api/kroger/_locations.js"],
+  ["/api/kroger/match",       "../api/kroger/_match.js"],
+  ["/api/kroger/cart-add",    "../api/kroger/_cart-add.js"],
 ];
 
 function makeReq(nodeReq, body) {
