@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "Recipe App → Safeway Cart",
+  "version": "0.1.0",
+  "description": "Fills your Safeway cart from a Recipe App shopping list, using your own logged-in session. Personal use.",
+  "permissions": ["storage", "tabs"],
+  "host_permissions": ["https://www.safeway.com/*"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://localhost/*",
+        "http://127.0.0.1/*",
+        "https://jordane96.github.io/*",
+        "https://fultonmeals.vercel.app/*"
+      ],
+      "js": ["bridge.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://www.safeway.com/*"],
+      "js": ["safeway-content.js"],
+      "css": ["panel.css"],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ],
+  "web_accessible_resources": [
+    { "resources": ["cart-inject.js"], "matches": ["https://www.safeway.com/*"] }
+  ]
+}
