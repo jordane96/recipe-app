@@ -26,6 +26,7 @@ import { ToastProvider } from "./ToastContext";
 import { SavedRecipesProvider } from "./SavedRecipesContext";
 import { KrogerOrderPage } from "./KrogerOrderPage";
 import { SafewayOrderPage } from "./SafewayOrderPage";
+import { SafewayScreenshotPage } from "./SafewayScreenshotPage";
 import { PlaceOrderPage } from "./PlaceOrderPage";
 import { CookingNowPage } from "./CookingNowPage";
 import {
@@ -69,6 +70,9 @@ function appChromeSectionTitle(pathname: string): string {
   }
   if (pathname === "/order/kroger") {
     return "Order from Kroger";
+  }
+  if (pathname === "/order/safeway/screenshot") {
+    return "Screenshot list";
   }
   if (pathname === "/order/safeway") {
     return "Order from Safeway";
@@ -659,6 +663,10 @@ function AppLayout({
         <Route
           path="/order/safeway"
           element={<SafewayOrderPage recipes={recipes} ingredients={ingredients} />}
+        />
+        <Route
+          path="/order/safeway/screenshot"
+          element={<SafewayScreenshotPage recipes={recipes} ingredients={ingredients} />}
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
