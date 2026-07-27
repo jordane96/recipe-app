@@ -54,8 +54,9 @@ export function SafewayScreenshotPage({
             }}
           >
             {buyItems.map((it, i) => (
-              <li key={`${it.name}-${i}`} style={{ padding: "1px 0" }}>
-                {it.name}
+              <li key={`${it.key}-${i}`} style={{ padding: "1px 0" }}>
+                {it.label}
+                {it.notes.length > 0 ? ` (${it.notes.join(", ")})` : ""}
               </li>
             ))}
           </ul>
