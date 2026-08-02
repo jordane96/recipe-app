@@ -1,9 +1,13 @@
 import * as React from "react";
 import {
   clearRecipeCountSource,
+  getAllCountSources,
   markRecipeSourcePlan,
+  markRecipeSourcePlanMany,
   markRecipeSourceShopping,
   resetAllCountSources,
+  restoreAllCountSources,
+  type PlanShoppingSource,
 } from "./planShoppingAuthority";
 import { normalizeShoppingLineKey } from "./shoppingLineKey";
 
@@ -89,6 +93,18 @@ function writePurchased(keys: string[]) {
   localStorage.setItem(STORAGE_PURCHASED, JSON.stringify(keys));
 }
 
+/**
+ * Everything clearList() destroys, captured so it can be put back. Kept as one object
+ * so callers can hold it opaquely and hand it straight back to restoreList().
+ */
+export type ShoppingListSnapshot = {
+  selectedIds: string[];
+  purchased: string[];
+  servingsByRecipe: Record<string, number>;
+  additionalItems: string[];
+  countSources: Record<string, PlanShoppingSource>;
+};
+
 type Ctx = {
   /** Recipe ids in list order; duplicates = multiple portions / schedule slots. */
   selectedIds: string[];
@@ -106,16 +122,24 @@ type Ctx = {
   /** Replace the list with exactly these ids (bulk replace). */
   replaceSelectedIds: (ids: string[]) => void;
   /**
-   * Meal plan "Shop ingredients": replace the list with this snapshot, clear plan/shop
-   * count authority, and clear purchased (new run from the menu).
+   * Meal plan "Shop ingredients": **appends** the selected meals to the existing list.
+   * Nothing is ever removed — other recipes, purchased marks and manual items all survive.
+   * A recipe already on the list is not duplicated; instead its servings are retuned to the
+   * menu's value (re-shopping is an explicit act, so the menu wins). Returns which recipes
+   * were `added` and which had servings `updated`, so the caller can report what happened.
    */
-  pushFromMenu: (entries: Array<{ recipeId: string; servings: number }>) => void;
+  pushFromMenu: (
+    entries: Array<{ recipeId: string; servings: number }>,
+  ) => { added: string[]; updated: string[] };
   /**
    * Set how many shopping slots this recipe has: removes all occurrences of recipeId,
    * then appends targetCount copies at the end (other recipes keep relative order).
    */
   syncRecipeSlotsToCount: (recipeId: string, targetCount: number) => void;
-  clearList: () => void;
+  /** Wipes the list and returns a snapshot for {@link restoreList}. Return value is optional to use. */
+  clearList: () => ShoppingListSnapshot;
+  /** Restore a snapshot returned by {@link clearList} — backs the "Undo" toast action. */
+  restoreList: (snapshot: ShoppingListSnapshot) => void;
   /** Normalized combined-line keys marked as purchased */
   purchasedKeys: ReadonlySet<string>;
   isPurchased: (line: string) => boolean;
@@ -270,21 +294,36 @@ export function ShoppingListProvider({ children }: { children: React.ReactNode }
   }, []);
 
   const pushFromMenu = React.useCallback(
-    (entries: Array<{ recipeId: string; servings: number }>) => {
-      resetAllCountSources();
-      setPurchased([]);
-      // One membership entry per recipe; seed its shopping servings from the menu.
-      const ids: string[] = [];
-      const servings: Record<string, number> = {};
+    (
+      entries: Array<{ recipeId: string; servings: number }>,
+    ): { added: string[]; updated: string[] } => {
+      // Collapse duplicate menu slots for the same recipe into one entry with summed servings.
+      const wanted = new Map<string, number>();
       for (const { recipeId, servings: s } of entries) {
-        if (!(recipeId in servings)) ids.push(recipeId);
         const n = Math.min(99, Math.max(1, Math.floor(Number(s))));
-        servings[recipeId] = (servings[recipeId] ?? 0) + n;
+        wanted.set(recipeId, Math.min(99, (wanted.get(recipeId) ?? 0) + n));
       }
-      setSelectedIds(ids);
-      setServingsByRecipe(servings);
+      const existing = new Set(selectedIds);
+      const added = [...wanted.keys()].filter((id) => !existing.has(id));
+      // Already on the list: re-shopping from the menu is an explicit act, so the menu's
+      // servings win. No duplicate row — the existing one is retuned in place.
+      const updated = [...wanted.keys()].filter(
+        (id) => existing.has(id) && servingsByRecipe[id] !== wanted.get(id),
+      );
+
+      setSelectedIds((prev) => [...prev, ...added]);
+      setServingsByRecipe((prev) => {
+        const next = { ...prev };
+        for (const id of [...added, ...updated]) {
+          next[id] = wanted.get(id)!;
+        }
+        return next;
+      });
+      // The plan is now authoritative for everything the menu just pushed.
+      markRecipeSourcePlanMany([...added, ...updated]);
+      return { added, updated };
     },
-    [],
+    [selectedIds, servingsByRecipe],
   );
 
   const syncRecipeSlotsToCount = React.useCallback((recipeId: string, targetCount: number) => {
@@ -297,12 +336,33 @@ export function ShoppingListProvider({ children }: { children: React.ReactNode }
     clearRecipeCountSource(recipeId);
   }, []);
 
-  const clearList = React.useCallback(() => {
+  /**
+   * Clears everything and returns a snapshot so the caller can offer an undo.
+   * Callers that don't want undo can simply ignore the return value.
+   */
+  const clearList = React.useCallback((): ShoppingListSnapshot => {
+    const snapshot: ShoppingListSnapshot = {
+      selectedIds,
+      purchased,
+      servingsByRecipe,
+      additionalItems,
+      countSources: getAllCountSources(),
+    };
     resetAllCountSources();
     setSelectedIds([]);
     setPurchased([]);
     setServingsByRecipe({});
     setAdditionalItems([]);
+    return snapshot;
+  }, [selectedIds, purchased, servingsByRecipe, additionalItems]);
+
+  /** Restores a snapshot from clearList(). Used by the "Undo" toast action. */
+  const restoreList = React.useCallback((snapshot: ShoppingListSnapshot) => {
+    restoreAllCountSources(snapshot.countSources);
+    setSelectedIds(snapshot.selectedIds);
+    setPurchased(snapshot.purchased);
+    setServingsByRecipe(snapshot.servingsByRecipe);
+    setAdditionalItems(snapshot.additionalItems);
   }, []);
 
   const isPurchased = React.useCallback(
@@ -372,6 +432,7 @@ export function ShoppingListProvider({ children }: { children: React.ReactNode }
       pushFromMenu,
       syncRecipeSlotsToCount,
       clearList,
+      restoreList,
       purchasedKeys: purchasedSet,
       isPurchased,
       togglePurchased,
@@ -396,6 +457,7 @@ export function ShoppingListProvider({ children }: { children: React.ReactNode }
     pushFromMenu,
     syncRecipeSlotsToCount,
     clearList,
+    restoreList,
     servingsByRecipe,
     setRecipeServings,
     purchasedSet,

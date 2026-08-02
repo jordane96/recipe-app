@@ -56,6 +56,18 @@ export function getRecipeCountSource(recipeId: string): PlanShoppingSource | und
   return authorityMap[recipeId];
 }
 
+/** Snapshot of the whole map, for undoing a bulk reset. Copied, not aliased. */
+export function getAllCountSources(): Record<string, PlanShoppingSource> {
+  return { ...authorityMap };
+}
+
+/** Restore a snapshot taken with getAllCountSources(). Counterpart to resetAllCountSources(). */
+export function restoreAllCountSources(snapshot: Record<string, PlanShoppingSource>) {
+  authorityMap = { ...snapshot };
+  save();
+  bump();
+}
+
 /** Treat missing entry as “plan was last authoritative” for mismatch UX (matches prior behavior). */
 export function shoppingListShouldFollowPlan(recipeId: string): boolean {
   return authorityMap[recipeId] !== "shopping";

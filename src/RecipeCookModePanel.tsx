@@ -807,7 +807,9 @@ export function RecipeCookModePanel({
                 </div>
               </div>
               <div className="cook-mode-v2-overview-head">
-                <h1 className="cook-mode-v2-confirm-title">{COOK_MODE_CONFIRM_OVERVIEW_TITLE}</h1>
+                {/* Section heading, not the page heading — the app chrome title is the h1 on
+                    cook-mode routes (see chromeTitleIsPageHeading in App.tsx). */}
+                <h2 className="cook-mode-v2-confirm-title">{COOK_MODE_CONFIRM_OVERVIEW_TITLE}</h2>
                 {servingsStepper}
               </div>
               {flatIngredientChips.length > 0 ? (

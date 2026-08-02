@@ -1,7 +1,14 @@
 import * as React from "react";
 
+/**
+ * Optional action rendered as a button inside the toast — used for undoing
+ * destructive operations (e.g. clearing the shopping list). Toasts with an
+ * action stay on screen longer, since the user has to read and decide.
+ */
+export type ToastAction = { label: string; onAction: () => void };
+
 type ToastCtx = {
-  showToast: (message: string) => void;
+  showToast: (message: string, action?: ToastAction) => void;
 };
 
 const ToastContext = React.createContext<ToastCtx | null>(null);
@@ -15,20 +22,36 @@ export function useToast(): ToastCtx {
 }
 
 const TOAST_MS = 3000;
+/** Actionable toasts need long enough to notice, read and tap — 3s is not enough one-handed. */
+const TOAST_ACTION_MS = 8000;
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
-  const [toast, setToast] = React.useState<{ message: string; id: number } | null>(null);
+  const [toast, setToast] = React.useState<
+    { message: string; id: number; action?: ToastAction } | null
+  >(null);
   const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const showToast = React.useCallback((message: string) => {
+  const showToast = React.useCallback((message: string, action?: ToastAction) => {
     if (timerRef.current) {
       clearTimeout(timerRef.current);
     }
-    setToast({ message, id: Date.now() });
-    timerRef.current = setTimeout(() => {
-      setToast(null);
+    setToast({ message, id: Date.now(), action });
+    timerRef.current = setTimeout(
+      () => {
+        setToast(null);
+        timerRef.current = null;
+      },
+      action ? TOAST_ACTION_MS : TOAST_MS,
+    );
+  }, []);
+
+  const runAction = React.useCallback((action: ToastAction) => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
       timerRef.current = null;
-    }, TOAST_MS);
+    }
+    setToast(null);
+    action.onAction();
   }, []);
 
   React.useEffect(
@@ -46,7 +69,16 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       <div className="toast-anchor" aria-live="polite" aria-relevant="additions text">
         {toast ? (
           <div key={toast.id} className="toast toast--success" role="status">
-            {toast.message}
+            <span className="toast-message">{toast.message}</span>
+            {toast.action ? (
+              <button
+                type="button"
+                className="toast-action"
+                onClick={() => runAction(toast.action!)}
+              >
+                {toast.action.label}
+              </button>
+            ) : null}
           </div>
         ) : null}
       </div>

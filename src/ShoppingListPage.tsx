@@ -145,6 +145,7 @@ export function ShoppingListPage({
     servingsByRecipe,
     setRecipeServings,
     clearList,
+    restoreList,
   } = useShoppingList();
   const { showToast } = useToast();
 
@@ -441,8 +442,12 @@ export function ShoppingListPage({
         className="btn-secondary btn-compact shopping-clear-list-btn"
         aria-label="Clear the entire shopping list"
         onClick={() => {
-          clearList();
-          showToast("Shopping list cleared.");
+          // clearList() returns everything it wiped, so the toast can put it back.
+          const snapshot = clearList();
+          showToast("Shopping list cleared.", {
+            label: "Undo",
+            onAction: () => restoreList(snapshot),
+          });
         }}
       >
         Clear list
@@ -631,7 +636,7 @@ export function ShoppingListPage({
                                       style={{
                                         display: "block",
                                         fontSize: "0.8em",
-                                        color: "#777",
+                                        color: "#757575",
                                         fontStyle: "italic",
                                       }}
                                     >

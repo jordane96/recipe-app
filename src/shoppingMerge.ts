@@ -139,22 +139,33 @@ function weightPrimaryDisplay(oz: number): { tier: WeightPrimaryTier; text: stri
   return { tier: "oz", text: `${fmtQty(r)} oz` };
 }
 
+const PLURAL_BY_SINGULAR: Record<string, string> = {
+  clove: "cloves",
+  container: "containers",
+  box: "boxes",
+  bunch: "bunches",
+  pack: "packs",
+  pouch: "pouches",
+  steak: "steaks",
+  piece: "pieces",
+  slice: "slices",
+  pepper: "peppers",
+  peppers: "peppers",
+};
+
+/**
+ * Reverse of PLURAL_BY_SINGULAR. Needed because trimming a trailing "s" turns
+ * "-es" plurals into nonsense ("pouches" -> "pouche"). Identity entries are
+ * skipped so "peppers" resolves back to "pepper" rather than to itself.
+ */
+const SINGULAR_BY_PLURAL: Record<string, string> = {};
+for (const [singular, plural] of Object.entries(PLURAL_BY_SINGULAR)) {
+  if (singular !== plural) SINGULAR_BY_PLURAL[plural] = singular;
+}
+
 function normCountUnit(u: string): string {
   const n = normUnit(u);
-  const plural: Record<string, string> = {
-    clove: "cloves",
-    container: "containers",
-    box: "boxes",
-    bunch: "bunches",
-    pack: "packs",
-    pouch: "pouches",
-    steak: "steaks",
-    piece: "pieces",
-    slice: "slices",
-    pepper: "peppers",
-    peppers: "peppers",
-  };
-  return plural[n] ?? n;
+  return PLURAL_BY_SINGULAR[n] ?? n;
 }
 
 function formatCount(amount: number, unit: string): string {
@@ -165,7 +176,7 @@ function formatCount(amount: number, unit: string): string {
     return `${amt} each`;
   }
   if (Math.abs(a - 1) < 0.001) {
-    const sing = u.endsWith("s") ? u.slice(0, -1) : u;
+    const sing = SINGULAR_BY_PLURAL[u] ?? (u.endsWith("s") ? u.slice(0, -1) : u);
     return `${amt} ${sing}`;
   }
   const pl = u.endsWith("s") ? u : `${u}s`;

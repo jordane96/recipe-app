@@ -250,6 +250,29 @@ a {
   text-align: center;
   box-shadow: 0 8px 28px rgba(28, 25, 23, 0.18);
   animation: toast-in 220ms ease-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+/* Undo and friends. 44px min target — this is tapped one-handed, often in a hurry. */
+.toast-action {
+  flex: none;
+  min-height: 44px;
+  padding: 0 0.85rem;
+  border: 1px solid currentColor;
+  border-radius: 9px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.toast-action:hover,
+.toast-action:focus-visible {
+  background: rgba(255, 255, 255, 0.18);
 }
 
 .toast--success {
@@ -706,6 +729,95 @@ a {
   margin-bottom: 1rem;
 }
 
+/*
+ * Faceted filter. Mobile-first: the facet label sits ABOVE its chips, because a side label column
+ * costs ~118px of a 375px screen and squeezes chips into one-per-line. From 540px up there is room
+ * for the label beside the chips, which is easier to scan.
+ */
+.tag-facets {
+  margin-bottom: 0.75rem;
+}
+
+.tag-facet-row {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.tag-facet-label {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--muted);
+}
+
+.tag-facet-row .tag-row {
+  margin-bottom: 0.6rem;
+}
+
+/* The "All" row has no label; drop the empty label box so it doesn't add dead space. */
+.tag-facet-row--all .tag-facet-label {
+  display: none;
+}
+
+/* Tag editor. Reuses .tag-facet-row / .tag-chip so picking tags looks like filtering by them. */
+.tag-picker-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.6rem;
+}
+
+.tag-picker-input {
+  flex: 1 1 10rem;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  /* 16px keeps iOS Safari from zooming the viewport when the field takes focus. */
+  font-size: 1rem;
+}
+
+.tag-picker-add-btn {
+  flex: none;
+  min-height: 44px;
+  padding: 0 1rem;
+}
+
+.tag-picker-error {
+  margin: 0 0 0.6rem;
+  color: #b91c1c;
+  font-size: 0.85rem;
+}
+
+@media (min-width: 540px) {
+  .tag-facet-row {
+    display: grid;
+    grid-template-columns: 7.5rem minmax(0, 1fr);
+    gap: 0.75rem;
+    align-items: start;
+  }
+
+  .tag-picker-add-row .tag-facet-label {
+    padding-top: 0.75rem;
+  }
+
+  .tag-facet-label {
+    margin-bottom: 0;
+    padding-top: 0.55rem;
+    text-align: right;
+  }
+
+  .tag-facet-row--all .tag-facet-label {
+    display: block;
+  }
+}
+
 .tag-chip {
   min-height: 36px;
   padding: 0.35rem 0.85rem;
@@ -745,6 +857,10 @@ a {
   font-weight: 600;
   font-size: 1.05rem;
   transition: border-color 0.15s, background 0.15s;
+  /* Long unbroken titles otherwise render past the card edge on narrow screens.
+     Matches .meal-chip-title — break-word, not anywhere, which would wreck
+     min-content sizing in the grid layouts. */
+  overflow-wrap: break-word;
 }
 
 .recipe-link:active {
@@ -756,6 +872,13 @@ a {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.35rem;
+}
+
+/* Flex items default to min-width:auto, which floors them at min-content — so a long
+   unbroken title stayed full width and ran past the card edge no matter what
+   overflow-wrap said. Allowing them to shrink lets .recipe-link's break-word apply. */
+.recipe-title-row > * {
+  min-width: 0;
 }
 
 .recipe-link .meta {
@@ -1563,13 +1686,19 @@ button.cook-mode-v2-meal-banner--in-chrome,
   margin-top: 0.85rem;
 }
 
+/*
+ * Height used to be a hard 650px with the body in a nested scroller. On a 812px phone that
+ * left a 449px window for 916px of content, and because the ingredient list renders first the
+ * INSTRUCTIONS heading landed at the very bottom edge — ~19px of steps visible, sliced
+ * mid-line. The card now grows with its content and the page does the scrolling, so there is
+ * one scrollbar instead of two and nothing is clipped. Actions stay reachable via a sticky
+ * footer below.
+ */
 .cook-mode-v2-main-card--confirm {
   display: flex;
   flex-direction: column;
-  height: 650px;
   min-height: 0;
   padding: 1.25rem 1.15rem 1.15rem;
-  overflow: hidden;
 }
 
 /*
@@ -1578,13 +1707,10 @@ button.cook-mode-v2-meal-banner--in-chrome,
  * this wrapper and pad title/ingredients only.
  */
 .cook-mode-v2-main-card--confirm .cook-mode-v2-confirm-scroll {
-  flex: 1 1 auto;
+  /* No longer a scroll container — the page scrolls instead. The negative margins stay:
+     they are what lets the teal chrome strip bleed to the card edges. */
+  flex: 0 0 auto;
   min-height: 0;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  scrollbar-color: transparent transparent;
-  -ms-overflow-style: none;
   margin: -1.25rem -1.15rem 0;
   width: calc(100% + 2.3rem);
   max-width: none;
@@ -1659,9 +1785,15 @@ button.cook-mode-v2-meal-banner--in-chrome,
 }
 
 /* Bottom of card; stays visible while ingredient list scrolls in .cook-mode-v2-confirm-scroll */
+/* Sticks to the bottom of the viewport so "Start cooking" is always one tap away now that
+   the review content scrolls the page rather than an inner box. */
 .cook-mode-v2-confirm-footer {
   flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
   padding-top: 0.35rem;
+  padding-bottom: calc(0.35rem + env(safe-area-inset-bottom, 0px));
   background: var(--surface);
 }
 
@@ -2548,6 +2680,46 @@ button.cook-mode-v2-meal-banner--in-chrome,
   padding: 1rem;
   background: #fef2f2;
   border-radius: 12px;
+}
+
+/*
+ * Whole-app load failure. Previously this rendered as a single bare line containing the raw
+ * endpoint and status ("Failed to load /api/ingredients (500)"), which reads as a dead app.
+ * Plain language plus a retry that refetches in place — the technical detail goes to the console.
+ */
+.load-error {
+  margin-top: 2.5rem;
+  padding: 1.5rem 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  text-align: center;
+}
+
+.load-error-title {
+  margin: 0 0 0.5rem;
+  font-family: var(--font-display);
+  font-size: var(--fs-page-title);
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--text);
+}
+
+.load-error-body {
+  margin: 0 auto 1.25rem;
+  max-width: 34rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.load-error-retry {
+  min-height: 44px;
+  padding: 0 1.5rem;
+  border: none;
+  border-radius: 10px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .source-link {

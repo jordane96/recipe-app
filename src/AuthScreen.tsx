@@ -137,7 +137,7 @@ export function AuthScreen({ onAuth }: { onAuth: (username: string) => void }) {
                 disabled={loading}
               />
             </label>
-            {error ? <p className="auth-error">{error}</p> : null}
+            {error ? <p className="auth-error" role="alert">{error}</p> : null}
             <button className="auth-submit" type="submit" disabled={loading}>
               {loading ? "…" : "Sign in"}
             </button>
@@ -158,7 +158,7 @@ export function AuthScreen({ onAuth }: { onAuth: (username: string) => void }) {
                 autoFocus
               />
             </label>
-            {error ? <p className="auth-error">{error}</p> : null}
+            {error ? <p className="auth-error" role="alert">{error}</p> : null}
             <button className="auth-submit" type="submit" disabled={loading}>
               {loading ? "Checking…" : "Next"}
             </button>
@@ -191,7 +191,7 @@ export function AuthScreen({ onAuth }: { onAuth: (username: string) => void }) {
                 disabled={loading}
               />
             </label>
-            {error ? <p className="auth-error">{error}</p> : null}
+            {error ? <p className="auth-error" role="alert">{error}</p> : null}
             <button className="auth-submit" type="submit" disabled={loading}>
               {loading ? "Creating…" : "Create account"}
             </button>

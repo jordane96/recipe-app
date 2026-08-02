@@ -6,6 +6,7 @@ import { addDays, iso, startOfWeekMonday } from "./mealPlanDates";
 import { useMealPlan } from "./MealPlanContext";
 import { isMealPlanDateKey, portionCountOf, type PlannedMeal } from "./mealPlanStorage";
 import { useShoppingList } from "./ShoppingListContext";
+import { useToast } from "./ToastContext";
 import {
   COOK_PROGRESS_CHANGED_EVENT,
   addCookProgressSessionsBatch,
@@ -43,6 +44,7 @@ export function MealPlannerPage({
   ingredients: IngredientDef[];
 }) {
   const { pushFromMenu } = useShoppingList();
+  const { showToast } = useToast();
   const navigate = useNavigate();
   const {
     plan,
@@ -282,9 +284,31 @@ export function MealPlannerPage({
     if (entries.length === 0) {
       return;
     }
-    pushFromMenu(entries);
+    const { added, updated } = pushFromMenu(entries);
+    // Appending, not replacing — say what actually happened, so "nothing visibly changed"
+    // is never ambiguous.
+    const nRecipes = (n: number) => `${n} ${n === 1 ? "recipe" : "recipes"}`;
+    let message: string;
+    if (added.length === 0 && updated.length === 0) {
+      message = "Already on your shopping list.";
+    } else if (updated.length === 0) {
+      message = `Added ${nRecipes(added.length)} to your shopping list.`;
+    } else if (added.length === 0) {
+      message = `Updated servings for ${nRecipes(updated.length)} on your shopping list.`;
+    } else {
+      message = `Added ${nRecipes(added.length)} and updated servings for ${updated.length}.`;
+    }
+    showToast(message);
     navigate(shoppingListPath());
-  }, [hasShopableSelection, history, navigate, pushFromMenu, unassignedCookSelect, unassignedMeals]);
+  }, [
+    hasShopableSelection,
+    history,
+    navigate,
+    pushFromMenu,
+    showToast,
+    unassignedCookSelect,
+    unassignedMeals,
+  ]);
 
   const toggleUnassignedCookSelectAt = React.useCallback((idx: number) => {
     setUnassignedCookSelect((prev) => {
@@ -556,8 +580,8 @@ export function MealPlannerPage({
                   disabled={!hasShopableSelection}
                   aria-label={
                     !hasShopableSelection
-                      ? "Shop ingredients — select meals on this week’s menu (replaces your shopping list when used)"
-                      : "Shop ingredients — replace shopping list with selected meals and open list"
+                      ? "Shop ingredients — select meals on this week’s menu to add them to your shopping list"
+                      : "Shop ingredients — add selected meals to your shopping list and open it"
                   }
                   onClick={handleMenuShopIngredients}
                 >

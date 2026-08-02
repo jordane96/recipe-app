@@ -1,4 +1,5 @@
 import * as React from "react";
+import { isIosSafari } from "./deviceType";
 
 const SEEN_KEY = "recipe_app_onboarding_seen_v1";
 
@@ -20,10 +21,13 @@ export function markOnboardingSeen(): void {
   }
 }
 
-type Slide = { src: string; headline: string; body: React.ReactNode };
+type Slide = { src: string; headline: string; body: React.ReactNode; iosSafariOnly?: boolean };
 
 const SLIDES: Slide[] = [
   {
+    // Safari-only instructions — hidden elsewhere so Android and desktop users
+    // aren't told to tap a Share menu they don't have. See isIosSafari().
+    iosSafariOnly: true,
     src: "/onboarding/01-add-to-home.mp4",
     headline: "Add us to your Home Screen",
     body: (
@@ -69,19 +73,25 @@ const SLIDES: Slide[] = [
 
 export function Onboarding({ onClose }: { onClose: () => void }) {
   const [index, setIndex] = React.useState(0);
-  const total = SLIDES.length;
+  // Device-specific slides are filtered out once, on mount, so the counter and
+  // swipe bounds match what is actually shown.
+  const slides = React.useMemo(
+    () => SLIDES.filter((s) => !s.iosSafariOnly || isIosSafari()),
+    [],
+  );
+  const total = slides.length;
   const isLast = index === total - 1;
   const touchStartX = React.useRef<number | null>(null);
 
   // Preload slide images up front so swiping is instant (no blank-then-pop).
   // Skip the video (slide 1) — it streams via its own element.
   React.useEffect(() => {
-    SLIDES.forEach((s) => {
+    slides.forEach((s) => {
       if (s.src.endsWith(".mp4")) return;
       const img = new Image();
       img.src = s.src;
     });
-  }, []);
+  }, [slides]);
 
   const finish = React.useCallback(() => {
     markOnboardingSeen();
@@ -124,7 +134,7 @@ export function Onboarding({ onClose }: { onClose: () => void }) {
     else goPrev();
   };
 
-  const slide = SLIDES[index];
+  const slide = slides[index];
 
   return (
     <div
@@ -175,7 +185,7 @@ export function Onboarding({ onClose }: { onClose: () => void }) {
 
       <div className="ob-bottom">
         <div className="ob-dots" aria-hidden>
-          {SLIDES.map((_, i) => (
+          {slides.map((_, i) => (
             <span
               key={i}
               className={i === index ? "ob-dot ob-dot--active" : "ob-dot"}

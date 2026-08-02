@@ -98,6 +98,25 @@ function appChromeTitle(pathname: string, search: string): string {
   return appChromeSectionTitle(pathname);
 }
 
+/**
+ * These routes render their own <h1> (the recipe name, "Pick what you want to cook", the
+ * retailer headings), so the chrome title stays a plain span there. Everywhere else the chrome
+ * title is the only page heading and must be the <h1> — otherwise the page has none at all.
+ * Cook mode is included because it renders an <h1> over whichever route launched it.
+ */
+function chromeTitleIsPageHeading(pathname: string, search: string): boolean {
+  // Cook mode replaces the recipe detail page with a panel whose only heading is a section
+  // title ("Recipe overview", an h2), so the chrome title is the page heading there — including
+  // on the step-by-step view, which has no heading of its own at all.
+  if (readCookModeParams(new URLSearchParams(search)).cookMode) return true;
+  return !(
+    /^\/recipe\/[^/]+$/.test(pathname) ||
+    pathname === "/cooking-now" ||
+    pathname === "/place-order" ||
+    pathname.startsWith("/order/")
+  );
+}
+
 export default function App({ currentUser, onSignOut }: { currentUser: string; onSignOut?: () => void }) {
   const [rawRecipes, setRawRecipes] = React.useState<Recipe[] | null>(null);
   const [ingredientsFile, setIngredientsFile] = React.useState<IngredientsFile | null>(
@@ -105,6 +124,8 @@ export default function App({ currentUser, onSignOut }: { currentUser: string; o
   );
   const [initialSavedRecipeIds, setInitialSavedRecipeIds] = React.useState<string[]>([]);
   const [err, setErr] = React.useState<string | null>(null);
+  /** Bumped by the Retry button to re-run the data fetch without a full page reload. */
+  const [reloadKey, setReloadKey] = React.useState(0);
 
   /**
    * Mobile snap-to-top, hardened: this fires when App first mounts (i.e. the
@@ -155,13 +176,15 @@ export default function App({ currentUser, onSignOut }: { currentUser: string; o
       })
       .catch((e: unknown) => {
         if (!cancelled) {
+          // Keep the endpoint/status in the console for debugging; the UI shows plain language.
+          console.error("Failed to load recipe bundle:", e);
           setErr(e instanceof Error ? e.message : "Could not load recipes.");
         }
       });
     return () => {
       cancelled = true;
     };
-  }, [currentUser]);
+  }, [currentUser, reloadKey]);
 
   const onRecipeSaved = React.useCallback((updated: Recipe) => {
     setRawRecipes((prev) => {
@@ -208,7 +231,25 @@ export default function App({ currentUser, onSignOut }: { currentUser: string; o
 
   return (
     <HashRouter>
-      {err ? <p className="err app-shell">{err}</p> : null}
+      {err ? (
+        <div className="app-shell load-error" role="alert">
+          <h1 className="load-error-title">Couldn’t load your recipes</h1>
+          <p className="load-error-body">
+            This is usually a brief connection problem. Your recipes, menu and shopping list are
+            safe — nothing has been lost.
+          </p>
+          <button
+            type="button"
+            className="btn-primary load-error-retry"
+            onClick={() => {
+              setErr(null);
+              setReloadKey((k) => k + 1);
+            }}
+          >
+            Try again
+          </button>
+        </div>
+      ) : null}
       {!ready && !err ? <p className="muted app-shell">Loading…</p> : null}
       {ready ? (
         <ShoppingListProvider>
@@ -268,6 +309,10 @@ function AppLayout({
   const wide = isPlannerHome || pathname === "/history" || pathname === "/cooking-now";
 
   const chromeTitle = React.useMemo(() => appChromeTitle(pathname, search), [pathname, search]);
+  const ChromeTitleTag = React.useMemo(
+    () => (chromeTitleIsPageHeading(pathname, search) ? "h1" : "span"),
+    [pathname, search],
+  ) as "h1" | "span";
 
   const [cookProgressRev, setCookProgressRev] = React.useState(0);
   React.useEffect(() => {
@@ -486,10 +531,10 @@ function AppLayout({
             <line x1="3" y1="16" x2="19" y2="16" />
           </svg>
         </button>
-        <span className={`app-chrome-home${isPlannerHome ? " app-chrome-home--current" : ""}`}>
+        <ChromeTitleTag className={`app-chrome-home${isPlannerHome ? " app-chrome-home--current" : ""}`}>
           {chromeTitle}
           <span className="app-chrome-user"> — {currentUser}</span>
-        </span>
+        </ChromeTitleTag>
       </header>
 
       {menuOpen ? (
