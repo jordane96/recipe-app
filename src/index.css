@@ -770,6 +770,41 @@ a {
   margin-bottom: 0.6rem;
 }
 
+/* Read-only tag pills on the recipe detail page. Deliberately quieter than the filter chips —
+   these are information, not controls, so they must not invite a tap. */
+.recipe-detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.5rem 0 0.75rem;
+  padding: 0;
+  list-style: none;
+}
+
+.recipe-detail-tag {
+  padding: 0.2rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--text);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+/* Category for a new tag. Fixed basis so it doesn't collapse next to the text field on mobile. */
+.tag-picker-facet {
+  flex: 0 1 9rem;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 1rem;
+}
+
 .tag-picker-input {
   flex: 1 1 10rem;
   min-width: 0;

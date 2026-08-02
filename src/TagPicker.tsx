@@ -1,5 +1,5 @@
 import * as React from "react";
-import { TAG_FACETS, groupTagsByFacet, tagLabel } from "./tagFacets";
+import { EXTENSIBLE_FACETS, TAG_FACETS, groupTagsByFacet, tagLabel } from "./tagFacets";
 
 /**
  * Faceted tag editor. Deliberately mirrors the filter row on /recipes — same chips, same facet
@@ -20,14 +20,15 @@ export function TagPicker({
   suggestions?: readonly string[];
 }) {
   const [draft, setDraft] = React.useState("");
+  const [facet, setFacet] = React.useState<string>("cuisine");
   const [error, setError] = React.useState<string | null>(null);
   const selected = React.useMemo(() => new Set(value), [value]);
 
   /** Built-in vocabulary plus anything already on this recipe, so custom tags stay visible. */
   const groups = React.useMemo(() => {
     const universe = new Set<string>(value);
-    for (const facet of TAG_FACETS) {
-      for (const v of facet.values) universe.add(v);
+    for (const def of TAG_FACETS) {
+      for (const v of def.values) universe.add(v);
     }
     return groupTagsByFacet([...universe]);
   }, [value]);
@@ -62,14 +63,18 @@ export function TagPicker({
       setError("Use 2–24 letters or numbers.");
       return;
     }
-    if (selected.has(slug)) {
-      setError(`“${tagLabel(slug)}” is already on this recipe.`);
+    // A built-in value keeps its bare form regardless of the chosen category — "italian" is
+    // already a cuisine, so prefixing it would fork the vocabulary.
+    const isBuiltIn = TAG_FACETS.some((f) => (f.values as readonly string[]).includes(slug));
+    const tag = isBuiltIn ? slug : `${facet}:${slug}`;
+    if (selected.has(tag)) {
+      setError(`“${tagLabel(tag)}” is already on this recipe.`);
       return;
     }
-    onChange([...value, slug]);
+    onChange([...value, tag]);
     setDraft("");
     setError(null);
-  }, [draft, selected, value, onChange]);
+  }, [draft, facet, selected, value, onChange]);
 
   const unused = React.useMemo(
     () => suggestions.filter((s) => !selected.has(s)).sort((a, b) => a.localeCompare(b)),
@@ -108,6 +113,21 @@ export function TagPicker({
           Add a tag
         </label>
         <div className="tag-picker-add">
+          <select
+            className="tag-picker-facet"
+            value={facet}
+            onChange={(e) => setFacet(e.target.value)}
+            aria-label="Category for the new tag"
+          >
+            {EXTENSIBLE_FACETS.map((key) => {
+              const def = TAG_FACETS.find((f) => f.key === key);
+              return (
+                <option key={key} value={key}>
+                  {def ? def.label : key}
+                </option>
+              );
+            })}
+          </select>
           <input
             id="tag-picker-new"
             className="tag-picker-input"

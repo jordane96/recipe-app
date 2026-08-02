@@ -71,8 +71,27 @@ const RETIRED = new Set(['soup', 'appetizer', 'dish', 'other'])
  * "crock-pot" — and every one of those still collapses to a single slug here. The AI importer
  * cannot invent values regardless; it is constrained by z.enum in parse.js.
  */
+/** Facets a user may extend. `course` is excluded — main/side is structural, not descriptive. */
+export const EXTENSIBLE_FACETS = ['protein', 'method', 'cuisine', 'additional']
+
+const SLUG = /^[a-z0-9][a-z0-9-]{1,23}$/
+
 export function normalizeTag(raw) {
   if (typeof raw !== 'string') return null
+
+  // Custom tags carry their facet: "cuisine:thai". Built-in values stay bare because their facet
+  // is already known from the vocabulary. Storing the facet in the slug means a user-added tag
+  // joins the right group permanently, with no extra table to keep in sync.
+  const parts = raw.split(':')
+  if (parts.length === 2) {
+    const facet = parts[0].trim().toLowerCase()
+    const rest = normalizeTag(parts[1])
+    if (!rest || !EXTENSIBLE_FACETS.includes(facet)) return null
+    // A prefixed built-in collapses to the bare form so it can't fork ("cuisine:italian" -> "italian").
+    return ALL_TAGS.has(rest) ? rest : `${facet}:${rest}`
+  }
+  if (parts.length !== 1) return null
+
   const cleaned = raw
     .trim()
     .toLowerCase()
@@ -83,8 +102,8 @@ export function normalizeTag(raw) {
   const aliased = ALIASES[cleaned] ?? cleaned.replace(/ /g, '-').replace(/-{2,}/g, '-')
   if (ALL_TAGS.has(aliased)) return aliased
   if (RETIRED.has(aliased)) return null
-  // Custom tag: keep it, but only in a shape that can never collide by case or spacing.
-  return /^[a-z0-9][a-z0-9-]{1,23}$/.test(aliased) ? aliased : null
+  // Unfaceted custom tag (legacy, or added before this feature) — kept, shown under "Other".
+  return SLUG.test(aliased) ? aliased : null
 }
 
 /**

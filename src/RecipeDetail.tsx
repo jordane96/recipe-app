@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type { IngredientDef, Recipe, RecommendedSideRef } from "./types";
+import { tagLabel } from "./tagFacets";
 import { formatIngredientLine, ingredientMapWithRecipes } from "./ingredientDisplay";
 import {
   ADD_TO_PLAN_QUERY,
@@ -286,6 +287,15 @@ export function RecipeDetail({
         <p className="recipe-detail-servings">
           Serves {recipe.servings}
         </p>
+      ) : null}
+      {(recipe.tags ?? []).length > 0 ? (
+        <ul className="recipe-detail-tags" aria-label="Tags">
+          {(recipe.tags ?? []).map((t) => (
+            <li key={t} className="recipe-detail-tag">
+              {tagLabel(t)}
+            </li>
+          ))}
+        </ul>
       ) : null}
       {!cookParams.cookMode && activeCookForRecipe ? (
         <div className="recipe-detail-resume-cook">

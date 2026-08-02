@@ -21,9 +21,17 @@ export const TAG_FACETS: readonly TagFacet[] = [
   { key: "additional", label: "Additional Tags", values: ["keto", "meal-prep"] },
 ];
 
-/** Slug -> display label: "crock-pot" becomes "Crock Pot". */
+/** Facets a user may extend. `course` is excluded — main/side is structural, not descriptive. */
+export const EXTENSIBLE_FACETS = ["protein", "method", "cuisine", "additional"] as const;
+
+/**
+ * Slug -> display label: "crock-pot" becomes "Crock Pot", and a faceted custom tag
+ * "cuisine:thai" becomes "Thai" — the facet is shown by which group the chip sits in, so
+ * repeating it on the chip would be noise.
+ */
 export function tagLabel(slug: string): string {
-  return slug.replace(/-/g, " ").replace(/\b[a-z]/g, (c) => c.toUpperCase());
+  const bare = slug.includes(":") ? slug.slice(slug.indexOf(":") + 1) : slug;
+  return bare.replace(/-/g, " ").replace(/\b[a-z]/g, (c) => c.toUpperCase());
 }
 
 /**
@@ -37,7 +45,13 @@ export function groupTagsByFacet(
   const remaining = new Set(present);
   const groups: Array<{ key: string; label: string; values: string[] }> = [];
   for (const facet of TAG_FACETS) {
-    const values = facet.values.filter((v) => remaining.has(v));
+    const builtIn = facet.values.filter((v) => remaining.has(v));
+    // Custom tags declare their facet in the slug ("cuisine:thai"), so they sort in beside the
+    // built-in values of the same group rather than piling up under "Other".
+    const custom = [...remaining]
+      .filter((v) => v.startsWith(`${facet.key}:`))
+      .sort((a, b) => a.localeCompare(b));
+    const values = [...builtIn, ...custom];
     values.forEach((v) => remaining.delete(v));
     if (values.length > 0) {
       groups.push({ key: facet.key, label: facet.label, values });
@@ -51,6 +65,10 @@ export function groupTagsByFacet(
 
 /** Which facet a tag belongs to — used to OR within a facet and AND across facets. */
 export function facetKeyOf(tag: string): string {
+  if (tag.includes(":")) {
+    const prefix = tag.slice(0, tag.indexOf(":"));
+    if (TAG_FACETS.some((f) => f.key === prefix)) return prefix;
+  }
   for (const facet of TAG_FACETS) {
     if (facet.values.includes(tag)) return facet.key;
   }
