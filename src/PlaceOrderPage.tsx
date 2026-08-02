@@ -35,7 +35,8 @@ export function PlaceOrderPage() {
           Safeway brand
         </Link>
         <p className="kroger-note" style={{ marginTop: "0.25rem" }}>
-          Safeway, via the desktop browser extension. Matches your list and fills your Safeway cart.
+          Safeway, Vons or Pavilions — via the desktop browser extension (or a screenshot on mobile).
+          You'll pick which store next.
         </p>
       </div>
     </div>

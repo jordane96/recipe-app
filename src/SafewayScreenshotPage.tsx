@@ -1,6 +1,7 @@
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import type { IngredientDef, Recipe } from "./types";
 import { useBuyItems } from "./useBuyItems";
+import { bannerById } from "./safewayHandoff";
 
 /**
  * A deliberately dense, single-screen list of every shopping item, so a phone user can capture
@@ -15,11 +16,18 @@ export function SafewayScreenshotPage({
   ingredients: IngredientDef[];
 }) {
   const buyItems = useBuyItems(recipes, ingredients);
+  const [searchParams] = useSearchParams();
+  const banner = bannerById(searchParams.get("banner"));
+  const label = banner?.label ?? "Safeway";
 
   return (
     <div className="recipe-list-page">
       <div className="top-bar">
-        <Link to="/order/safeway" className="back-btn" aria-label="Back to Safeway ordering">
+        <Link
+          to={banner ? `/order/safeway?banner=${banner.id}` : "/order/safeway"}
+          className="back-btn"
+          aria-label="Back to ordering"
+        >
           Go back
         </Link>
         <h1 className="page-title" style={{ fontSize: "1.25rem" }}>
@@ -28,7 +36,7 @@ export function SafewayScreenshotPage({
       </div>
 
       <p className="muted" style={{ fontSize: "0.8rem", marginBottom: "0.75rem" }}>
-        Screenshot this entire list, then in the Safeway app tap <strong>Import from List</strong>{" "}
+        Screenshot this entire list, then in the {label} app tap <strong>Import from List</strong>{" "}
         and upload it. It's condensed so the whole list fits in one image.
       </p>
 

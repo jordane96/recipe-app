@@ -29,12 +29,18 @@ window.addEventListener("message", (event) => {
     }));
   if (items.length === 0) return;
 
+  // Chosen banner (Safeway / Vons / Pavilions), if the app sent one.
+  const banner =
+    data.banner && typeof data.banner.host === "string"
+      ? { id: String(data.banner.id || ""), label: String(data.banner.label || ""), host: String(data.banner.host) }
+      : undefined;
+
   // If the extension was reloaded while this page stayed open, this content script's
   // chrome.runtime handle is stale ("Extension context invalidated"). Guard so it fails
   // quietly with a hint instead of throwing, and flag the app so it can prompt a refresh.
   try {
     if (!chrome.runtime || !chrome.runtime.id) throw new Error("context invalidated");
-    chrome.runtime.sendMessage({ type: HANDOFF, items }, () => void chrome.runtime.lastError);
+    chrome.runtime.sendMessage({ type: HANDOFF, items, banner }, () => void chrome.runtime.lastError);
   } catch (e) {
     console.warn(
       "[Safeway ext] Extension was reloaded — refresh this page to reconnect.",

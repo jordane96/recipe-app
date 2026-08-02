@@ -1,28 +1,31 @@
 import * as React from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import "./kroger.css";
 import type { IngredientDef, Recipe } from "./types";
 import { useBuyItems } from "./useBuyItems";
 import { useToast } from "./ToastContext";
 import {
+  bannerById,
   getSafewayExtensionStatus,
   publishSafewayHandoff,
+  SAFEWAY_BANNERS,
   type SafewayHandoffItem,
 } from "./safewayHandoff";
 import { isLikelyMobile } from "./deviceType";
 
 /**
- * Where to download the packed Safeway ordering extension (Chrome, desktop). TODO: set this to
- * the hosted link (e.g. a Google Drive share) once the build is published; until then the
- * "Get extension" button just tells the user it's coming.
+ * Where to download the packed ordering extension (Chrome, desktop). TODO: set this to the hosted
+ * link (e.g. a Google Drive share) once the build is published; until then the "Get extension"
+ * button just tells the user it's coming.
  */
 const EXTENSION_DOWNLOAD_URL = "";
 
 /**
- * Safeway ordering. Unlike Kroger (official API, see {@link KrogerOrderPage}), Safeway has no
- * public cart API, so this page hands the list to the companion browser extension, which fills
- * the cart from the user's own logged-in safeway.com session. Desktop Chrome only. When the
- * extension is absent, guidance splits by device (see {@link isLikelyMobile}).
+ * Ordering for the Albertsons banners (Safeway / Vons / Pavilions — same platform, same extension).
+ * Unlike Kroger (official API, see {@link KrogerOrderPage}), these have no public cart API, so the
+ * page hands the list to the companion browser extension, which fills the cart from the user's own
+ * logged-in session. Desktop Chrome only; when the extension is absent, guidance splits by device
+ * (see {@link isLikelyMobile}). The user first picks a banner (`?banner=` query param).
  */
 export function SafewayOrderPage({
   recipes,
@@ -33,6 +36,8 @@ export function SafewayOrderPage({
 }) {
   const { showToast } = useToast();
   const buyItems = useBuyItems(recipes, ingredients);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const banner = bannerById(searchParams.get("banner"));
 
   // The extension announces itself by stamping the <html> element; re-check on mount.
   const [extStatus, setExtStatus] = React.useState<"present" | "stale" | "absent">("absent");
@@ -50,10 +55,10 @@ export function SafewayOrderPage({
   );
 
   const sendToSafeway = React.useCallback(() => {
-    if (handoffItems.length === 0) return;
-    publishSafewayHandoff(handoffItems);
-    showToast("Sent to Safeway — opening a Safeway tab to fill your cart.");
-  }, [handoffItems, showToast]);
+    if (handoffItems.length === 0 || !banner) return;
+    publishSafewayHandoff(handoffItems, banner);
+    showToast(`Sent to ${banner.label} — opening a ${banner.label} tab to fill your cart.`);
+  }, [handoffItems, banner, showToast]);
 
   const copyList = React.useCallback(async () => {
     const text = handoffItems.map((it) => it.term).join("\n");
@@ -65,28 +70,64 @@ export function SafewayOrderPage({
     }
   }, [handoffItems, showToast]);
 
+  // ---- Step 1: pick a banner (Safeway / Vons / Pavilions) ---------------------
+  if (!banner) {
+    return (
+      <div className="recipe-list-page">
+        <div className="top-bar">
+          <Link to="/place-order" className="back-btn" aria-label="Back to store options">
+            Go back
+          </Link>
+          <h1 className="page-title" style={{ fontSize: "1.25rem" }}>
+            Choose your store
+          </h1>
+        </div>
+        <div className="kroger-card">
+          <h2>Which store?</h2>
+          <p className="muted">
+            Safeway, Vons, and Pavilions run on the same platform — pick the one you shop.
+          </p>
+          {SAFEWAY_BANNERS.map((b, i) => (
+            <button
+              key={b.id}
+              type="button"
+              className={`${i === 0 ? "btn-primary" : "btn-secondary"} btn-cta-wide`}
+              style={i === 0 ? undefined : { marginTop: "0.75rem" }}
+              onClick={() => setSearchParams({ banner: b.id })}
+            >
+              {b.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // ---- Step 2: order from the chosen banner -----------------------------------
+  const loginUrl = `https://${banner.host}`;
   return (
     <div className="recipe-list-page">
       <div className="top-bar">
-        <Link to="/shopping" className="back-btn" aria-label="Go back to shopping list">
+        <Link to="/order/safeway" className="back-btn" aria-label="Change store">
           Go back
         </Link>
         <h1 className="page-title" style={{ fontSize: "1.25rem" }}>
-          Order from Safeway
+          Order from {banner.label}
         </h1>
       </div>
 
       <div className="kroger-card">
-        <h2>Send this list to Safeway</h2>
+        <h2>Send this list to {banner.label}</h2>
         {extStatus === "present" ? (
           // Desktop with the extension installed → send straight to the cart.
           <>
             <p className="muted" style={{ color: "var(--ok, #1a7f37)" }}>
-              ✓ Safeway extension detected.
+              ✓ Ordering extension detected.
             </p>
             <p className="muted">
-              Press Send below — it opens Safeway in your logged-in session, matches each item, and
-              lets you review and add everything to your cart. You finish checkout on Safeway.
+              Press Send below — it opens {banner.label} in your logged-in session, matches each
+              item, and lets you review and add everything to your cart. You finish checkout on{" "}
+              {banner.label}.
             </p>
             <button
               type="button"
@@ -96,7 +137,7 @@ export function SafewayOrderPage({
             >
               {handoffItems.length === 0
                 ? "Your shopping list is empty"
-                : `Send ${handoffItems.length} item${handoffItems.length === 1 ? "" : "s"} to Safeway`}
+                : `Send ${handoffItems.length} item${handoffItems.length === 1 ? "" : "s"} to ${banner.label}`}
             </button>
             <button
               type="button"
@@ -114,33 +155,36 @@ export function SafewayOrderPage({
             Send again.
           </p>
         ) : mobile ? (
-          // Phone → screenshot the whole list into one image for Safeway's "Import from List".
+          // Phone → screenshot the whole list into one image for "Import from List".
           <>
             <p className="muted">
-              To order from Safeway on your phone: screenshot your full list, then upload it to
-              Safeway's <strong>Import from List</strong>. Safeway accepts only one screenshot, so
-              we fit your whole list into a single image.
+              To order from {banner.label} on your phone: screenshot your full list, then upload it
+              to the {banner.label} app's <strong>Import from List</strong>. It accepts only one
+              screenshot, so we fit your whole list into a single image.
             </p>
-            <Link to="/order/safeway/screenshot" className="btn-primary btn-cta-wide">
+            <Link
+              to={`/order/safeway/screenshot?banner=${banner.id}`}
+              className="btn-primary btn-cta-wide"
+            >
               Get screenshot
             </Link>
             <a
-              href="https://www.safeway.com"
+              href={loginUrl}
               target="_blank"
               rel="noreferrer"
               className="btn-secondary btn-cta-wide"
               style={{ marginTop: "0.75rem" }}
             >
-              Log in to Safeway
+              Log in to {banner.label}
             </a>
           </>
         ) : (
-          // Desktop without the extension → get it (or shop manually on safeway.com).
+          // Desktop without the extension → get it (or shop manually on the banner's site).
           <>
             <p className="muted">
-              You don't have the Safeway ordering extension installed. Install it (Chrome, desktop
-              only) to send your list straight to your Safeway cart — or log in to Safeway to shop
-              manually.
+              You don't have the ordering extension installed. Install it (Chrome, desktop only) to
+              send your list straight to your {banner.label} cart — or log in to {banner.label} to
+              shop manually.
             </p>
             {EXTENSION_DOWNLOAD_URL ? (
               <a
@@ -161,13 +205,13 @@ export function SafewayOrderPage({
               </button>
             )}
             <a
-              href="https://www.safeway.com"
+              href={loginUrl}
               target="_blank"
               rel="noreferrer"
               className="btn-secondary btn-cta-wide"
               style={{ marginTop: "0.75rem" }}
             >
-              Log in to Safeway
+              Log in to {banner.label}
             </a>
           </>
         )}

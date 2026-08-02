@@ -14,6 +14,26 @@ export const SAFEWAY_HANDOFF_MESSAGE = "recipe-app:safeway-handoff";
 /** Mirror of the broadcast, so the extension can also pull it on demand. */
 export const SAFEWAY_HANDOFF_STORAGE_KEY = "recipe-app-safeway-handoff";
 
+export type SafewayBannerId = "safeway" | "vons" | "pavilions";
+
+/**
+ * Albertsons banners the extension supports — all run the identical e-commerce platform, so the
+ * same extension works on each; only the domain differs. `host` tells the extension which site to
+ * open and activate on.
+ */
+export type SafewayBanner = { id: SafewayBannerId; label: string; host: string };
+
+export const SAFEWAY_BANNERS: readonly SafewayBanner[] = [
+  { id: "safeway", label: "Safeway", host: "www.safeway.com" },
+  { id: "vons", label: "Vons", host: "www.vons.com" },
+  { id: "pavilions", label: "Pavilions", host: "www.pavilions.com" },
+];
+
+/** Look up a banner by id; returns undefined for unknown/missing ids. */
+export function bannerById(id: string | null | undefined): SafewayBanner | undefined {
+  return SAFEWAY_BANNERS.find((b) => b.id === id);
+}
+
 export type SafewayHandoffItem = {
   /** Clean search term for Safeway's product search (e.g. "boneless chicken thighs"). */
   term: string;
@@ -29,6 +49,8 @@ export type SafewayHandoffPayload = {
   type: typeof SAFEWAY_HANDOFF_MESSAGE;
   version: 1;
   items: SafewayHandoffItem[];
+  /** Which banner (Safeway / Vons / Pavilions) to open and fill. */
+  banner: SafewayBanner;
   ts: number;
 };
 
@@ -49,11 +71,15 @@ export function getSafewayExtensionStatus(): "present" | "stale" | "absent" {
 }
 
 /** Broadcast the list to the extension (and stash a copy it can pull on demand). */
-export function publishSafewayHandoff(items: SafewayHandoffItem[]): SafewayHandoffPayload {
+export function publishSafewayHandoff(
+  items: SafewayHandoffItem[],
+  banner: SafewayBanner,
+): SafewayHandoffPayload {
   const payload: SafewayHandoffPayload = {
     type: SAFEWAY_HANDOFF_MESSAGE,
     version: 1,
     items,
+    banner,
     ts: Date.now(),
   };
   try {

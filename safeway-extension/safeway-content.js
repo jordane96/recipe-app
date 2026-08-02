@@ -15,6 +15,14 @@
   let state = null; // { items: [{ term, label, qty, options, selectedIndex, removed }] }
   let rootEl = null;
   let currentTs = null; // handoff id, so cached matches are tied to the right list
+  let bannerLabel = "Safeway"; // Safeway / Vons / Pavilions — set from the handoff banner
+
+  /** True if this page is the banner (host) the user chose for this handoff. */
+  function hostMatches(host) {
+    const h = String(host || "").toLowerCase();
+    const cur = location.hostname.toLowerCase();
+    return cur === h || `www.${cur}` === h || cur === h.replace(/^www\./, "");
+  }
   let reviewScroll = 0; // remembered scroll of the review list, so re-renders don't jump to top
 
   /** Run fn once document.body exists (the content script may run at document_start). */
@@ -396,19 +404,18 @@
   }
 
   function renderNeedStore() {
-    panelShell("Choose a Safeway store first", [
+    panelShell(`Choose a ${bannerLabel} store first`, [
       el("p", {
         class: "swx-muted",
-        text:
-          "Safeway needs a store and a Delivery or Pickup selection before anything can be added to a cart. Pick those on Safeway (top-left of the site), then come back and press “Add to Safeway cart” again.",
+        text: `${bannerLabel} needs a store and a Delivery or Pickup selection before anything can be added to a cart. Pick those on ${bannerLabel} (top-left of the site), then come back and press “Add to ${bannerLabel} cart” again.`,
       }),
-      el("a", { class: "swx-btn swx-btn-primary", href: "/", text: "Go to Safeway home" }),
+      el("a", { class: "swx-btn swx-btn-primary", href: "/", text: `Go to ${bannerLabel} home` }),
       el("button", { class: "swx-btn swx-btn-secondary", text: "Back to my list", onclick: renderReview }),
     ]);
   }
 
   function renderSearching(done, total) {
-    panelShell("Matching your list to Safeway…", [
+    panelShell(`Matching your list to ${bannerLabel}…`, [
       el("p", { class: "swx-muted", text: `Found products for ${done} of ${total} items.` }),
       el("div", { class: "swx-progress" }, [
         el("div", { class: "swx-progress-bar", style: `width:${total ? (done / total) * 100 : 0}%` }),
@@ -428,7 +435,7 @@
     saveState(); // persist matches + edits so a reload/reopen is instant
     const rows = state.items.map((item, idx) => renderRow(item, idx));
     const footer = renderFooter();
-    panelShell("Review your Safeway cart", [el("ul", { class: "swx-list" }, rows)], footer);
+    panelShell(`Review your ${bannerLabel} cart`, [el("ul", { class: "swx-list" }, rows)], footer);
     // Restore scroll after the rebuild (button clicks re-render the whole list) and keep it
     // tracked, so quantity/remove/see-options round-trips don't bounce back to the top.
     const body = rootEl.querySelector(".swx-body");
@@ -470,7 +477,7 @@
     }
 
     if (!opt) {
-      li.appendChild(el("div", { class: "swx-nomatch", text: "No Safeway match found" }));
+      li.appendChild(el("div", { class: "swx-nomatch", text: `No ${bannerLabel} match found` }));
       li.appendChild(
         el("button", { class: "swx-link", text: "Remove", onclick: () => { item.removed = true; renderReview(); } }),
       );
@@ -549,7 +556,7 @@
     ]);
     const cta = el("button", {
       class: "swx-btn swx-btn-primary swx-cta",
-      text: `Add ${items.length} to Safeway cart`,
+      text: `Add ${items.length} to ${bannerLabel} cart`,
       onclick: () => onAddAll(cta),
     });
     if (items.length === 0) cta.setAttribute("disabled", "true");
@@ -557,7 +564,7 @@
       summary,
       cta,
       el("p", { class: "swx-note" }, [
-        "Adds items to your Safeway cart — you review and check out on Safeway. This doesn't place or pay for an order. ",
+        `Adds items to your ${bannerLabel} cart — you review and check out on ${bannerLabel}. This doesn't place or pay for an order. `,
         el("button", { class: "swx-link", text: "Re-match", onclick: () => void reMatch() }),
       ]),
     ]);
@@ -575,7 +582,7 @@
     // captured yet ("no_key"). Auto-prime it invisibly (load /erums/cart in a hidden iframe),
     // then retry — no manual "add an item first" step needed.
     if (!res.ok && res.error === "no_key") {
-      cta.textContent = "Connecting to Safeway…";
+      cta.textContent = `Connecting to ${bannerLabel}…`;
       const primed = await primeKey();
       if (primed) res = await addToCart(items, f);
     }
@@ -584,24 +591,24 @@
       renderDone(items.length);
     } else {
       cta.removeAttribute("disabled");
-      cta.textContent = `Add ${items.length} to Safeway cart`;
+      cta.textContent = `Add ${items.length} to ${bannerLabel} cart`;
       const body = rootEl.querySelector(".swx-body");
       if (body) {
         const existing = body.querySelector(".swx-error");
         if (existing) existing.remove();
         const msg =
           res.error === "no_key"
-            ? "Couldn't connect to Safeway's cart. Make sure you're signed in with a store + Delivery/Pickup selected, then press Add again."
-            : `Couldn't add to cart (status ${res.status || "?"}). Make sure a store and a delivery or pickup time are selected on Safeway, then try again.`;
+            ? `Couldn't connect to ${bannerLabel}'s cart. Make sure you're signed in with a store + Delivery/Pickup selected, then press Add again.`
+            : `Couldn't add to cart (status ${res.status || "?"}). Make sure a store and a delivery or pickup time are selected on ${bannerLabel}, then try again.`;
         body.insertBefore(el("p", { class: "swx-error", text: msg }), body.firstChild);
       }
     }
   }
 
   function renderDone(count) {
-    panelShell("Added to your Safeway cart 🎉", [
-      el("p", { text: `${count} item${count === 1 ? "" : "s"} added. Review quantities, pick a time, and check out on Safeway.` }),
-      el("a", { class: "swx-btn swx-btn-primary", href: "/erums/cart", text: "Open Safeway cart" }),
+    panelShell(`Added to your ${bannerLabel} cart 🎉`, [
+      el("p", { text: `${count} item${count === 1 ? "" : "s"} added. Review quantities, pick a time, and check out on ${bannerLabel}.` }),
+      el("a", { class: "swx-btn swx-btn-primary", href: "/erums/cart", text: `Open ${bannerLabel} cart` }),
       el("button", { class: "swx-btn swx-btn-secondary", text: "Close", onclick: closePanel }),
     ]);
   }
@@ -613,6 +620,11 @@
     const pending = data && data.pendingSafeway;
     if (!pending || !Array.isArray(pending.items) || pending.items.length === 0) return;
     currentTs = pending.ts || null;
+
+    // The extension injects on Safeway, Vons and Pavilions (one platform), but each handoff
+    // targets a single banner. Only activate on that banner's domain, and label the UI with it.
+    if (pending.banner && pending.banner.host && !hostMatches(pending.banner.host)) return;
+    if (pending.banner && pending.banner.label) bannerLabel = pending.banner.label;
 
     // Restore already-matched results for this exact list so a reload is instant. Otherwise
     // start fresh from the handoff terms.

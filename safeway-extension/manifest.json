@@ -4,7 +4,11 @@
   "version": "0.1.0",
   "description": "Fills your Safeway cart from a Recipe App shopping list, using your own logged-in session. Personal use.",
   "permissions": ["storage", "tabs"],
-  "host_permissions": ["https://www.safeway.com/*"],
+  "host_permissions": [
+    "https://www.safeway.com/*",
+    "https://www.vons.com/*",
+    "https://www.pavilions.com/*"
+  ],
   "background": { "service_worker": "background.js" },
   "content_scripts": [
     {
@@ -18,7 +22,11 @@
       "run_at": "document_idle"
     },
     {
-      "matches": ["https://www.safeway.com/*"],
+      "matches": [
+        "https://www.safeway.com/*",
+        "https://www.vons.com/*",
+        "https://www.pavilions.com/*"
+      ],
       "js": ["safeway-content.js"],
       "css": ["panel.css"],
       "run_at": "document_start",
@@ -26,6 +34,13 @@
     }
   ],
   "web_accessible_resources": [
-    { "resources": ["cart-inject.js"], "matches": ["https://www.safeway.com/*"] }
+    {
+      "resources": ["cart-inject.js"],
+      "matches": [
+        "https://www.safeway.com/*",
+        "https://www.vons.com/*",
+        "https://www.pavilions.com/*"
+      ]
+    }
   ]
 }
