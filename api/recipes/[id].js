@@ -1,5 +1,6 @@
 import { neon } from '@neondatabase/serverless'
 import { randomUUID } from 'crypto'
+import { normalizeTags } from '../_tags.js'
 
 const sql = neon(process.env.DATABASE_URL)
 
@@ -56,7 +57,7 @@ export default async function handler(req, res) {
           ${targetId},
           ${recipe.title.trim()},
           ${recipe.description ?? null},
-          ${recipe.tags ?? []},
+          ${normalizeTags(recipe.tags)},
           ${recipe.type ?? 'recipe'},
           ${recipe.source_url ?? null},
           ${recipe.servings ?? null},
@@ -72,7 +73,7 @@ export default async function handler(req, res) {
         UPDATE recipes
         SET title       = ${recipe.title.trim()},
             description = ${recipe.description ?? null},
-            tags        = ${recipe.tags ?? []},
+            tags        = ${normalizeTags(recipe.tags)},
             servings    = ${recipe.servings ?? null}
         WHERE id = ${targetId}
       `

@@ -1,6 +1,7 @@
 import { neon } from '@neondatabase/serverless'
 import { generateObject } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
+import { PROTEINS, METHODS, CUISINES, ADDITIONAL, normalizeTags } from '../_tags.js'
 import { z } from 'zod'
 
 const sql = neon(process.env.DATABASE_URL)
@@ -153,9 +154,25 @@ const ingredientLineSchema = z.object({
 const parsedRecipeSchema = z.object({
   title: z.string(),
   description: z.string().nullable(),
-  servings: z.number().nullable(),
+  servings: z
+    .number()
+    .nullable()
+    .describe(
+      'How many people the recipe as written feeds. Use the stated yield; if unstated, infer from the ingredient quantities. Null only when there are no quantities to reason from.',
+    ),
   course: z.enum(['main', 'side']),
-  tags: z.array(z.string()),
+  // Tags are a closed vocabulary split into facets (see docs/tag-reconciliation.md). Modelling
+  // them as separate enum fields rather than one free-text array is what stops the model from
+  // inventing variants like "Italian-American" or "crock pot" alongside "crock-pot".
+  protein: z.enum(PROTEINS).nullable().describe('Main protein. "veggie" when the dish has no meat.'),
+  method: z
+    .enum(METHODS)
+    .nullable()
+    .describe(
+      'The appliance that defines how the dish is cooked. When several are used, pick the distinguishing one in this order: crock-pot, grill, air-fryer, baked, stovetop. Null only if nothing is cooked.',
+    ),
+  cuisine: z.enum(CUISINES).nullable().describe('Only when the dish clearly belongs to one.'),
+  additionalTags: z.array(z.enum(ADDITIONAL)).describe('Empty array unless clearly applicable.'),
   ingredientSections: z.array(z.object({
     name: z.string(),
     lines: z.array(ingredientLineSchema),
@@ -197,9 +214,28 @@ INSTRUCTIONS
 
 OTHER
 • Preserve section names from the source (e.g. "For the sauce:", "Marinade:"); otherwise use "Main".
-• servings: extract if stated, otherwise null.
+• servings: how many people the recipe as written feeds. Take the stated yield when the source gives
+  one ("Serves 4", "Yield: 6 portions", "makes 12 cookies" -> 12). If the source does not state it,
+  INFER it from the ingredient quantities rather than giving up — typical single portions are ~4-6 oz
+  boneless protein, ~2-3 oz dry pasta or rice, ~1 bread roll, 1-2 tortillas. So 10 oz chicken + 2 pita
+  is 2 servings; 1 lb ground beef is 4. Meal-kit style recipes (stock concentrate pouches, "mini"
+  produce, 10 oz protein) are almost always 2. Only use null if the input has no quantities at all to
+  reason from. Never guess 1 just because the yield is unstated — 1 is rare for a full recipe.
 • course: "main" for entrees/mains, "side" for sides/salads/appetizers/snacks.
-• tags: only if explicitly stated (cuisine, dietary). Empty array if unclear.
+
+TAGS — each is a closed list. Never invent a value outside it; use null / an empty array instead.
+• protein: chicken | beef | veggie | turkey | pork | seafood. Judge by the substantial protein, not
+  by stock or broth — a pasta side seasoned with chicken stock concentrate is "veggie". Use "veggie"
+  for any dish with no meat. Null only when the recipe leaves it open (e.g. "leftover filling").
+• method: crock-pot | air-fryer | grill | baked | stovetop. Read the INSTRUCTIONS, not the title.
+  Many recipes use two — a crock pot plus a browning step, an air fryer plus boiling pasta. Pick the
+  distinguishing appliance, the one that changes how the cook plans their day, in this priority:
+  crock-pot > grill > air-fryer > baked > stovetop. If an appliance only cooks a garnish or side
+  component, it is NOT the method. Null when nothing is cooked (dips, no-cook salads).
+• cuisine: italian | mexican | asian | indian | japanese | greek | southern | middle-eastern |
+  lithuanian. Only when the dish clearly belongs to one — a single soy-glazed ingredient does not
+  make a dish Asian. Use "asian" for fusion or when the specific country is unclear. Null otherwise.
+• additionalTags: subset of [keto, meal-prep]. Empty array unless clearly applicable.
 • sourceUrl: only include if a URL appears literally in the input.
 
 The recipe owner will be set automatically by the system — do not include it.
@@ -338,14 +374,25 @@ export default async function handler(req, res) {
     }),
   }))
 
-  // Course (main/side) is stored as a tag rather than a separate field.
+  // Course (main/side) is stored as a tag rather than a separate field. The facets are flattened
+  // back into the single tags array the rest of the app reads, deduped and in facet order so the
+  // stored value is stable regardless of what order the model returned things in.
   const courseTag = object.course === 'side' ? 'side' : 'main'
-  const tags = object.tags.includes(courseTag) ? object.tags : [...object.tags, courseTag]
+  const tags = normalizeTags([
+    courseTag,
+    object.protein,
+    object.method,
+    object.cuisine,
+    ...(object.additionalTags ?? []),
+  ])
 
   const draft = {
     title: object.title,
     ...(object.description ? { description: object.description } : {}),
-    ...(object.servings != null ? { servings: object.servings } : {}),
+    // Never persist a missing yield. Without a base, the servings stepper becomes a silent
+    // no-op — scaling is amount x (target / base), so there is nothing to divide by and
+    // quantities stay put while the counter climbs. 1 is the last-resort fallback only.
+    servings: Number.isFinite(object.servings) && object.servings > 0 ? Math.round(object.servings) : 1,
     type: 'recipe',
     tags,
     ingredientSections,

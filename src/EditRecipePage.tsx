@@ -1,5 +1,6 @@
 import * as React from "react";
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { TagPicker } from "./TagPicker";
 import type {
   IngredientCategory,
   IngredientDef,
@@ -379,6 +380,12 @@ export function EditRecipePage({
   currentUser?: string;
 }) {
   const { id } = useParams();
+  // Every tag already in use, so "Add a tag" suggests what exists before inventing a near-duplicate.
+  const knownTags = React.useMemo(() => {
+    const s = new Set<string>();
+    for (const r of recipes) for (const t of r.tags ?? []) s.add(t);
+    return [...s];
+  }, [recipes]);
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -1234,6 +1241,21 @@ export function EditRecipePage({
           rows={3}
           placeholder="e.g. Crispy air-fried chicken with a simple spice rub."
           aria-labelledby="edit-recipe-desc-label"
+        />
+      </section>
+
+      <section className="edit-recipe-section" aria-labelledby="edit-recipe-tags-label">
+        <h2 id="edit-recipe-tags-label" className="edit-recipe-label">
+          Tags
+        </h2>
+        <p className="edit-recipe-field-hint">
+          Imported recipes arrive with tags already suggested — adjust them here. Tags drive the
+          filters on your recipe list.
+        </p>
+        <TagPicker
+          value={draft.tags ?? []}
+          onChange={(tags) => setDraft((d) => (d ? { ...d, tags } : d))}
+          suggestions={knownTags}
         />
       </section>
 

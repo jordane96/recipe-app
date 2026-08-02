@@ -36,6 +36,7 @@ import { recipeToPlannedMeal, useMealPlan } from "./MealPlanContext";
 import { useToast } from "./ToastContext";
 import { useSavedRecipes } from "./SavedRecipesContext";
 import { addFlowCartSessionKey, setActiveAddFlowSessionKey } from "./addFlowCartSession";
+import { facetKeyOf, groupTagsByFacet, tagLabel } from "./tagFacets";
 
 /** "main" and "side" are pinned to the front of the chip row; the rest sort alphabetically. */
 const PINNED_TAG_ORDER = ["main", "side"];
@@ -90,8 +91,17 @@ function matches(
 ): boolean {
   if (selectedTags.size > 0) {
     const recipeTags = recipe.tags ?? [];
+    // OR within a facet, AND across facets: "Chicken or Beef" makes sense, "Chicken and Beef"
+    // would match nothing, but "Veggie and Air Fryer" is the useful cross-facet combination.
+    const wanted = new Map<string, string[]>();
     for (const t of selectedTags) {
-      if (!recipeTags.includes(t)) {
+      const key = facetKeyOf(t);
+      const list = wanted.get(key);
+      if (list) list.push(t);
+      else wanted.set(key, [t]);
+    }
+    for (const group of wanted.values()) {
+      if (!group.some((t) => recipeTags.includes(t))) {
         return false;
       }
     }
@@ -456,6 +466,7 @@ export function RecipeList({
   ]);
 
   const tags = React.useMemo(() => uniqueTags(myRecipes), [myRecipes]);
+  const tagGroups = React.useMemo(() => groupTagsByFacet(tags), [tags]);
   const filtered = React.useMemo(
     () =>
       myRecipes
@@ -642,7 +653,10 @@ export function RecipeList({
             <span>
               Filters
               {selectedTags.size > 0
-                ? `: ${[...selectedTags].sort((a, b) => a.localeCompare(b)).join(", ")}`
+                ? `: ${[...selectedTags]
+                    .sort((a, b) => a.localeCompare(b))
+                    .map(tagLabel)
+                    .join(", ")}`
                 : ""}
             </span>
             <span className="recipe-filters-toggle-caret" aria-hidden>
@@ -652,33 +666,51 @@ export function RecipeList({
           {filtersOpen ? (
             <div
               id="recipe-filters-row"
-              className="tag-row"
-              role="toolbar"
+              className="tag-facets"
+              role="group"
               aria-label="Filter recipes by tag"
             >
-              <button
-                type="button"
-                className="tag-chip"
-                data-on={selectedTags.size === 0}
-                onClick={clearTags}
-              >
-                All
-              </button>
-              {tags.map((t) => {
-                const on = selectedTags.has(t);
-                return (
+              <div className="tag-facet-row tag-facet-row--all">
+                <span className="tag-facet-label" aria-hidden />
+                <div className="tag-row">
                   <button
-                    key={t}
                     type="button"
                     className="tag-chip"
-                    data-on={on}
-                    aria-pressed={on}
-                    onClick={() => toggleTag(t)}
+                    data-on={selectedTags.size === 0}
+                    onClick={clearTags}
                   >
-                    {t}
+                    All
                   </button>
-                );
-              })}
+                </div>
+              </div>
+              {tagGroups.map((group) => (
+                <div className="tag-facet-row" key={group.key}>
+                  <span className="tag-facet-label" id={`tag-facet-${group.key}`}>
+                    {group.label}
+                  </span>
+                  <div
+                    className="tag-row"
+                    role="group"
+                    aria-labelledby={`tag-facet-${group.key}`}
+                  >
+                    {group.values.map((t) => {
+                      const on = selectedTags.has(t);
+                      return (
+                        <button
+                          key={t}
+                          type="button"
+                          className="tag-chip"
+                          data-on={on}
+                          aria-pressed={on}
+                          onClick={() => toggleTag(t)}
+                        >
+                          {tagLabel(t)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           ) : null}
         </>

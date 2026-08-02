@@ -1,4 +1,5 @@
 import { neon } from '@neondatabase/serverless'
+import { normalizeTags } from './_tags.js'
 
 const sql = neon(process.env.DATABASE_URL)
 
@@ -21,7 +22,8 @@ export default async function handler(req, res) {
       owner: recipe.Owner ?? null,
       visibility: recipe.visibility ?? 'public',
       forkedFromRecipeId: recipe.forked_from_recipe_id ?? null,
-      tags: recipe.tags ?? [],
+      // Normalised on read so legacy spellings reach the UI canonical, before any migration.
+      tags: normalizeTags(recipe.tags),
       ingredientSections: sections
         .filter(s => s.recipe_id === recipe.id)
         .map(section => ({
@@ -76,7 +78,7 @@ export default async function handler(req, res) {
           ${recipe.title.trim()},
           ${recipe.description ?? null},
           ${recipe.type ?? 'recipe'},
-          ${recipe.tags ?? []},
+          ${normalizeTags(recipe.tags)},
           ${recipe.servings ?? null},
           ${recipe.sourceUrl ?? null},
           ${recipe.notes ?? null},
