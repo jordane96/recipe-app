@@ -1,7 +1,64 @@
 import type { IngredientDef, Recipe, RecipeIngredientLine } from "./ingredientTypes";
 import { TO_TASTE_UNIT } from "./ingredientTypes";
 
-/** Whole numbers without decimals (e.g. 1); otherwise two decimal places (e.g. 1.30). */
+/**
+ * Fractions a cook actually writes, smallest denominator first so `2/6` reduces to `⅓`.
+ * Everything else (0.7, 1.85) stays decimal — inventing `7/10` would read worse than `0.70`.
+ */
+const COOKING_FRACTIONS: ReadonlyArray<{ value: number; glyph: string }> = [
+  { value: 1 / 8, glyph: "⅛" },
+  { value: 1 / 6, glyph: "⅙" },
+  { value: 1 / 4, glyph: "¼" },
+  { value: 1 / 3, glyph: "⅓" },
+  { value: 3 / 8, glyph: "⅜" },
+  { value: 1 / 2, glyph: "½" },
+  { value: 5 / 8, glyph: "⅝" },
+  { value: 2 / 3, glyph: "⅔" },
+  { value: 3 / 4, glyph: "¾" },
+  { value: 5 / 6, glyph: "⅚" },
+  { value: 7 / 8, glyph: "⅞" },
+];
+
+/**
+ * How far a decimal may sit from a cooking fraction and still be treated as that fraction.
+ * Wide enough to catch what people actually type for thirds (`.33`, `.666`, `.67`) and narrow
+ * enough that the neighbouring fractions never collide — the closest pair, ⅛ and ⅙, are 0.042
+ * apart, i.e. four times this window.
+ */
+const FRACTION_TOLERANCE = 0.005;
+
+/** The cooking fraction `frac` (0–1) rounds to, or null when it isn't near one. */
+function nearestCookingFraction(frac: number): { value: number; glyph: string } | null {
+  let best: { value: number; glyph: string } | null = null;
+  let bestDelta = FRACTION_TOLERANCE;
+  for (const candidate of COOKING_FRACTIONS) {
+    const delta = Math.abs(frac - candidate.value);
+    if (delta <= bestDelta) {
+      best = candidate;
+      bestDelta = delta;
+    }
+  }
+  return best;
+}
+
+/**
+ * Snap a quantity that is *almost* a cooking fraction onto the exact value (`.666` → `2/3`).
+ * Recipes are written in thirds and eighths but typed as decimals, and an un-snapped `0.666`
+ * both displays as `0.67` and drifts when scaled. Values that aren't near a fraction pass through.
+ */
+export function snapToCookingFraction(n: number): number {
+  if (!Number.isFinite(n) || n <= 0) {
+    return n;
+  }
+  const whole = Math.floor(n);
+  const match = nearestCookingFraction(n - whole);
+  return match ? whole + match.value : n;
+}
+
+/**
+ * Whole numbers without decimals (e.g. 1), cooking fractions as glyphs (`⅔`, `1½`), and
+ * anything else to two decimal places (e.g. 1.30).
+ */
 export function formatQuantityDisplay(n: number): string {
   if (!Number.isFinite(n)) {
     return "";
@@ -9,6 +66,13 @@ export function formatQuantityDisplay(n: number): string {
   const r2 = Math.round(n * 100) / 100;
   if (Math.abs(r2 - Math.round(r2)) < 1e-8) {
     return String(Math.round(r2));
+  }
+  if (n > 0) {
+    const whole = Math.floor(n);
+    const match = nearestCookingFraction(n - whole);
+    if (match) {
+      return whole === 0 ? match.glyph : `${whole}${match.glyph}`;
+    }
   }
   return r2.toFixed(2);
 }
@@ -90,8 +154,10 @@ export function parseQuantity(raw: string): number | null {
     return den === 0 ? null : num / den;
   }
 
+  // Decimals get snapped: someone typing `.666` for two thirds means ⅔, and storing the exact
+  // value is what makes it display and scale as ⅔ rather than 0.67.
   const n = Number.parseFloat(s);
-  return Number.isFinite(n) ? n : null;
+  return Number.isFinite(n) ? snapToCookingFraction(n) : null;
 }
 
 /**
