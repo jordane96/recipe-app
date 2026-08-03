@@ -54,9 +54,15 @@ function toWeightBase(amount: number, unit: string): number {
 /** Which unit scale the primary volume display uses (parentheticals omit that scale). */
 export type VolumePrimaryTier = "tsp" | "tbsp" | "cup";
 
+/**
+ * "cup" for anything up to and including one, "cups" above it — "¼ cup", not "¼ cups".
+ *
+ * This only singularised an exact 1 before, which read fine while sub-cup amounts were decimals
+ * ("0.25 cups") and reads wrong now they're fractions.
+ */
 function cupLabelForAmount(cups: number): string {
   const r = Math.round(cups * 10000) / 10000;
-  return Math.abs(r - 1) < 1e-8 ? "cup" : "cups";
+  return r <= 1 ? "cup" : "cups";
 }
 
 /**
@@ -64,20 +70,40 @@ function cupLabelForAmount(cups: number): string {
  * Requires at least 1/4 cup (12 tsp): smaller amounts like 2 tbsp (6 tsp = ⅛ cup)
  * stay primary in tbsp so the list matches recipe wording.
  */
+/**
+ * Fractions of a cup that correspond to an actual measuring cup: quarters and thirds.
+ *
+ * Deliberately excludes eighths and finer. A nesting measuring-cup set is ¼ / ⅓ / ½ / ⅔ / ¾ / 1,
+ * so "1⅛ cups" asks for something you can't scoop — "1 cup + 2 tbsp" is the instruction you'd
+ * actually follow.
+ */
+const MEASURABLE_CUP_FRACTIONS = [0, 1 / 4, 1 / 3, 1 / 2, 2 / 3, 3 / 4] as const;
+
+/** True when `cups`'s fractional part lands on a measuring-cup size. */
+function isMeasurableCupFraction(cups: number): boolean {
+  const frac = cups - Math.floor(cups);
+  // Same 0.005 window the formatter uses, so a value accepted here always renders as a fraction
+  // rather than falling back to a decimal.
+  return MEASURABLE_CUP_FRACTIONS.some((f) => Math.abs(frac - f) < 0.005);
+}
+
+/**
+ * Whether a sub-cup amount should be shown in cups at all.
+ *
+ * This defers to the formatter rather than using its own tolerance. It used to accept anything
+ * within 0.03 of a nice fraction, while `formatQuantityDisplay` only renders a fraction within
+ * 0.005 — so 5 tbsp (15 tsp = 0.3125 cups) passed this gate as "≈⅓ cup" and was then printed by
+ * the stricter formatter as the decimal it really is: **"0.31 cups"**, where "5 tbsp" was both
+ * shorter and exact.
+ *
+ * Deciding by "does this render cleanly?" makes the two agree by construction, so the cup tier
+ * can only ever produce ¼ / ⅓ / ½ / ⅔ / ¾ style output and everything else falls through to tbsp.
+ */
 function isNiceCupFractionTsp(x: number): boolean {
   if (x < 12 || x >= 48) {
     return false;
   }
-  const c = x / 48;
-  const eighth = Math.round(c * 8);
-  if (eighth >= 1 && eighth <= 7 && Math.abs(c - eighth / 8) < 0.03) {
-    return true;
-  }
-  const third = Math.round(c * 3);
-  if ((third === 1 || third === 2) && Math.abs(c - third / 3) < 0.03) {
-    return true;
-  }
-  return false;
+  return !formatQuantityDisplay(x / 48).includes(".");
 }
 
 function formatCupsFromTsp(x: number): string {
@@ -94,6 +120,15 @@ function volumePrimaryDisplay(tsp: number): { tier: VolumePrimaryTier; text: str
       return {
         tier: "cup",
         text: `${fmtQty(n)} cup${n === 1 ? "" : "s"}`,
+      };
+    }
+    // Fractions you can actually measure with a cup: "1½ cups" beats "1 cup + 8 tbsp". Anything
+    // finer than a quarter has no measure of its own, so it stays split into tablespoons —
+    // 1⅛ cups is a worse instruction than "1 cup + 2 tbsp".
+    if (isMeasurableCupFraction(cups)) {
+      return {
+        tier: "cup",
+        text: `${fmtQty(cups)} ${cupLabelForAmount(cups)}`,
       };
     }
     const whole = Math.floor(x / 48);
@@ -526,6 +561,41 @@ export function buildShoppingListData(
     }
   }
 
+  /**
+   * Fold amount-less lines into the measured line for the same ingredient.
+   *
+   * A qualitative line ("Olive oil - to taste") can't merge numerically, so it became its own
+   * raw row — and a list containing both "Olive oil - ⅓ cup" and "Olive oil - to taste" reads as
+   * a duplicate and gets bought twice. By definition the amount-less line adds no quantity, so
+   * the measured row already covers it.
+   *
+   * Its recipe ids and notes are carried across rather than dropped: a recipe that only ever said
+   * "to taste" still has to appear as a source for that ingredient, or the "By recipe" breakdown
+   * and the purchased-line pruning lose track of it.
+   *
+   * Only applies when a measured row exists — an ingredient that is *only* ever "to taste"
+   * (salt, pepper) keeps its own row, which is the correct reminder to have one.
+   */
+  const measuredBucketFor = (ingredientId: string) => {
+    const v = vol.get(ingredientId);
+    if (v) return v;
+    const w = wt.get(ingredientId);
+    if (w) return w;
+    for (const [key, bucket] of ct.entries()) {
+      if (key.slice(0, key.lastIndexOf("::")) === ingredientId) return bucket;
+    }
+    return null;
+  };
+
+  for (const [key, raw] of [...rawMap.entries()]) {
+    if (!raw.ingredientId) continue;
+    const target = measuredBucketFor(raw.ingredientId);
+    if (!target) continue;
+    for (const id of raw.recipeIds) target.recipeIds.add(id);
+    for (const n of raw.notes) target.notes.add(n);
+    rawMap.delete(key);
+  }
+
   const sortedNotes = (notes: Set<string>): string[] =>
     [...notes].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
 
@@ -574,8 +644,10 @@ export function buildShoppingListData(
     });
   }
 
-  const rawItems: CombinedShoppingItem[] = rawOrderKeys.map((k) => {
-    const ex = rawMap.get(k)!;
+  // `rawOrderKeys` preserves first-seen order but may name keys the fold above removed.
+  const rawItems: CombinedShoppingItem[] = rawOrderKeys.flatMap((k) => {
+    const ex = rawMap.get(k);
+    if (!ex) return [];
     // Preserve the ingredient's catalog category for unit-mismatched / qualitative lines —
     // otherwise a recipe using spinach by oz (while catalog says volume) lands in "Other"
     // instead of Produce. Falls back to "other" only when the ingredient is truly unknown.

@@ -103,34 +103,10 @@ export function useBuyItems(recipes: Recipe[], ingredients: IngredientDef[]): Bu
       return needThisTimeIds.has(id!);
     };
 
-    /**
-     * One product per ingredient.
-     *
-     * `shoppingMerge` deliberately keeps lines in different unit families apart — you can't add
-     * cups to ounces, and on a shopping list "Olive oil - ⅓ cup" and "Olive oil - to taste" are
-     * two useful reminders. An *order* is a different question: both are one bottle, and leaving
-     * them split puts two in the cart.
-     *
-     * Amount-less lines contribute no quantity by definition, so they're dropped whenever a
-     * measured line for the same ingredient exists. When every line is amount-less, the first is
-     * kept so the ingredient is still ordered.
-     */
-    const measuredIngredientIds = new Set(
-      combinedItems.filter((it) => needFromItem(it) != null && it.ingredientId).map((it) => it.ingredientId!),
-    );
-    const seenAmountless = new Set<string>();
-    const dedupedByIngredient = (it: CombinedShoppingItem) => {
-      const id = it.ingredientId;
-      if (!id || needFromItem(it) != null) return true;
-      if (measuredIngredientIds.has(id)) return false;
-      if (seenAmountless.has(id)) return false;
-      seenAmountless.add(id);
-      return true;
-    };
-
+    // No dedupe by ingredient here: `buildShoppingListData` now folds amount-less lines into the
+    // measured line for the same ingredient, so the duplicate never reaches this point.
     const fromRecipes = combinedItems
       .filter(onMainList)
-      .filter(dedupedByIngredient)
       .filter((it) => !isPurchased(it.line))
       .map((it) => ({
         key: it.line,
