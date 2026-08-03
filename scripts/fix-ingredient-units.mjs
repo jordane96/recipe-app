@@ -13,10 +13,12 @@
  *   node scripts/fix-ingredient-units.mjs           # dry run — prints the plan, writes nothing
  *   node scripts/fix-ingredient-units.mjs --apply   # writes, after dumping a backup
  *
- * `.env.local` points at the Neon *test* branch (`vercel env pull` defaults to development), so
- * that is what this hits unless told otherwise. An existing env var takes precedence:
+ * `.env.local`'s DATABASE_URL is currently repointed at a disposable Neon branch, so that is what
+ * this hits by default. Add `--prod` to target the production value preserved on the commented
+ * line above it:
  *
- *   DATABASE_URL="<prod url>" node scripts/fix-ingredient-units.mjs --apply
+ *   node scripts/fix-ingredient-units.mjs --prod            # dry run against production
+ *   node scripts/fix-ingredient-units.mjs --prod --apply
  *
  * The backup file is overwritten each run — copy it aside if you need more than the last one.
  */
@@ -43,13 +45,38 @@ if (existsSync(envFile)) {
     if (!process.env[k]) process.env[k] = v;
   }
 }
-if (!process.env.DATABASE_URL) {
+const APPLY = process.argv.includes("--apply");
+const PROD = process.argv.includes("--prod");
+
+/**
+ * `.env.local`'s live DATABASE_URL is currently repointed at a disposable Neon branch, with the
+ * real production value preserved as a commented line above it. `--prod` reads that line, so the
+ * connection string stays in the file instead of being passed around on a command line.
+ */
+function productionUrl() {
+  const line = readFileSync(envFile, "utf-8")
+    .split(/\r?\n/)
+    .find((l) => /^#\s*DATABASE_URL=/.test(l));
+  const m = line && line.match(/DATABASE_URL="([^"]+)"/);
+  if (!m) {
+    console.error("No commented production DATABASE_URL found in .env.local.");
+    process.exit(1);
+  }
+  return m[1];
+}
+
+const connectionString = PROD ? productionUrl() : process.env.DATABASE_URL;
+if (!connectionString) {
   console.error("DATABASE_URL missing — run `vercel env pull .env.local` first.");
   process.exit(1);
 }
 
-const sql = neon(process.env.DATABASE_URL);
-const APPLY = process.argv.includes("--apply");
+// Say out loud which database is about to be touched — the two are easy to confuse.
+console.log(
+  `target: ${(connectionString.match(/@([^/]+)/) || [])[1]}${PROD ? "  (production)" : ""}\n`,
+);
+
+const sql = neon(connectionString);
 const OWNER = "JordanE";
 
 /**
