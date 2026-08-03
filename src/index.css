@@ -340,6 +340,48 @@ a {
   }
 }
 
+/* Test-account marker (`?demo=1` entry) — sits under the chrome bar. */
+.demo-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.15rem 0.5rem;
+  margin: 0 0 1rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 8%, #fff);
+}
+
+.demo-banner-text {
+  font-size: var(--fs-ui);
+  color: var(--text);
+}
+
+/* Reads as a link, but it's a <button> — see the note in App.tsx. */
+.demo-banner-link {
+  padding: 0.15rem 0;
+  border: none;
+  background: none;
+  font-family: var(--font-sans);
+  font-size: var(--fs-ui);
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.demo-banner-link:hover {
+  color: var(--text);
+}
+
+.demo-banner-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 /* —— App chrome (hamburger + home) —— */
 .app-chrome-bar {
   position: sticky;
@@ -1757,16 +1799,22 @@ button.cook-mode-v2-meal-banner--in-chrome,
   width: 44px;
   min-width: 44px;
   max-width: 44px;
-  height: 34px;
-  min-height: 34px;
-  max-height: 34px;
+  /* 44px, not 34: the iOS/WCAG minimum touch target, and it gives the glyph room to sit inside
+     the cream button instead of spilling onto the teal footer behind it. Absolutely positioned
+     and centred in the footer, so the taller box doesn't move the "Step n of m" column. */
+  height: 44px;
+  min-height: 44px;
+  max-height: 44px;
   border-radius: 10px;
 }
 
 .cook-mode-v2-cook-footer .cook-mode-v2-nav-btn.cook-mode-v2-nav-btn--figma.cook-mode-v2-nav-btn--figma-airy .cook-mode-v2-nav-arrow {
   height: auto;
-  font-family: SFMono-Regular, Consolas, "Liberation Mono", monospace;
-  font-size: 40px;
+  /* Deliberately NOT the monospace stack: iOS exposes no `SFMono-Regular` to web content, so it
+     fell through to Courier, whose ← ink is far taller than Chrome's and overflowed the button —
+     the "arrows cut off on mobile" report. The app font renders ← predictably everywhere. */
+  font-family: var(--font-cook);
+  font-size: 24px;
   line-height: 1;
 }
 
@@ -1787,8 +1835,9 @@ button.cook-mode-v2-meal-banner--in-chrome,
   margin: 0;
   text-align: center;
   font-family: var(--font-cook);
-  /* Figma 32:186: 11px semibold white */
-  font-size: 11px;
+  /* Figma 32:186 said 11px; raised to 13px — this is the only "where am I" cue on a screen
+     read from a step or two back from the counter. */
+  font-size: 13px;
   line-height: 1.2;
   font-weight: 600;
   color: #fff;
@@ -1928,6 +1977,14 @@ button.cook-mode-v2-meal-banner--in-chrome,
   overflow: visible;
   padding-left: 1rem;
   padding-right: 1rem;
+  /*
+   * Room to scroll clear of the footer. The footer is `position: sticky; bottom: 0` so it floats
+   * over this content (deliberately — the arrows stay reachable during a long step). Without a
+   * bottom pad, whatever ends the step gets covered by the teal strip: on a long step that's the
+   * timer, i.e. the one control you need mid-cook. Sized to the footer (~84px) plus a gap, and
+   * the safe-area inset so it also clears the iOS home indicator.
+   */
+  padding-bottom: calc(5.75rem + env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
 }
 
@@ -2283,9 +2340,11 @@ button.cook-mode-v2-meal-banner--in-chrome,
 .cook-mode-v2-step-edit {
   border: none;
   background: none;
-  padding: 0;
+  /* Vertical padding only — an unpadded 14px-tall link is not a tap target, but horizontal
+     padding would visibly detach the underline from the text it belongs to. */
+  padding: 0.4rem 0;
   font-family: var(--font-cook);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   line-height: 1.2;
   color: var(--cook-teal);
@@ -2815,10 +2874,14 @@ button.cook-mode-v2-meal-banner--in-chrome,
   color: var(--cook-teal);
 }
 
-/* Figma footer cancel: 10px / 12, regular, underline */
+/**
+ * Figma spec was 10px/12. Raised to 13px with a real tap target: this is the only way out of
+ * cook mode, 10px white-on-teal is unreadable at arm's length, and as a full-width strip sitting
+ * 15px under the → arrow it was easy to hit by accident. Shrink-wrapping keeps the exit deliberate.
+ */
 .cook-mode-v2-footer-cancel.cook-mode-v2-confirm-cancel {
-  font-size: 10px;
-  line-height: 12px;
+  font-size: 13px;
+  line-height: 16px;
   font-weight: 400;
   text-decoration: underline;
   text-underline-offset: 2px;
@@ -2826,7 +2889,8 @@ button.cook-mode-v2-meal-banner--in-chrome,
 
 .cook-mode-v2-cook-footer .cook-mode-v2-footer-cancel.cook-mode-v2-confirm-cancel {
   color: #fff;
-  padding: 0.1rem 0.35rem;
+  width: max-content;
+  padding: 0.45rem 0.9rem;
   margin: 0 auto;
   max-width: 100%;
 }
@@ -2846,6 +2910,7 @@ button.cook-mode-v2-meal-banner--in-chrome,
 .cook-mode-v2-dot {
   box-sizing: border-box;
   appearance: none;
+  position: relative;
   width: 7px;
   height: 7px;
   padding: 0;
@@ -2857,6 +2922,23 @@ button.cook-mode-v2-meal-banner--in-chrome,
   flex-shrink: 0;
   line-height: 0;
   align-self: center;
+}
+
+/**
+ * Each dot is a real "jump to step" button, but the visual is 7px across — far below a usable
+ * touch target on the one screen guaranteed to be operated with wet or greasy hands. This
+ * pseudo-element grows the *hit* area without changing the dot or the layout: as wide as the
+ * dot pitch (7px dot + 6px gap) so neighbouring targets tile rather than overlap, and tall
+ * enough to forgive a vertically sloppy tap.
+ */
+.cook-mode-v2-dot::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 13px;
+  height: 32px;
+  transform: translate(-50%, -50%);
 }
 
 .cook-mode-v2-dot--active {
@@ -4083,6 +4165,25 @@ a.recipe-detail-back-cta {
   margin-top: 0.15rem;
   accent-color: var(--accent);
   cursor: pointer;
+}
+
+/**
+ * Tap target for the "mark every ingredient for this recipe" checkbox. A checkbox can't grow its
+ * own hit area (it's a replaced element — no pseudo-elements, and sizing it up scales the visual
+ * control), so the label around it carries the padding instead.
+ */
+.selected-recipe-check-hit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  margin: -0.6rem;
+  cursor: pointer;
+}
+
+.selected-recipe-check-hit .shopping-check-input {
+  margin-top: 0;
 }
 
 .shopping-check-label {
@@ -6442,6 +6543,38 @@ button.history-day-card-select:focus-visible {
   font-size: 0.875rem;
   font-family: var(--font-sans);
   color: var(--text);
+}
+
+/* Tap-to-insert fractions: the only way to enter ⅔ on an iOS numeric keypad. */
+.fraction-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin: 0.35rem 0 0.15rem;
+}
+
+.fraction-chip {
+  min-width: 2.5rem;
+  min-height: 2.25rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 6%, #fff);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.fraction-chip:hover {
+  background: color-mix(in srgb, var(--accent) 14%, #fff);
+}
+
+.fraction-chip--active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
 }
 
 /* Searchable ingredient picker — panel opens below trigger (not native select flip). */
