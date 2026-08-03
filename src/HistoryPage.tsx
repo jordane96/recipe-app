@@ -7,6 +7,7 @@ import { useCookHistory } from "./CookHistoryContext";
 import type { CookHistoryByDate, CookedMeal } from "./cookHistoryStorage";
 import { useMealPlan } from "./MealPlanContext";
 import { isMealPlanDateKey, portionCountOf } from "./mealPlanStorage";
+import { recipeSegment } from "./recipeCourse";
 import type { MealPlanByDate, PlannedMeal } from "./mealPlanStorage";
 
 /**
@@ -106,7 +107,25 @@ function monthDateKeys(year: number, monthIndex: number): string[] {
   return keys;
 }
 
-function computeMonthStats(history: CookHistoryByDate, year: number, monthIndex: number) {
+/**
+ * Is this logged meal a side? Prefers the live recipe (tags can change after the cook was
+ * logged) and falls back to the `kind` captured on the log entry itself for recipes that
+ * have since been deleted.
+ */
+function loggedMealIsSide(meal: CookedMeal, recipeById: Map<string, Recipe>): boolean {
+  const r = recipeById.get(meal.id);
+  if (r) {
+    return recipeSegment(r) === "side";
+  }
+  return meal.kind === "side";
+}
+
+function computeMonthStats(
+  history: CookHistoryByDate,
+  year: number,
+  monthIndex: number,
+  recipeById: Map<string, Recipe>,
+) {
   const keys = monthDateKeys(year, monthIndex);
   let daysWithCooks = 0;
   let totalServings = 0;
@@ -116,6 +135,11 @@ function computeMonthStats(history: CookHistoryByDate, year: number, monthIndex:
       daysWithCooks += 1;
     }
     for (const m of arr) {
+      // Sides ride along with a main — counting their servings would double-count the meal and
+      // inflate the savings estimate, so only mains contribute to the totals.
+      if (loggedMealIsSide(m, recipeById)) {
+        continue;
+      }
       // Legacy entries (logged before servings were captured) count as 1.
       totalServings += typeof m.servings === "number" && m.servings > 0 ? m.servings : 1;
     }
@@ -160,6 +184,8 @@ export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
   const [selectedIso, setSelectedIso] = React.useState<string | null>(initialDay);
   const [pickOpen, setPickOpen] = React.useState(false);
   const [pickQ, setPickQ] = React.useState("");
+  /** Date the log-a-meal sheet will write to; editable inside the sheet. */
+  const [pickDate, setPickDate] = React.useState<string>(() => iso(new Date()));
 
   const selectedRel =
     selectedIso != null ? dayRelativeToToday(selectedIso, todayIso) : null;
@@ -178,7 +204,31 @@ export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
     }
   }, [monthKeys, selectedIso]);
 
-  const stats = React.useMemo(() => computeMonthStats(history, y, m), [history, y, m]);
+  const recipeById = React.useMemo(
+    () => new Map(recipes.map((r) => [r.id, r])),
+    [recipes],
+  );
+
+  const stats = React.useMemo(
+    () => computeMonthStats(history, y, m, recipeById),
+    [history, y, m, recipeById],
+  );
+
+  /**
+   * Everything cooked in the visible month, newest first — what fills the space below the
+   * calendar when the user hasn't picked a specific day.
+   */
+  const monthActivity = React.useMemo(() => {
+    const days: Array<{ dayIso: string; meals: CookedMeal[] }> = [];
+    for (const k of monthKeys) {
+      const meals = history[k] ?? [];
+      if (meals.length > 0) {
+        days.push({ dayIso: k, meals });
+      }
+    }
+    days.sort((a, b) => b.dayIso.localeCompare(a.dayIso));
+    return days;
+  }, [history, monthKeys]);
 
   const calendarCells: Array<{ day: number | null; iso: string | null }> = [];
   for (let i = 0; i < pad; i++) {
@@ -270,10 +320,15 @@ export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
     [setCookedServingsAt],
   );
 
+  /**
+   * Open the log-a-meal sheet. Works with or without a day selected — the sheet carries its own
+   * date field, defaulting to the selected day, or today when logging from the month view.
+   * Takes no arguments so it can be passed straight to onClick without the event leaking in.
+   */
   const openPicker = () => {
-    if (!selectedIso) {
-      return;
-    }
+    const target = selectedIso ?? todayIso;
+    // You can't have cooked something in the future; clamp defensively.
+    setPickDate(target > todayIso ? todayIso : target);
     setPickQ("");
     setPickOpen(true);
   };
@@ -560,7 +615,54 @@ export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
             </button>
           </section>
         )
-      ) : null}
+      ) : monthActivity.length > 0 ? (
+        <section className="history-month-activity" aria-labelledby="history-month-activity-heading">
+          <div className="history-day-detail-head">
+            <h2 id="history-month-activity-heading" className="history-day-heading">
+              Cooked this month
+            </h2>
+            <button type="button" className="btn-secondary btn-compact" onClick={openPicker}>
+              + Log meal
+            </button>
+          </div>
+          <ul className="history-month-activity-list">
+            {monthActivity.map(({ dayIso, meals }) => (
+              <li key={dayIso} className="history-month-activity-day">
+                <button
+                  type="button"
+                  className="history-month-activity-date"
+                  onClick={() => setSelectedIso(dayIso)}
+                >
+                  {new Date(`${dayIso}T12:00:00`).toLocaleDateString(undefined, {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                  })}
+                </button>
+                <ul className="history-month-activity-meals">
+                  {meals.map((meal, i) => (
+                    <li key={`${dayIso}-${i}-${meal.id}`} className="history-month-activity-meal">
+                      <Link
+                        to={recipeDetailPath(meal.id, undefined, false, true, false)}
+                        className="history-month-activity-meal-title"
+                      >
+                        {meal.title}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : (
+        <section className="history-month-activity history-month-activity--empty">
+          <p className="muted">Nothing cooked in {monthTitle} yet.</p>
+          <button type="button" className="btn-secondary btn-compact" onClick={openPicker}>
+            + Log meal
+          </button>
+        </section>
+      )}
 
       <div
         className={`planner-overlay${pickOpen ? " open" : ""}`}
@@ -574,16 +676,24 @@ export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
         <div className="planner-sheet planner-sheet--fixed-tall" role="dialog" aria-labelledby="historyPickTitle" aria-modal="true">
           <div className="planner-sheet-head">
             <h2 id="historyPickTitle">Log a meal</h2>
-            <p className="muted picker-subtitle" style={{ marginTop: 0 }}>
-              Choose a recipe for{" "}
-              {selectedIso
-                ? new Date(`${selectedIso}T12:00:00`).toLocaleDateString(undefined, {
-                    weekday: "short",
-                    month: "short",
-                    day: "numeric",
-                  })
-                : ""}
-            </p>
+            <div className="history-log-date-row">
+              <label className="history-log-date-label" htmlFor="history-log-date">
+                Cooked on
+              </label>
+              <input
+                id="history-log-date"
+                className="history-log-date-input"
+                type="date"
+                value={pickDate}
+                max={todayIso}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (isMealPlanDateKey(v) && v <= todayIso) {
+                    setPickDate(v);
+                  }
+                }}
+              />
+            </div>
           </div>
           <div className="planner-sheet-search">
             <input
@@ -601,9 +711,11 @@ export function HistoryPage({ recipes }: { recipes: Recipe[] }) {
                 type="button"
                 className="pick-row"
                 onClick={() => {
-                  if (selectedIso) {
-                    logRecipeCooked(selectedIso, r);
-                  }
+                  logRecipeCooked(pickDate, r);
+                  // Jump the calendar to the logged month so the entry is actually visible —
+                  // otherwise logging to another month looks like nothing happened.
+                  const d = new Date(`${pickDate}T12:00:00`);
+                  setViewMonth(new Date(d.getFullYear(), d.getMonth(), 1, 12, 0, 0, 0));
                   closePicker();
                 }}
               >

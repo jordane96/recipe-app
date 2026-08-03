@@ -22,8 +22,11 @@ export function useToast(): ToastCtx {
 }
 
 const TOAST_MS = 3000;
-/** Actionable toasts need long enough to notice, read and tap — 3s is not enough one-handed. */
-const TOAST_ACTION_MS = 8000;
+/**
+ * Actionable toasts need a beat longer than plain ones to notice, read and tap — but 8s was
+ * long enough to feel like it was stuck to the screen. 4.5s covers the tap without overstaying.
+ */
+const TOAST_ACTION_MS = 4500;
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toast, setToast] = React.useState<

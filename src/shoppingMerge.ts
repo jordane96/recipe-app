@@ -5,7 +5,7 @@ import type {
   Recipe,
   RecipeIngredientLine,
 } from "./ingredientTypes";
-import { INGREDIENT_CATEGORY_ORDER } from "./ingredientTypes";
+import { INGREDIENT_CATEGORY_ORDER, TO_TASTE_UNIT } from "./ingredientTypes";
 import {
   formatIngredientLine,
   formatQuantityDisplay,
@@ -151,6 +151,12 @@ const PLURAL_BY_SINGULAR: Record<string, string> = {
   slice: "slices",
   pepper: "peppers",
   peppers: "peppers",
+  pinch: "pinches",
+  strip: "strips",
+  sprig: "sprigs",
+  head: "heads",
+  stalk: "stalks",
+  can: "cans",
 };
 
 /**
@@ -204,6 +210,8 @@ export type CombinedShoppingItem =
       category: IngredientCategory;
       /** Distinct prep notes from the contributing recipe lines (e.g. "chopped", "divided"). */
       notes: readonly string[];
+      /** Catalog id behind this line; absent only for truly unknown ingredients. */
+      ingredientId?: string;
     }
   | {
       kind: "weight";
@@ -213,6 +221,7 @@ export type CombinedShoppingItem =
       sourceRecipeIds: readonly string[];
       category: IngredientCategory;
       notes: readonly string[];
+      ingredientId?: string;
     }
   | {
       kind: "count";
@@ -220,6 +229,7 @@ export type CombinedShoppingItem =
       sourceRecipeIds: readonly string[];
       category: IngredientCategory;
       notes: readonly string[];
+      ingredientId?: string;
     }
   | {
       kind: "raw";
@@ -228,6 +238,7 @@ export type CombinedShoppingItem =
       /** Qualitative / unknown ingredient lines. */
       category: IngredientCategory;
       notes: readonly string[];
+      ingredientId?: string;
     };
 
 function sortedIds(ids: Set<string>): string[] {
@@ -334,6 +345,26 @@ type Bucket =
    *  instead of "Other"). */
   | { kind: "raw"; text: string; ingredientId?: string };
 
+/**
+ * Which measurement family a *unit* belongs to.
+ *
+ * Deliberately keyed off the unit on the line rather than the ingredient's catalog `kind`.
+ * Real recipes measure the same ingredient different ways — cheese by the cup in one and by
+ * the ounce in another, parsley by the bunch, bacon by the strip — and keying off the catalog
+ * meant any line that disagreed with it fell through to an unmergeable raw string. Anything
+ * that isn't a known volume or weight unit is a count ("2 bunches", "3 strips", "1 pinch").
+ */
+function unitKind(unit: string): IngredientKind {
+  const u = normUnit(unit);
+  if (VOL_TO_TSP[u] !== undefined) {
+    return "volume";
+  }
+  if (WT_TO_OZ[u] !== undefined) {
+    return "weight";
+  }
+  return "count";
+}
+
 function lineToBucket(line: RecipeIngredientLine, byId: Map<string, IngredientDef>): Bucket {
   const def = byId.get(line.ingredientId);
   if (!def) {
@@ -344,7 +375,8 @@ function lineToBucket(line: RecipeIngredientLine, byId: Map<string, IngredientDe
     };
   }
 
-  if (line.amount == null || line.unit == null) {
+  // No amount, no unit, or an explicitly qualitative line ("to taste") — nothing to merge.
+  if (line.amount == null || line.unit == null || normUnit(line.unit) === TO_TASTE_UNIT) {
     return {
       kind: "raw",
       text: formatIngredientLine(line, byId, false),
@@ -352,55 +384,31 @@ function lineToBucket(line: RecipeIngredientLine, byId: Map<string, IngredientDe
     };
   }
 
-  const k = def.unit as IngredientKind;
+  const k = unitKind(line.unit);
   if (k === "volume") {
-    const tsp = toVolumeBase(line.amount, line.unit);
-    if (Number.isNaN(tsp)) {
-      return {
-        kind: "raw",
-        text: formatIngredientLine(line, byId, false),
-        ingredientId: def.id,
-      };
-    }
     return {
       kind: "volume",
       name: def.name,
       ingredientId: def.id,
-      tsp,
+      tsp: toVolumeBase(line.amount, line.unit),
     };
   }
 
   if (k === "weight") {
-    const oz = toWeightBase(line.amount, line.unit);
-    if (Number.isNaN(oz)) {
-      return {
-        kind: "raw",
-        text: formatIngredientLine(line, byId, false),
-        ingredientId: def.id,
-      };
-    }
     return {
       kind: "weight",
       name: def.name,
       ingredientId: def.id,
-      oz,
-    };
-  }
-
-  if (k === "count") {
-    return {
-      kind: "count",
-      name: def.name,
-      ingredientId: def.id,
-      amount: line.amount,
-      unit: normCountUnit(line.unit),
+      oz: toWeightBase(line.amount, line.unit),
     };
   }
 
   return {
-    kind: "raw",
-    text: formatIngredientLine(line, byId, false),
+    kind: "count",
+    name: def.name,
     ingredientId: def.id,
+    amount: line.amount,
+    unit: normCountUnit(line.unit),
   };
 }
 
@@ -534,6 +542,7 @@ export function buildShoppingListData(
       sourceRecipeIds: sortedIds(recipeIds),
       category,
       notes: sortedNotes(notes),
+      ingredientId,
     });
   }
   for (const [ingredientId, { name, oz, recipeIds, notes }] of wt.entries()) {
@@ -548,6 +557,7 @@ export function buildShoppingListData(
       sourceRecipeIds: sortedIds(recipeIds),
       category,
       notes: sortedNotes(notes),
+      ingredientId,
     });
   }
   for (const [ckey, { name, amount, unit, recipeIds, notes }] of ct.entries()) {
@@ -560,6 +570,7 @@ export function buildShoppingListData(
       sourceRecipeIds: sortedIds(recipeIds),
       category,
       notes: sortedNotes(notes),
+      ingredientId,
     });
   }
 
@@ -575,6 +586,7 @@ export function buildShoppingListData(
       sourceRecipeIds: sortedIds(ex.recipeIds),
       category: (def?.category ?? "other") as IngredientCategory,
       notes: sortedNotes(ex.notes),
+      ...(ex.ingredientId ? { ingredientId: ex.ingredientId } : {}),
     };
   });
 

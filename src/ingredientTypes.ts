@@ -39,6 +39,12 @@ export interface IngredientDef {
   name: string;
   unit: IngredientKind;
   category: IngredientCategory;
+  /**
+   * Standing pantry item (salt, oil, flour…). Kept out of the shopping list's main aisle
+   * groups so the list stays about what you actually need to buy; surfaced in a collapsed
+   * "already have these?" tray instead. Seeded by `scripts/migrate-staples.mjs`.
+   */
+  staple?: boolean;
 }
 
 export interface IngredientsFile {

@@ -59,7 +59,7 @@ export default async function handler(req, res) {
           ${recipe.description ?? null},
           ${normalizeTags(recipe.tags)},
           ${recipe.type ?? 'recipe'},
-          ${recipe.source_url ?? null},
+          ${recipe.sourceUrl ?? null},
           ${recipe.servings ?? null},
           ${recipe.totalCookTimeMinutes ?? null},
           ${recipe.notes ?? null},
@@ -74,7 +74,9 @@ export default async function handler(req, res) {
         SET title       = ${recipe.title.trim()},
             description = ${recipe.description ?? null},
             tags        = ${normalizeTags(recipe.tags)},
-            servings    = ${recipe.servings ?? null}
+            servings    = ${recipe.servings ?? null},
+            source_url  = ${recipe.sourceUrl ?? null},
+            notes       = ${recipe.notes ?? null}
         WHERE id = ${targetId}
       `
     }

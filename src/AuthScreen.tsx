@@ -12,6 +12,12 @@ export function AuthScreen({ onAuth }: { onAuth: (username: string) => void }) {
   const [signupStep, setSignupStep] = React.useState<SignupStep>("username");
   const [error, setError] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(false);
+  /**
+   * PROTOTYPE ONLY — set when the username is real but the password was wrong, which unlocks the
+   * "Sign in anyway" recovery button below. Remove alongside the matching branch in
+   * `api/auth/signin.js` before this app has real users.
+   */
+  const [canRecover, setCanRecover] = React.useState(false);
 
   const switchMode = (next: Mode) => {
     setMode(next);
@@ -20,6 +26,7 @@ export function AuthScreen({ onAuth }: { onAuth: (username: string) => void }) {
     setPassword("");
     setConfirm("");
     setSignupStep("username");
+    setCanRecover(false);
   };
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -35,6 +42,31 @@ export function AuthScreen({ onAuth }: { onAuth: (username: string) => void }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username: username.trim(), password }),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        setError(body.error ?? "Something went wrong.");
+        setCanRecover(Boolean(body.usernameExists));
+        return;
+      }
+      setSessionUser(body.username);
+      onAuth(body.username);
+    } catch {
+      setError("Network error — check your connection.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /** PROTOTYPE ONLY — skips the password check entirely. See `api/auth/signin.js`. */
+  const handleRecoverSignIn = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/signin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: username.trim(), recoverWithoutPassword: true }),
       });
       const body = await res.json();
       if (!res.ok) { setError(body.error ?? "Something went wrong."); return; }
@@ -133,7 +165,10 @@ export function AuthScreen({ onAuth }: { onAuth: (username: string) => void }) {
                 type="password"
                 autoComplete="current-password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setCanRecover(false);
+                }}
                 disabled={loading}
               />
             </label>
@@ -141,6 +176,21 @@ export function AuthScreen({ onAuth }: { onAuth: (username: string) => void }) {
             <button className="auth-submit" type="submit" disabled={loading}>
               {loading ? "…" : "Sign in"}
             </button>
+            {canRecover ? (
+              <div className="auth-recover">
+                <p className="auth-recover-text">
+                  Forgot your password? Log in anyway here
+                </p>
+                <button
+                  type="button"
+                  className="auth-recover-btn"
+                  onClick={handleRecoverSignIn}
+                  disabled={loading}
+                >
+                  Sign in as {username.trim()}
+                </button>
+              </div>
+            ) : null}
           </form>
         )}
 

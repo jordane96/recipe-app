@@ -21,6 +21,32 @@ If `CLAUDE.local.md` exists at the repo root, read it — it holds the current u
 
 `.claude/launch.json` is configured to launch the Vite server on port 5173 via `npm run dev`. Remember to start `node scripts/local-api.mjs` separately as a background task — the preview tool only manages the Vite process.
 
+## Ingredient units
+
+An ingredient's `unit` (`volume` / `weight` / `count` / `other`) is a **recommendation, not a constraint**. It sorts that family to the top of the editor's unit picker; every unit stays pickable. Real recipes measure the same ingredient different ways (cheese by the cup or the ounce, parsley by the bunch, bacon by the strip), so `shoppingMerge.ts` buckets each line by the unit **on the line** via `unitKind()`, not by the catalog kind. Lines in different families don't merge with each other — they list separately, which is intended (you can't add cups to ounces). `TO_TASTE_UNIT` (`"to taste"`) stays the amount-less sentinel; `pinch` / `strip` are count units so they can carry a quantity.
+
+## Shopping-list staples
+
+Staples (salt, oil, flour, and most spices) are kept out of the main aisle groups so the list is only what you actually need to buy. They collect in a collapsed **Staples** tray with per-item **+ Add** (this shop only).
+
+- **The list lives in code**: `api/_staples.js`. `/api/ingredients` calls `isStaple(row)` and decorates each row with a `staple` boolean on read — nothing is stored. This is deliberate: the set is curated rather than per-user, so a DB column would only ever be a projection of that file, bought at the cost of a migration per environment and drift whenever one is missed. **To change the staples, edit that file and deploy — there is no migration to run.**
+- `node scripts/export-staples-csv.mjs [outPath]` dumps the whole catalog with its current flag and the rule behind it, for review in a spreadsheet. It derives the flag from the same module the API uses, so it can't drift.
+- **User state** is local-only, in `src/pantryStorage.ts`: `needThisTime` (staples pulled onto the current shop; cleared and restored alongside the list) and `alwaysHave`, which is now read-only — the button that set it was removed, and the shopping page keeps a one-time "show them again" recovery link for anyone who used it.
+
+## Environments
+
+`vercel env pull` defaults to the **development** environment, so `.env.local`'s `DATABASE_URL` points at a Neon *test branch*, not production. Anything that writes data (e.g. `scripts/fix-ingredient-units.mjs`) therefore hits the test branch by default. To target production, pass the connection string explicitly — an existing env var wins over `.env.local`:
+
+```
+DATABASE_URL="<prod url>" node scripts/fix-ingredient-units.mjs --apply
+```
+
+Code-only changes (like the staples list above) need none of this.
+
+## Prototype-only auth escape hatch
+
+`Owners` has no email column and stores passwords in plaintext, so there's no real password reset. Instead, a sign-in with a valid username but wrong password returns `usernameExists: true`, and the client offers a **"Sign in as … anyway"** button that posts `recoverWithoutPassword: true`. **This lets anyone who knows a username into that account** — remove the branch in `api/auth/signin.js` and the `.auth-recover` block in `AuthScreen.tsx` before the app has real users.
+
 ## Kroger grocery-ordering integration
 
 Lets a user link their Kroger account and push the shopping list into their Kroger **cart**. Kroger's public API has **no checkout/place-order endpoint** — the user completes checkout on Kroger.com. The UI says this explicitly; keep that framing.

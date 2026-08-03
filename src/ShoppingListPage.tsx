@@ -146,8 +146,14 @@ export function ShoppingListPage({
     setRecipeServings,
     clearList,
     restoreList,
+    alwaysHaveIds,
+    needThisTimeIds,
+    markStapleNeeded,
+    unmarkStapleNeeded,
+    resetAlwaysHave,
   } = useShoppingList();
   const { showToast } = useToast();
+  const [staplesOpen, setStaplesOpen] = React.useState(false);
 
   /** Recipe's base servings (canonical) or null when unset (legacy recipes). */
   const baseServingsOf = React.useCallback((r: Recipe): number | null => {
@@ -218,10 +224,50 @@ export function ShoppingListPage({
     [groupedSelected, scaleFor],
   );
 
-  const { combinedItems, byRecipe } = buildShoppingListData(
+  const { combinedItems: allCombinedItems, byRecipe } = buildShoppingListData(
     shoppingEntries,
     ingredients,
   );
+
+  const ingredientDefById = React.useMemo(
+    () => new Map(ingredients.map((i) => [i.id, i])),
+    [ingredients],
+  );
+
+  /**
+   * Split the merged lines three ways:
+   *
+   * - `combinedItems` — the real shopping list (non-staples, plus any staple the user pulled
+   *   back on with "need this time"). Everything downstream treats this as *the* list.
+   * - `stapleItems` — staples sitting in the collapsed "already have these?" tray.
+   * - `alwaysHaveItems` — suppressed entirely; only surfaced as a count so the user can undo.
+   */
+  const { combinedItems, stapleItems, alwaysHaveItems, neededStapleItems } = React.useMemo(() => {
+    const list: CombinedShoppingItem[] = [];
+    const staples: CombinedShoppingItem[] = [];
+    const hidden: CombinedShoppingItem[] = [];
+    const needed: CombinedShoppingItem[] = [];
+    for (const it of allCombinedItems) {
+      const id = it.ingredientId;
+      const isStaple = id != null && ingredientDefById.get(id)?.staple === true;
+      if (!isStaple) {
+        list.push(it);
+      } else if (alwaysHaveIds.has(id!)) {
+        hidden.push(it);
+      } else if (needThisTimeIds.has(id!)) {
+        list.push(it);
+        needed.push(it);
+      } else {
+        staples.push(it);
+      }
+    }
+    return {
+      combinedItems: list,
+      stapleItems: staples,
+      alwaysHaveItems: hidden,
+      neededStapleItems: needed,
+    };
+  }, [allCombinedItems, ingredientDefById, alwaysHaveIds, needThisTimeIds]);
 
   // Category sections show only NOT-yet-purchased items; checked items move to the
   // dedicated "Purchased" section at the bottom of the page.
@@ -246,9 +292,11 @@ export function ShoppingListPage({
     [combinedItems, isPurchased],
   );
 
+  // Prune against the *unsplit* set: a staple that's currently parked in the tray still has a
+  // valid purchased mark, and pruning it here would silently lose it when it comes back.
   const combinedLines = React.useMemo(
-    () => combinedItems.map((i) => i.line),
-    [combinedItems],
+    () => allCombinedItems.map((i) => i.line),
+    [allCombinedItems],
   );
 
   React.useEffect(() => {
@@ -444,7 +492,7 @@ export function ShoppingListPage({
         onClick={() => {
           // clearList() returns everything it wiped, so the toast can put it back.
           const snapshot = clearList();
-          showToast("Shopping list cleared.", {
+          showToast("List cleared", {
             label: "Undo",
             onAction: () => restoreList(snapshot),
           });
@@ -654,6 +702,99 @@ export function ShoppingListPage({
                 })}
               </>
             )}
+
+            {stapleItems.length > 0 ||
+            alwaysHaveItems.length > 0 ||
+            neededStapleItems.length > 0 ? (
+              <div className="shopping-staples">
+                <button
+                  type="button"
+                  className="shopping-staples-toggle"
+                  aria-expanded={staplesOpen}
+                  onClick={() => setStaplesOpen((v) => !v)}
+                >
+                  <span className="shopping-staples-caret" aria-hidden="true">
+                    {staplesOpen ? "▾" : "▸"}
+                  </span>
+                  Staples
+                  <span className="shopping-segment-count"> ({stapleItems.length})</span>
+                </button>
+                {!staplesOpen ? (
+                  <p className="shopping-staples-preview">
+                    {stapleItems
+                      .map((it) => it.line.split(" - ")[0])
+                      .slice(0, 5)
+                      .join(" · ")}
+                    {stapleItems.length > 5 ? ` +${stapleItems.length - 5} more` : ""}
+                  </p>
+                ) : (
+                  <>
+                    <p className="muted shopping-staples-intro">
+                      Double check these — they’re kept off the list since most kitchens have
+                      them on hand. Add anything you’ve run out of.
+                    </p>
+                    <ul className="shopping-staples-list">
+                      {stapleItems.map((item, i) => (
+                        <li key={`staple-${item.line}-${i}`} className="shopping-staple-row">
+                          <span className="shopping-staple-line">{item.line}</span>
+                          <span className="shopping-staple-actions">
+                            <button
+                              type="button"
+                              className="shopping-staple-btn"
+                              onClick={() => {
+                                markStapleNeeded(item.ingredientId!);
+                                showToast(`Added “${item.line}” to your list.`);
+                              }}
+                            >
+                              + Add
+                            </button>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                    {neededStapleItems.length > 0 ? (
+                      <ul className="shopping-staples-list shopping-staples-list--needed">
+                        {neededStapleItems.map((item, i) => (
+                          <li key={`needed-${item.line}-${i}`} className="shopping-staple-row">
+                            <span className="shopping-staple-line shopping-staple-line--on">
+                              On your list: {item.line}
+                            </span>
+                            <span className="shopping-staple-actions">
+                              <button
+                                type="button"
+                                className="shopping-staple-btn shopping-staple-btn--quiet"
+                                onClick={() => unmarkStapleNeeded(item.ingredientId!)}
+                              >
+                                Remove
+                              </button>
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                    {/* Recovery path only. Nothing sets "always have" any more, but anyone who
+                        marked items before the button was removed would otherwise have them
+                        hidden with no way back. Disappears for good once used. */}
+                    {alwaysHaveItems.length > 0 ? (
+                      <p className="shopping-staples-hidden">
+                        {alwaysHaveItems.length} item
+                        {alwaysHaveItems.length === 1 ? "" : "s"} hidden as “always have”.{" "}
+                        <button
+                          type="button"
+                          className="shopping-staples-reset"
+                          onClick={() => {
+                            resetAlwaysHave();
+                            showToast("Hidden staples restored.");
+                          }}
+                        >
+                          Show them again
+                        </button>
+                      </p>
+                    ) : null}
+                  </>
+                )}
+              </div>
+            ) : null}
           </section>
 
           {purchasedSection}
