@@ -2437,6 +2437,15 @@ button.cook-mode-v2-meal-banner--in-chrome,
   gap: 0.5rem 1rem;
   flex-wrap: wrap;
   margin: 0 0 1.05rem;
+  /*
+   * Re-apply the card's horizontal inset. The parent `.cook-mode-v2-confirm-scroll` is
+   * deliberately full-bleed (negative margins + `width: calc(100% + 2.3rem)`) so the teal chrome
+   * strip can reach the card edges, which means every *other* child has to put the padding back.
+   * The ingredients block and instructions already do; this row didn't, so on a viewport where
+   * the title and stepper fit on one line the "+" sat flush against the card's outer edge.
+   */
+  padding: 0 1.15rem;
+  box-sizing: border-box;
 }
 
 .cook-mode-v2-overview-head .cook-mode-v2-confirm-title {
