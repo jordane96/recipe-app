@@ -10,6 +10,12 @@ import {
   type PlanShoppingSource,
 } from "./planShoppingAuthority";
 import { normalizeShoppingLineKey } from "./shoppingLineKey";
+import {
+  loadAlwaysHave,
+  loadNeedThisTime,
+  saveAlwaysHave,
+  saveNeedThisTime,
+} from "./pantryStorage";
 
 const STORAGE_SELECTED = "recipe-app-shopping-v1";
 const STORAGE_PURCHASED = "recipe-app-purchased-v1";
@@ -103,6 +109,8 @@ export type ShoppingListSnapshot = {
   servingsByRecipe: Record<string, number>;
   additionalItems: string[];
   countSources: Record<string, PlanShoppingSource>;
+  /** Staples pulled onto this shop; scoped to the shop, so cleared and restored with it. */
+  needThisTime: string[];
 };
 
 type Ctx = {
@@ -167,6 +175,21 @@ type Ctx = {
   servingsByRecipe: Record<string, number>;
   /** Set the shopping-list servings for a recipe (clamped 1–99). */
   setRecipeServings: (recipeId: string, servings: number) => void;
+
+  /**
+   * Ingredient ids previously marked "I always have this" — permanently suppressed from the
+   * shopping list. Nothing sets this any more (the button was removed); it's read so that
+   * anyone who marked items before then can still restore them via {@link resetAlwaysHave}.
+   */
+  alwaysHaveIds: ReadonlySet<string>;
+  /** Staples pulled back onto the list for this shop only (e.g. ran out of olive oil). */
+  needThisTimeIds: ReadonlySet<string>;
+  /** Move a staple onto the main list for this shop. */
+  markStapleNeeded: (ingredientId: string) => void;
+  /** Send a staple back to the tray (undoes {@link markStapleNeeded}). */
+  unmarkStapleNeeded: (ingredientId: string) => void;
+  /** Un-hide everything left over from the removed "always have" action. */
+  resetAlwaysHave: () => void;
 };
 
 const ShoppingListContext = React.createContext<Ctx | null>(null);
@@ -184,6 +207,12 @@ export function ShoppingListProvider({ children }: { children: React.ReactNode }
   const [additionalItems, setAdditionalItems] = React.useState<string[]>(() =>
     typeof window === "undefined" ? [] : readAdditional(),
   );
+  const [alwaysHave, setAlwaysHave] = React.useState<string[]>(() =>
+    typeof window === "undefined" ? [] : loadAlwaysHave(),
+  );
+  const [needThisTime, setNeedThisTime] = React.useState<string[]>(() =>
+    typeof window === "undefined" ? [] : loadNeedThisTime(),
+  );
 
   React.useEffect(() => {
     writeIds(selectedIds);
@@ -200,6 +229,29 @@ export function ShoppingListProvider({ children }: { children: React.ReactNode }
   React.useEffect(() => {
     writeServings(servingsByRecipe);
   }, [servingsByRecipe]);
+
+  React.useEffect(() => {
+    saveAlwaysHave(alwaysHave);
+  }, [alwaysHave]);
+
+  React.useEffect(() => {
+    saveNeedThisTime(needThisTime);
+  }, [needThisTime]);
+
+  const alwaysHaveIds = React.useMemo(() => new Set(alwaysHave), [alwaysHave]);
+  const needThisTimeIds = React.useMemo(() => new Set(needThisTime), [needThisTime]);
+
+  const markStapleNeeded = React.useCallback((ingredientId: string) => {
+    setNeedThisTime((prev) => (prev.includes(ingredientId) ? prev : [...prev, ingredientId]));
+  }, []);
+
+  const unmarkStapleNeeded = React.useCallback((ingredientId: string) => {
+    setNeedThisTime((prev) => prev.filter((x) => x !== ingredientId));
+  }, []);
+
+  const resetAlwaysHave = React.useCallback(() => {
+    setAlwaysHave([]);
+  }, []);
 
   const setRecipeServings = React.useCallback((recipeId: string, servings: number) => {
     const n = Math.min(99, Math.max(1, Math.floor(Number(servings))));
@@ -347,14 +399,18 @@ export function ShoppingListProvider({ children }: { children: React.ReactNode }
       servingsByRecipe,
       additionalItems,
       countSources: getAllCountSources(),
+      needThisTime,
     };
     resetAllCountSources();
     setSelectedIds([]);
     setPurchased([]);
     setServingsByRecipe({});
     setAdditionalItems([]);
+    // "Need this time" is scoped to a shop — a cleared list starts that decision over.
+    // `alwaysHave` deliberately survives: it's a standing preference, not shop state.
+    setNeedThisTime([]);
     return snapshot;
-  }, [selectedIds, purchased, servingsByRecipe, additionalItems]);
+  }, [selectedIds, purchased, servingsByRecipe, additionalItems, needThisTime]);
 
   /** Restores a snapshot from clearList(). Used by the "Undo" toast action. */
   const restoreList = React.useCallback((snapshot: ShoppingListSnapshot) => {
@@ -363,6 +419,7 @@ export function ShoppingListProvider({ children }: { children: React.ReactNode }
     setPurchased(snapshot.purchased);
     setServingsByRecipe(snapshot.servingsByRecipe);
     setAdditionalItems(snapshot.additionalItems);
+    setNeedThisTime(snapshot.needThisTime ?? []);
   }, []);
 
   const isPurchased = React.useCallback(
@@ -444,8 +501,18 @@ export function ShoppingListProvider({ children }: { children: React.ReactNode }
       removeAdditionalItem,
       servingsByRecipe,
       setRecipeServings,
+      alwaysHaveIds,
+      needThisTimeIds,
+      markStapleNeeded,
+      unmarkStapleNeeded,
+      resetAlwaysHave,
     };
   }, [
+    alwaysHaveIds,
+    needThisTimeIds,
+    markStapleNeeded,
+    unmarkStapleNeeded,
+    resetAlwaysHave,
     selectedIds,
     listQuantity,
     isSelected,

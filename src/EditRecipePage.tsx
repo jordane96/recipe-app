@@ -175,6 +175,18 @@ function ensureInstructions(recipe: Recipe): RecipeInstructionStep[] {
   return [{ text: "" }];
 }
 
+const UNIT_KIND_GROUPS: Array<"volume" | "weight" | "count"> = ["volume", "weight", "count"];
+
+/**
+ * Every unit the user may pick for a line, with the ingredient's own family listed first.
+ *
+ * The catalog kind is a *recommendation*, not a constraint: the same ingredient is genuinely
+ * measured different ways from recipe to recipe (cheese by the cup or the ounce, parsley by
+ * the bunch, bacon by the strip). Restricting the dropdown to one family forced people to
+ * mis-enter amounts, so all units are offered and the recommended family just sorts to the top.
+ * "To taste" is always available for seasonings that sometimes carry a quantity and sometimes
+ * don't. Ingredients the catalog marks purely qualitative (`other`) still take no unit.
+ */
 function unitChoices(
   def: IngredientDef | undefined,
   units: IngredientsFile["units"],
@@ -182,15 +194,31 @@ function unitChoices(
   if (!def) {
     return [];
   }
-  const k = def.unit;
-  if (k === "other") {
+  if (def.unit === "other") {
     return [];
   }
-  // Defensive: `def.unit` can drift to a value that isn't a key in `units` (e.g. a legacy/bad
-  // ingredient kind like "piece" stored in the DB). `[...undefined]` would throw and crash the
-  // whole editor render. Treat an unknown kind as "no concrete unit choices".
-  const list = units[k];
-  return Array.isArray(list) ? [...list] : [];
+  const own = def.unit;
+  const ordered = UNIT_KIND_GROUPS.includes(own as "volume" | "weight" | "count")
+    ? [own as "volume" | "weight" | "count", ...UNIT_KIND_GROUPS.filter((g) => g !== own)]
+    : UNIT_KIND_GROUPS;
+
+  const out: string[] = [];
+  for (const group of ordered) {
+    // Defensive: `units` comes off the API, so a group can be missing on an older payload.
+    const list = units[group];
+    if (!Array.isArray(list)) {
+      continue;
+    }
+    for (const u of list) {
+      if (!out.includes(u)) {
+        out.push(u);
+      }
+    }
+  }
+  if (!out.includes(TO_TASTE_UNIT)) {
+    out.push(TO_TASTE_UNIT);
+  }
+  return out;
 }
 
 /**
@@ -630,6 +658,11 @@ export function EditRecipePage({
 
   const updateDescription = (description: string) => {
     setDraft((d) => (d ? { ...d, description } : d));
+  };
+
+  /** Blank input clears the link entirely rather than persisting an empty string. */
+  const updateSourceUrl = (sourceUrl: string) => {
+    setDraft((d) => (d ? { ...d, sourceUrl: sourceUrl.trim() ? sourceUrl : undefined } : d));
   };
 
   const adjustServings = (delta: number) => {
@@ -1232,7 +1265,6 @@ export function EditRecipePage({
         <h2 id="edit-recipe-desc-label" className="edit-recipe-label">
           Recipe description
         </h2>
-        <p className="edit-recipe-field-hint">Optional — a short summary shown at the top of the recipe page.</p>
         <textarea
           id="edit-recipe-description"
           className="edit-recipe-input edit-recipe-description"
@@ -1244,18 +1276,20 @@ export function EditRecipePage({
         />
       </section>
 
-      <section className="edit-recipe-section" aria-labelledby="edit-recipe-tags-label">
-        <h2 id="edit-recipe-tags-label" className="edit-recipe-label">
-          Tags
+      <section className="edit-recipe-section" aria-labelledby="edit-recipe-source-label">
+        <h2 id="edit-recipe-source-label" className="edit-recipe-label">
+          Recipe link
         </h2>
-        <p className="edit-recipe-field-hint">
-          Imported recipes arrive with tags already suggested — adjust them here. Tags drive the
-          filters on your recipe list.
-        </p>
-        <TagPicker
-          value={draft.tags ?? []}
-          onChange={(tags) => setDraft((d) => (d ? { ...d, tags } : d))}
-          suggestions={knownTags}
+        <input
+          id="edit-recipe-source-url"
+          className="edit-recipe-input"
+          type="url"
+          inputMode="url"
+          value={draft.sourceUrl ?? ""}
+          onChange={(e) => updateSourceUrl(e.target.value)}
+          placeholder="https://example.com/the-recipe"
+          autoComplete="off"
+          aria-labelledby="edit-recipe-source-label"
         />
       </section>
 
@@ -1263,9 +1297,6 @@ export function EditRecipePage({
         <h2 id="edit-recipe-servings-label" className="edit-recipe-label">
           Servings
         </h2>
-        <p className="edit-recipe-field-hint">
-          How many servings the ingredient amounts above make. Used to scale the recipe.
-        </p>
         <div
           className="edit-recipe-servings-stepper"
           role="group"
@@ -1751,9 +1782,6 @@ export function EditRecipePage({
                         Cancel
                       </button>
                     </div>
-                    <p className="edit-recipe-field-hint edit-recipe-step-timer-hint">
-                      Timer saves when you tap “Save changes”.
-                    </p>
                   </div>
                 ) : null}
                 <div className="edit-recipe-step-subactions">
@@ -1796,6 +1824,19 @@ export function EditRecipePage({
         <button type="button" className="edit-recipe-add-line" onClick={addStep}>
           + Add step
         </button>
+      </section>
+
+      {/* Last: tags are metadata, not part of writing the recipe — they'd otherwise sit between
+          the description and the ingredients and interrupt that flow. */}
+      <section className="edit-recipe-section" aria-labelledby="edit-recipe-tags-label">
+        <h2 id="edit-recipe-tags-label" className="edit-recipe-label">
+          Tags
+        </h2>
+        <TagPicker
+          value={draft.tags ?? []}
+          onChange={(tags) => setDraft((d) => (d ? { ...d, tags } : d))}
+          suggestions={knownTags}
+        />
       </section>
 
       <div className="recipe-list-cart-bar" role="region" aria-label="Save or discard edits">

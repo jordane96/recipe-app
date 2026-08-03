@@ -22,6 +22,10 @@ export default async function handler(req, res) {
       owner: recipe.Owner ?? null,
       visibility: recipe.visibility ?? 'public',
       forkedFromRecipeId: recipe.forked_from_recipe_id ?? null,
+      // The DB column is snake_case; the client type is `sourceUrl`. Without this the imported
+      // source link never reaches the UI and the "Original recipe" link silently never renders.
+      sourceUrl: recipe.source_url ?? undefined,
+      totalCookTimeMinutes: recipe.total_cook_time_minutes ?? undefined,
       // Normalised on read so legacy spellings reach the UI canonical, before any migration.
       tags: normalizeTags(recipe.tags),
       ingredientSections: sections

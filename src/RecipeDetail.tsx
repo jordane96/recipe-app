@@ -21,8 +21,9 @@ import {
   urlParamToPlanKey,
 } from "./listTabSearch";
 import { addFlowCartSessionKey, setActiveAddFlowSessionKey } from "./addFlowCartSession";
-import { MEAL_PLAN_UNASSIGNED_KEY } from "./mealPlanStorage";
-import { useMealPlan } from "./MealPlanContext";
+import { MEAL_PLAN_UNASSIGNED_KEY, newPlanSlotRef } from "./mealPlanStorage";
+import { iso } from "./mealPlanDates";
+import { recipeToPlannedMeal, useMealPlan } from "./MealPlanContext";
 import { useToast } from "./ToastContext";
 import { useSavedRecipes } from "./SavedRecipesContext";
 import { useShoppingList } from "./ShoppingListContext";
@@ -30,6 +31,7 @@ import { RecipeCookModePanel } from "./RecipeCookModePanel";
 import { normalizeInstructionStep } from "./recipeInstructions";
 import { loadCookUi } from "./cookModeSessionStorage";
 import {
+  addCookProgressSessionsBatch,
   COOK_PROGRESS_CHANGED_EVENT,
   getCookProgressSessions,
   type CookProgressEntry,
@@ -38,6 +40,64 @@ import {
 function slotParamFromCookProgressEntry(e: CookProgressEntry): string | null {
   return e.slotRef.length > 0 ? e.slotRef : null;
 }
+
+/**
+ * Bottom-bar CTA icons. Inline SVG in the same outline style the rest of the app uses
+ * (24 viewBox, currentColor, round caps) so they inherit each button's colour on their own —
+ * no extra rules needed for the filled "on list" state.
+ */
+function CtaIcon({ children, size = 20 }: { children: React.ReactNode; size?: number }) {
+  return (
+    <svg
+      className="btn-cta-icon-glyph"
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      {children}
+    </svg>
+  );
+}
+
+const IconCalendarPlus = () => (
+  <CtaIcon>
+    <path d="M12.5 21h-6.5a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v6" />
+    <path d="M16 3v4" />
+    <path d="M8 3v4" />
+    <path d="M4 11h16" />
+    <path d="M16 19h6" />
+    <path d="M19 16v6" />
+  </CtaIcon>
+);
+
+const IconFlame = () => (
+  <CtaIcon>
+    <path d="M12 12c2 -2.96 0 -7 -1 -8c0 3.038 -1.773 4.741 -3 6c-1.226 1.26 -2 3.24 -2 5a6 6 0 1 0 12 0c0 -1.532 -1.056 -3.94 -2 -5c-1.786 3 -2.791 3 -4 2z" />
+  </CtaIcon>
+);
+
+const IconCart = () => (
+  <CtaIcon>
+    <path d="M6 19m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
+    <path d="M17 19m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
+    <path d="M17 17h-11v-14h-2" />
+    <path d="M6 5l14 1l-1 7h-13" />
+  </CtaIcon>
+);
+
+const IconCheck = () => (
+  <CtaIcon>
+    <path d="M5 12l5 5l10 -10" />
+  </CtaIcon>
+);
 
 /** If the same recipe was planned on multiple days, prefer the session with the furthest saved step, then latest date. */
 function pickActiveCookProgressEntry(recipeId: string): CookProgressEntry | null {
@@ -112,8 +172,8 @@ export function RecipeDetail({
 
   const recipe = recipes.find((r) => r.id === id);
   const cookParams = readCookModeParams(searchParams);
-  const { addRecipeToPlanKey } = useMealPlan();
-  const { addToList } = useShoppingList();
+  const { addRecipeToPlanKey, addPlannedMealsToKey } = useMealPlan();
+  const { addToList, isSelected, removeAllSlotsForRecipe } = useShoppingList();
   const { showToast } = useToast();
   const { isSaved, saveRecipe } = useSavedRecipes();
   // Recipe-aware so custom-* ids resolve to their human names (e.g. "Spinach", not "custom-spinach").
@@ -184,6 +244,27 @@ export function RecipeDetail({
   );
 
   /**
+   * "Cook now" outside the planner. Cook mode is keyed by (recipe, date, slot), so there has to
+   * be a slot to cook — this adds the recipe to the menu pool with a fresh slot ref and starts a
+   * session against today, then opens cook mode. Same sequence the recipe list's cook-now pick
+   * flow uses, so both routes produce identical state.
+   */
+  const startCookingNow = React.useCallback(
+    (r: Recipe) => {
+      const todayIso = iso(new Date());
+      const slotRef = newPlanSlotRef();
+      addPlannedMealsToKey(MEAL_PLAN_UNASSIGNED_KEY, [
+        { ...recipeToPlannedMeal(r), planSlotRef: slotRef },
+      ]);
+      addCookProgressSessionsBatch([
+        { recipeId: r.id, cookDate: todayIso, planSlotRef: slotRef, title: r.title },
+      ]);
+      navigate(recipeCookModePath(r.id, todayIso, slotRef));
+    },
+    [addPlannedMealsToKey, navigate],
+  );
+
+  /**
    * Keep the add-flow “active key” in sync on recipe detail (list unmounts when you open a recipe).
    * Clear when leaving cart-builder URL context (handled in App) or in active cook mode.
    */
@@ -248,6 +329,10 @@ export function RecipeDetail({
       />
     );
   }
+
+  const recipeOnShoppingList = isSelected(recipe.id);
+  /** Browsing a recipe normally — not picking one for a plan/shop flow, not someone else's. */
+  const plainRecipeView = !inPlanFlow && !fromShoppingListItem && !showSaveCta;
 
   return (
     <div className="recipe-detail-page recipe-detail-page--bottom-cta">
@@ -417,7 +502,7 @@ export function RecipeDetail({
             target="_blank"
             rel="noopener noreferrer"
           >
-            Original recipe ↗
+            Recipe link ↗
           </a>
         </p>
       ) : null}
@@ -459,7 +544,7 @@ export function RecipeDetail({
                 )}
                 className="btn-secondary btn-cta-wide recipe-detail-back-cta"
               >
-                Back
+                ← Back
               </Link>
             </>
           ) : fromPlanner ? (
@@ -472,11 +557,57 @@ export function RecipeDetail({
               )}
               className="btn-secondary btn-cta-wide recipe-detail-back-cta"
             >
-              Back
+              ← Back
             </Link>
           ) : (
             <>
-              {showSaveCta ? (
+              {/* Plain recipe view: menu / cook / shop are three peer destinations, so they share
+                  one row. The pick and save flows below keep a single wide CTA — inside those the
+                  primary action already commits somewhere and the other two would compete. */}
+              {plainRecipeView ? (
+                <div className="recipe-detail-cta-row">
+                  <button
+                    type="button"
+                    className="btn-primary btn-cta-tri"
+                    onClick={() => addTargetToPlan(recipe)}
+                  >
+                    <IconCalendarPlus />
+                    {addToCartSelectionLabel}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary btn-cta-tri"
+                    onClick={() => startCookingNow(recipe)}
+                  >
+                    <IconFlame />
+                    Cook now
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn-cta-tri${
+                      recipeOnShoppingList ? " btn-primary" : " btn-secondary"
+                    }`}
+                    aria-pressed={recipeOnShoppingList}
+                    aria-label={
+                      recipeOnShoppingList
+                        ? `Remove ${recipe.title} from your shopping list`
+                        : `Add ${recipe.title} to your shopping list`
+                    }
+                    onClick={() => {
+                      if (recipeOnShoppingList) {
+                        removeAllSlotsForRecipe(recipe.id);
+                        showToast(`Removed “${recipe.title}” from your shopping list.`);
+                      } else {
+                        addToList(recipe.id);
+                        showToast(`Added “${recipe.title}” to your shopping list.`);
+                      }
+                    }}
+                  >
+                    {recipeOnShoppingList ? <IconCheck /> : <IconCart />}
+                    {recipeOnShoppingList ? "On list" : "Shop recipe"}
+                  </button>
+                </div>
+              ) : showSaveCta ? (
                 <button
                   type="button"
                   className="btn-primary btn-cta-wide"
@@ -502,7 +633,7 @@ export function RecipeDetail({
                 )}
                 className="btn-secondary btn-cta-wide recipe-detail-back-cta"
               >
-                Back
+                ← Back
               </Link>
             </>
           )}
