@@ -1140,11 +1140,24 @@ a {
 /* Staples tray — salt/oil/flour pulled out of the aisle groups so the list is only what you
    actually need to buy. Collapsed by default; deliberately quieter than a real aisle section. */
 .shopping-staples {
-  margin-top: 1rem;
+  /*
+   * Bottom margin matters now the tray sits at the top of the list rather than the end of it —
+   * previously nothing followed it, so it had none and the first aisle group butted straight
+   * against the dashed border. Slightly larger than the top gap: this separates two different
+   * kinds of thing (a "have you got these?" prompt vs. the actual buy list), where the space
+   * above it only separates it from the order buttons.
+   */
+  margin: 1rem 0 1.5rem;
   padding: 0.6rem 0.7rem;
   border-radius: 12px;
   border: 1px dashed color-mix(in srgb, var(--muted) 35%, transparent);
   background: color-mix(in srgb, var(--muted) 4%, transparent);
+}
+
+/* "— Double check these": the tray's purpose, secondary to the "Staples (n)" label itself. */
+.shopping-staples-hint {
+  font-weight: 400;
+  color: var(--muted);
 }
 
 .shopping-staples-toggle {
@@ -1205,7 +1218,10 @@ a {
 .shopping-staple-line {
   flex: 1 1 9rem;
   min-width: 0;
-  font-size: var(--fs-ui);
+  /* Same size as the main list's items (--fs-body, inherited) rather than the smaller --fs-ui:
+     these are ingredient lines you read and act on, not secondary chrome, and the tray now sits
+     at the top of the page where it's read first. */
+  font-size: var(--fs-body);
   overflow-wrap: anywhere;
 }
 

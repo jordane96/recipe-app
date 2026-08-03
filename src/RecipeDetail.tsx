@@ -18,6 +18,7 @@ import {
   recipeEditPath,
   recipeDetailAddCtaLabel,
   recipesListAddToCartPath,
+  shoppingListPath,
   urlParamToPlanKey,
 } from "./listTabSearch";
 import { addFlowCartSessionKey, setActiveAddFlowSessionKey } from "./addFlowCartSession";
@@ -227,7 +228,12 @@ export function RecipeDetail({
       }
       const key = MEAL_PLAN_UNASSIGNED_KEY;
       addRecipeToPlanKey(key, r);
-      showToast(`Added “${r.title}” to your menu.`);
+      // This branch leaves you on the recipe, unlike the other add paths which navigate on
+      // completion — so the menu is only reachable via the drawer. Offer it from the toast.
+      showToast(`Added “${r.title}” to your menu.`, {
+        label: "View menu",
+        onAction: () => navigate("/"),
+      });
     },
     [
       isShopMenuBuildFlow,
@@ -599,7 +605,12 @@ export function RecipeDetail({
                         showToast(`Removed “${recipe.title}” from your shopping list.`);
                       } else {
                         addToList(recipe.id);
-                        showToast(`Added “${recipe.title}” to your shopping list.`);
+                        // The list is the whole point of the action, but it's two taps away
+                        // behind the menu — offer it straight from the confirmation.
+                        showToast(`Added “${recipe.title}” to your shopping list.`, {
+                          label: "View list",
+                          onAction: () => navigate(shoppingListPath()),
+                        });
                       }
                     }}
                   >

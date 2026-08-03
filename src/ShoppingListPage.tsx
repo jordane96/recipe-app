@@ -636,6 +636,102 @@ export function ShoppingListPage({
           {renderAdditionalItemsList()}
 
           <section className="detail-section">
+            {stapleItems.length > 0 ||
+            alwaysHaveItems.length > 0 ||
+            neededStapleItems.length > 0 ? (
+              <div className="shopping-staples">
+                <button
+                  type="button"
+                  className="shopping-staples-toggle"
+                  aria-expanded={staplesOpen}
+                  onClick={() => setStaplesOpen((v) => !v)}
+                >
+                  <span className="shopping-staples-caret" aria-hidden="true">
+                    {staplesOpen ? "▾" : "▸"}
+                  </span>
+                  Staples
+                  <span className="shopping-segment-count"> ({stapleItems.length})</span>
+                  {/* Now that the tray sits at the top of the list, say what it's for — it's
+                      easy to read a collapsed row as something already handled. */}
+                  <span className="shopping-staples-hint"> — Double check these</span>
+                </button>
+                {!staplesOpen ? (
+                  <p className="shopping-staples-preview">
+                    {stapleItems
+                      .map((it) => it.line.split(" - ")[0])
+                      .slice(0, 5)
+                      .join(" · ")}
+                    {stapleItems.length > 5 ? ` +${stapleItems.length - 5} more` : ""}
+                  </p>
+                ) : (
+                  <>
+                    <p className="muted shopping-staples-intro">
+                      These are common items you might already have. Double check and add
+                      anything missing
+                    </p>
+                    <ul className="shopping-staples-list">
+                      {stapleItems.map((item, i) => (
+                        <li key={`staple-${item.line}-${i}`} className="shopping-staple-row">
+                          <span className="shopping-staple-line">{item.line}</span>
+                          <span className="shopping-staple-actions">
+                            <button
+                              type="button"
+                              className="shopping-staple-btn"
+                              onClick={() => {
+                                markStapleNeeded(item.ingredientId!);
+                                showToast(`Added “${item.line}” to your list.`);
+                              }}
+                            >
+                              + Add
+                            </button>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                    {neededStapleItems.length > 0 ? (
+                      <ul className="shopping-staples-list shopping-staples-list--needed">
+                        {neededStapleItems.map((item, i) => (
+                          <li key={`needed-${item.line}-${i}`} className="shopping-staple-row">
+                            <span className="shopping-staple-line shopping-staple-line--on">
+                              On your list: {item.line}
+                            </span>
+                            <span className="shopping-staple-actions">
+                              <button
+                                type="button"
+                                className="shopping-staple-btn shopping-staple-btn--quiet"
+                                onClick={() => unmarkStapleNeeded(item.ingredientId!)}
+                              >
+                                Remove
+                              </button>
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                    {/* Recovery path only. Nothing sets "always have" any more, but anyone who
+                        marked items before the button was removed would otherwise have them
+                        hidden with no way back. Disappears for good once used. */}
+                    {alwaysHaveItems.length > 0 ? (
+                      <p className="shopping-staples-hidden">
+                        {alwaysHaveItems.length} item
+                        {alwaysHaveItems.length === 1 ? "" : "s"} hidden as “always have”.{" "}
+                        <button
+                          type="button"
+                          className="shopping-staples-reset"
+                          onClick={() => {
+                            resetAlwaysHave();
+                            showToast("Hidden staples restored.");
+                          }}
+                        >
+                          Show them again
+                        </button>
+                      </p>
+                    ) : null}
+                  </>
+                )}
+              </div>
+            ) : null}
+
             {combinedItems.length === 0 ? (
               <p className="muted">
                 No mergeable ingredient rows in the selected recipes (empty or
@@ -707,98 +803,6 @@ export function ShoppingListPage({
               </>
             )}
 
-            {stapleItems.length > 0 ||
-            alwaysHaveItems.length > 0 ||
-            neededStapleItems.length > 0 ? (
-              <div className="shopping-staples">
-                <button
-                  type="button"
-                  className="shopping-staples-toggle"
-                  aria-expanded={staplesOpen}
-                  onClick={() => setStaplesOpen((v) => !v)}
-                >
-                  <span className="shopping-staples-caret" aria-hidden="true">
-                    {staplesOpen ? "▾" : "▸"}
-                  </span>
-                  Staples
-                  <span className="shopping-segment-count"> ({stapleItems.length})</span>
-                </button>
-                {!staplesOpen ? (
-                  <p className="shopping-staples-preview">
-                    {stapleItems
-                      .map((it) => it.line.split(" - ")[0])
-                      .slice(0, 5)
-                      .join(" · ")}
-                    {stapleItems.length > 5 ? ` +${stapleItems.length - 5} more` : ""}
-                  </p>
-                ) : (
-                  <>
-                    <p className="muted shopping-staples-intro">
-                      Double check these — they’re kept off the list since most kitchens have
-                      them on hand. Add anything you’ve run out of.
-                    </p>
-                    <ul className="shopping-staples-list">
-                      {stapleItems.map((item, i) => (
-                        <li key={`staple-${item.line}-${i}`} className="shopping-staple-row">
-                          <span className="shopping-staple-line">{item.line}</span>
-                          <span className="shopping-staple-actions">
-                            <button
-                              type="button"
-                              className="shopping-staple-btn"
-                              onClick={() => {
-                                markStapleNeeded(item.ingredientId!);
-                                showToast(`Added “${item.line}” to your list.`);
-                              }}
-                            >
-                              + Add
-                            </button>
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                    {neededStapleItems.length > 0 ? (
-                      <ul className="shopping-staples-list shopping-staples-list--needed">
-                        {neededStapleItems.map((item, i) => (
-                          <li key={`needed-${item.line}-${i}`} className="shopping-staple-row">
-                            <span className="shopping-staple-line shopping-staple-line--on">
-                              On your list: {item.line}
-                            </span>
-                            <span className="shopping-staple-actions">
-                              <button
-                                type="button"
-                                className="shopping-staple-btn shopping-staple-btn--quiet"
-                                onClick={() => unmarkStapleNeeded(item.ingredientId!)}
-                              >
-                                Remove
-                              </button>
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
-                    {/* Recovery path only. Nothing sets "always have" any more, but anyone who
-                        marked items before the button was removed would otherwise have them
-                        hidden with no way back. Disappears for good once used. */}
-                    {alwaysHaveItems.length > 0 ? (
-                      <p className="shopping-staples-hidden">
-                        {alwaysHaveItems.length} item
-                        {alwaysHaveItems.length === 1 ? "" : "s"} hidden as “always have”.{" "}
-                        <button
-                          type="button"
-                          className="shopping-staples-reset"
-                          onClick={() => {
-                            resetAlwaysHave();
-                            showToast("Hidden staples restored.");
-                          }}
-                        >
-                          Show them again
-                        </button>
-                      </p>
-                    ) : null}
-                  </>
-                )}
-              </div>
-            ) : null}
           </section>
 
           {purchasedSection}
