@@ -16,7 +16,8 @@ import {
   INGREDIENT_CATEGORY_ORDER as CATEGORY_ORDER,
   TO_TASTE_UNIT,
 } from "./types";
-import { ingredientMap, parseQuantity } from "./ingredientDisplay";
+import { formatQuantityDisplay, ingredientMap, parseQuantity } from "./ingredientDisplay";
+import { FractionChips } from "./FractionChips";
 import {
   ADD_TO_PLAN_QUERY,
   EDIT_RECIPE_STEP_QUERY,
@@ -452,6 +453,8 @@ export function EditRecipePage({
    * draft string verbatim and only parse/commit on blur. Cleared once committed.
    */
   const [amountDrafts, setAmountDrafts] = React.useState<Record<string, string>>({});
+  /** Row key (`secIndex-lineIndex`) whose amount field has focus — only that row shows the fraction strip. */
+  const [amountFocusKey, setAmountFocusKey] = React.useState<string | null>(null);
   /** Which ingredient row has the search combobox open (`secIndex-lineIndex`). */
   const [ingredientPickerKey, setIngredientPickerKey] = React.useState<string | null>(null);
   /** Which row has the unit combobox open (`u-secIndex-lineIndex`). */
@@ -1344,6 +1347,14 @@ export function EditRecipePage({
               const unitOpen = unitPickerKey === unitKey;
               const hasIngNote = (line.note ?? "").trim().length > 0;
               const showIngNote = hasIngNote || ingredientNoteExpanded[rowKey] === true;
+              /**
+               * Committed amounts render through `formatQuantityDisplay`, so a line stored as
+               * 0.6667 comes back as "⅔" rather than a wall of decimals — and re-parses to the
+               * same number if the field is blurred untouched.
+               */
+              const amountFieldValue =
+                amountDrafts[rowKey] ??
+                (line.amount != null ? formatQuantityDisplay(line.amount) : "");
               return (
                 <div
                   key={`${sec.name}-${secIndex}-${lineIndex}-${line.ingredientId}`}
@@ -1401,18 +1412,15 @@ export function EditRecipePage({
                       inputMode="decimal"
                       className="edit-recipe-ing-amt"
                       disabled={amountDisabled}
-                      placeholder={lineIsToTaste ? "—" : "e.g. 2 or 0.5"}
-                      value={
-                        amountDisabled
-                          ? ""
-                          : (amountDrafts[rowKey] ??
-                            (line.amount != null ? String(line.amount) : ""))
-                      }
+                      placeholder={lineIsToTaste ? "—" : "e.g. 2 or ½"}
+                      value={amountDisabled ? "" : amountFieldValue}
                       onChange={(e) => {
                         const raw = e.target.value;
                         setAmountDrafts((m) => ({ ...m, [rowKey]: raw }));
                       }}
+                      onFocus={() => setAmountFocusKey(rowKey)}
                       onBlur={() => {
+                        setAmountFocusKey((k) => (k === rowKey ? null : k));
                         const draft = amountDrafts[rowKey];
                         if (draft === undefined) {
                           return;
@@ -1473,6 +1481,13 @@ export function EditRecipePage({
                       ×
                     </button>
                   </div>
+                  {amountFocusKey === rowKey && !amountDisabled ? (
+                    <FractionChips
+                      value={amountFieldValue}
+                      onChange={(next) => setAmountDrafts((m) => ({ ...m, [rowKey]: next }))}
+                      label={`Insert a fraction into ingredient ${lineIndex + 1} amount`}
+                    />
+                  ) : null}
                   {showIngNote ? (
                     <div className="edit-recipe-ing-note-row">
                       <label
@@ -1976,11 +1991,18 @@ export function EditRecipePage({
                 className="edit-recipe-input"
                 value={addIngredientUnit === TO_TASTE_UNIT ? "" : addIngredientQuantity}
                 onChange={(e) => setAddIngredientQuantity(e.target.value)}
-                placeholder={addIngredientUnit === TO_TASTE_UNIT ? "—" : "e.g. 2 or 0.5"}
+                placeholder={addIngredientUnit === TO_TASTE_UNIT ? "—" : "e.g. 2 or ½"}
                 autoComplete="off"
                 aria-label="Quantity"
                 disabled={addModalIsQualitativePick || addIngredientUnit === TO_TASTE_UNIT}
               />
+              {addModalIsQualitativePick || addIngredientUnit === TO_TASTE_UNIT ? null : (
+                <FractionChips
+                  value={addIngredientQuantity}
+                  onChange={setAddIngredientQuantity}
+                  label="Insert a fraction into the quantity"
+                />
+              )}
             </div>
 
             <div className="edit-recipe-modal-field">

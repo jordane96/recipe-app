@@ -84,6 +84,16 @@
 .swx-price { font-weight: 700; margin: 4px 0; }
 .swx-nomatch { grid-column: 1 / -1; color: #a4160f; font-size: 13px; }
 
+/* A previously approved pick, reapplied at this store. */
+.swx-row-remembered { grid-column: 2; display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+.swx-tag { padding: 1px 7px; border-radius: 999px; background: #e6f4ea; color: #1a7f37; font-size: 11px; font-weight: 600; }
+
+/* Why the count isn't 1 — ceil(need ÷ pack size). */
+.swx-row-why { grid-column: 2; margin-top: 2px; font-size: 12px; color: #777; }
+
+/* Shown when a retry still finds nothing, so "Try again" doesn't look inert. */
+.swx-retry-note { grid-column: 1 / -1; margin-top: 4px; font-size: 12px; color: #777; }
+
 .swx-row-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 6px; }
 .swx-link { border: 0; background: none; color: #0a5; color: #1264a3; cursor: pointer; padding: 0; font-size: 13px; text-decoration: underline; }
 

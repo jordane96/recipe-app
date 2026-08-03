@@ -41,6 +41,18 @@ export type SafewayHandoffItem = {
   label: string;
   /** Default cart quantity; the user adjusts per item in the extension. */
   qty: number;
+  /**
+   * How much the recipe actually needs, in a canonical base (oz / tsp / count).
+   *
+   * The *package* count can't be decided here — it depends on the size of whichever product the
+   * extension matches, which isn't known until it has searched. So the need travels with the item
+   * and the extension does `ceil(need ÷ package size)` once it has a product, the same maths
+   * `krogerQuantity.suggestQuantity` does on the Kroger side. Without this every item shipped as
+   * `qty: 1`, so 1½ lb of chicken added a single package to the cart.
+   *
+   * Null for free-text items and qualitative lines ("to taste"), which have no quantity to scale.
+   */
+  need?: { dim: "weight"; oz: number } | { dim: "volume"; tsp: number } | { dim: "count"; count: number } | null;
   /** Distinct recipe prep notes (e.g. "chopped"), shown as subtext in the extension. */
   notes?: string[];
 };

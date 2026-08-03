@@ -9,8 +9,16 @@
 
 (() => {
   const MAX_OPTIONS = 12;
-  const SEARCH_CONCURRENCY = 3;
-  const SEARCH_TIMEOUT_MS = 15000;
+  /*
+   * Measured on a real store: one search at a time renders in ~6-9s; three at once pushes the
+   * same searches to 12.6-15.0s, because each hidden iframe boots Safeway's whole SPA. The old
+   * 15s timeout sat exactly on that cliff — one term came back at 15,040ms and was thrown away
+   * for missing by 40ms, which is why a *different* handful of items failed on every run.
+   *
+   * So: fewer in flight (lower per-search latency) and a timeout well clear of the real spread.
+   */
+  const SEARCH_CONCURRENCY = 2;
+  const SEARCH_TIMEOUT_MS = 30000;
 
   let state = null; // { items: [{ term, label, qty, options, selectedIndex, removed }] }
   let rootEl = null;
@@ -49,6 +57,60 @@
       if (extAlive()) chrome.storage.local.remove(["pendingSafeway", "swxMatches"]);
     } catch (e) {
       /* ignore */
+    }
+  }
+
+  // --- remembered product picks --------------------------------------------
+  /**
+   * Which product the user approved for an ingredient, so "which kind of chicken?" is answered
+   * once rather than every shop.
+   *
+   * Distinct from `swxMatches`, which caches a *single list's* results against its handoff id and
+   * dies with that list. This is keyed by store and search term and outlives the list entirely.
+   * Scoped per store because catalogue, item ids and prices are store-specific — a pick made at
+   * one store isn't a fact about another. Loaded into memory once at boot so the synchronous
+   * match loop can read it (chrome.storage is async).
+   */
+  let rememberedPicks = {}; // { [termKey]: { itemId, name, size, price, image } }
+  let rememberedStoreKey = "default";
+
+  function termKey(term) {
+    return String(term || "").trim().toLowerCase().replace(/\s+/g, " ");
+  }
+
+  function recallPick(term) {
+    const p = rememberedPicks[termKey(term)];
+    return p && p.itemId ? p : null;
+  }
+
+  function rememberPick(term, option) {
+    if (!option || !option.itemId) return;
+    rememberedPicks[termKey(term)] = {
+      itemId: option.itemId,
+      name: option.name,
+      size: option.size,
+      price: option.price,
+      image: option.image,
+    };
+    persistPicks();
+  }
+
+  function forgetPick(term) {
+    delete rememberedPicks[termKey(term)];
+    persistPicks();
+  }
+
+  function persistPicks() {
+    try {
+      if (!extAlive()) return;
+      chrome.storage.local.get(["swxPicks"], (data) => {
+        if (chrome.runtime && chrome.runtime.lastError) return;
+        const all = (data && data.swxPicks) || {};
+        all[rememberedStoreKey] = rememberedPicks;
+        chrome.storage.local.set({ swxPicks: all });
+      });
+    } catch (e) {
+      /* best-effort — a lost preference is not worth breaking the panel over */
     }
   }
 
@@ -207,6 +269,85 @@
     });
   }
 
+  // --- package quantity -----------------------------------------------------
+  // Mirror of src/krogerQuantity.ts. Duplicated rather than imported because this file is a
+  // plain content script with no build step — keep the two in step if either changes.
+
+  const WEIGHT_TO_OZ = { oz: 1, ounce: 1, ounces: 1, lb: 16, lbs: 16, pound: 16, pounds: 16 };
+  const VOLUME_TO_TSP = {
+    tsp: 1, teaspoon: 1, teaspoons: 1, tbsp: 3, tablespoon: 3, tablespoons: 3, cup: 48, cups: 48,
+    "fl oz": 6, floz: 6, pt: 96, pint: 96, qt: 192, quart: 192, gal: 768, gallon: 768,
+    ml: 0.202884, l: 202.884, liter: 202.884, litre: 202.884,
+  };
+  const COUNT_UNITS = { ct: 1, count: 1, ea: 1, each: 1, pk: 1, pack: 1, dozen: 12 };
+
+  /** Parse a pack size string ("1 lb", "16.9 fl oz", "12 ct", "6 x 1 lb") to a base amount. */
+  function parseSize(size) {
+    if (!size) return null;
+    const mult = String(size).match(/^\s*(\d+)\s*[x×]\s*(.+)$/i);
+    if (mult) {
+      const inner = parseSize(mult[2]);
+      return inner ? { dim: inner.dim, base: inner.base * Number(mult[1]) } : null;
+    }
+    const m = String(size).trim().match(/^([\d.\/\s]+)\s*([a-zA-Z][a-zA-Z. ]*)$/);
+    if (!m) return null;
+    const amount = Number(m[1].trim());
+    if (!Number.isFinite(amount) || amount <= 0) return null;
+    const unit = m[2].trim().toLowerCase().replace(/\.$/, "").replace(/\s+/g, " ");
+    if (unit in WEIGHT_TO_OZ) return { dim: "weight", base: amount * WEIGHT_TO_OZ[unit] };
+    if (unit in VOLUME_TO_TSP) return { dim: "volume", base: amount * VOLUME_TO_TSP[unit] };
+    if (unit in COUNT_UNITS) return { dim: "count", base: amount * COUNT_UNITS[unit] };
+    return null;
+  }
+
+  /**
+   * Packages needed to cover `need`, given the product's pack size. Falls back to 1 whenever the
+   * dimensions don't line up (recipe in cups, product sold by weight) or anything is unparseable
+   * — the suggestion is only ever a smarter default, and the stepper is right there.
+   */
+  function suggestQty(need, size) {
+    if (!need) return 1;
+    const s = parseSize(size);
+    if (!s || s.dim !== need.dim || !(s.base > 0)) return 1;
+    const needBase = need.dim === "weight" ? need.oz : need.dim === "volume" ? need.tsp : need.count;
+    if (!(needBase > 0)) return 1;
+    return Math.min(99, Math.max(1, Math.ceil(needBase / s.base - 1e-9)));
+  }
+
+  /** Apply a product choice to an item, re-deriving the quantity when the pack size changes. */
+  function selectOption(item, index) {
+    const prev = selectedOption(item);
+    item.selectedIndex = index;
+    const next = selectedOption(item);
+    if (next && (!prev || prev.size !== next.size)) {
+      item.qty = suggestQty(item.need, next.size);
+    }
+  }
+
+  /**
+   * Re-run the search for a single item and apply the result. Used by the per-row "Try again"
+   * and by the automatic retry below. Uncontended, so it gets the fast (~6-9s) path.
+   */
+  async function retryItem(item) {
+    const opts = relevantFirst(item.term, await searchTerm(item.term));
+    item.options = opts;
+    const remembered = recallPick(item.term);
+    const at = remembered ? opts.findIndex((o) => o.itemId === remembered.itemId) : -1;
+    if (at >= 0) {
+      item.remembered = true;
+      selectOption(item, at);
+    } else if (remembered) {
+      item.options = [remembered, ...opts];
+      item.remembered = true;
+      selectOption(item, 0);
+    } else {
+      item.remembered = false;
+      if (opts.length > 0) selectOption(item, 0);
+      else item.selectedIndex = -1;
+    }
+    return opts.length;
+  }
+
   /** Search every item with a small concurrency pool; onProgress(done, total) after each. */
   async function searchAll(items, onProgress) {
     let index = 0;
@@ -214,9 +355,30 @@
     const worker = async () => {
       while (index < items.length) {
         const i = index++;
-        const opts = relevantFirst(items[i].term, await searchTerm(items[i].term));
+        let found = await searchTerm(items[i].term);
+        // One free retry when a search comes back empty. Contention is the usual cause and it's
+        // transient, so the second attempt — running as the pool drains — normally succeeds.
+        if (found.length === 0) found = await searchTerm(items[i].term);
+        const opts = relevantFirst(items[i].term, found);
         items[i].options = opts;
-        items[i].selectedIndex = opts.length > 0 ? 0 : -1;
+        // A previously approved pick wins over this run's best guess; otherwise take the top hit.
+        const remembered = recallPick(items[i].term);
+        const rememberedAt = remembered
+          ? opts.findIndex((o) => o.itemId === remembered.itemId)
+          : -1;
+        if (rememberedAt >= 0) {
+          items[i].remembered = true;
+          selectOption(items[i], rememberedAt);
+        } else if (remembered) {
+          // Search no longer returns it — rebuild from memory so the pick still stands.
+          items[i].options = [remembered, ...opts];
+          items[i].remembered = true;
+          selectOption(items[i], 0);
+        } else {
+          items[i].remembered = false;
+          if (opts.length > 0) selectOption(items[i], 0);
+          else items[i].selectedIndex = -1;
+        }
         completed++;
         onProgress(completed, items.length);
       }
@@ -478,8 +640,32 @@
 
     if (!opt) {
       li.appendChild(el("div", { class: "swx-nomatch", text: `No ${bannerLabel} match found` }));
+      // A no-match is usually a timed-out search rather than a genuinely absent product, so the
+      // first thing offered is another go — not "Remove", which throws the item off the order.
+      const again = el("button", {
+        class: "swx-link",
+        text: "Try again",
+        onclick: async () => {
+          again.textContent = "Searching…";
+          again.setAttribute("disabled", "true");
+          const n = await retryItem(item);
+          if (n === 0) {
+            // Still nothing: say so rather than silently re-rendering an identical row.
+            again.removeAttribute("disabled");
+            again.textContent = "Try again";
+            const note = li.querySelector(".swx-retry-note");
+            if (note) note.remove();
+            li.appendChild(el("div", { class: "swx-retry-note", text: "Still no match — try removing it and adding it on Safeway directly." }));
+          } else {
+            renderReview();
+          }
+        },
+      });
       li.appendChild(
-        el("button", { class: "swx-link", text: "Remove", onclick: () => { item.removed = true; renderReview(); } }),
+        el("div", { class: "swx-row-actions" }, [
+          again,
+          el("button", { class: "swx-link", text: "Remove", onclick: () => { item.removed = true; renderReview(); } }),
+        ]),
       );
       return li;
     }
@@ -500,6 +686,20 @@
       el("div", { class: "swx-name", text: opt.name + (opt.size ? ` — ${opt.size}` : "") }),
       opt.price != null
         ? el("div", { class: "swx-price", text: `$${(opt.price * item.qty).toFixed(2)}${item.qty > 1 ? ` ($${opt.price.toFixed(2)} ea)` : ""}` })
+        : null,
+      item.remembered
+        ? el("div", { class: "swx-row-remembered" }, [
+            el("span", { class: "swx-tag", text: "Your usual pick" }),
+            el("button", {
+              class: "swx-link",
+              text: "Forget this",
+              onclick: () => { forgetPick(item.term); item.remembered = false; renderReview(); },
+            }),
+          ])
+        : null,
+      // Why the count isn't 1 — the ceil(need ÷ pack size) maths, said out loud.
+      item.qty > 1 && opt.size
+        ? el("div", { class: "swx-row-why", text: `${item.qty} × ${opt.size} to cover ${item.label.split(" - ")[1] || "this recipe"}` })
         : null,
       el("div", { class: "swx-row-actions" }, [
         qtyStepper(item),
@@ -527,7 +727,14 @@
     const cards = item.options.map((opt, oi) =>
       el("button", {
         class: "swx-opt" + (oi === item.selectedIndex ? " swx-opt-sel" : ""),
-        onclick: () => { item.selectedIndex = oi; renderReview(); },
+        // An explicit choice here is what counts as *approved*, so it's the only thing
+        // remembered — never the search's own first guess.
+        onclick: () => {
+          selectOption(item, oi);
+          rememberPick(item.term, item.options[oi]);
+          item.remembered = true;
+          renderReview();
+        },
       }, [
         opt.image ? el("img", { src: opt.image, alt: "", class: "swx-opt-img", loading: "lazy" }) : el("div", { class: "swx-opt-img swx-thumb-empty" }),
         el("div", { class: "swx-opt-name", text: opt.name + (opt.size ? ` — ${opt.size}` : "") }),
@@ -615,11 +822,18 @@
 
   // --- boot -----------------------------------------------------------------
   if (!extAlive()) return;
-  chrome.storage.local.get(["pendingSafeway", "swxMatches"], (data) => {
+  chrome.storage.local.get(["pendingSafeway", "swxMatches", "swxPicks"], (data) => {
     if (chrome.runtime && chrome.runtime.lastError) return;
     const pending = data && data.pendingSafeway;
     if (!pending || !Array.isArray(pending.items) || pending.items.length === 0) return;
     currentTs = pending.ts || null;
+
+    // Load this store's approved picks before matching runs, so `recallPick` can be synchronous
+    // inside the search loop. A store may not be chosen yet — fall back to a shared bucket rather
+    // than losing the preferences entirely.
+    const f = fulfillment();
+    rememberedStoreKey = (f && f.storeId) || "default";
+    rememberedPicks = ((data && data.swxPicks) || {})[rememberedStoreKey] || {};
 
     // The extension injects on Safeway, Vons and Pavilions (one platform), but each handoff
     // targets a single banner. Only activate on that banner's domain, and label the UI with it.
@@ -637,6 +851,8 @@
           term: it.term,
           label: it.label || it.term,
           qty: Number.isFinite(it.qty) && it.qty > 0 ? it.qty : 1,
+          // Recipe amount in a canonical base; drives the package count once a product is matched.
+          need: it.need || null,
           notes: Array.isArray(it.notes) ? it.notes : [],
           options: [],
           selectedIndex: -1,

@@ -1,10 +1,9 @@
 import * as React from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import "./kroger.css";
-import { buildShoppingListData, type CombinedShoppingItem } from "./shoppingMerge";
-import { parseNum, suggestQuantity, type Need } from "./krogerQuantity";
+import { suggestQuantity, type Need } from "./krogerQuantity";
+import { useBuyItems } from "./useBuyItems";
 import type { IngredientDef, Recipe } from "./types";
-import { useShoppingList } from "./ShoppingListContext";
 import { useToast } from "./ToastContext";
 import {
   getKrogerLocations,
@@ -20,6 +19,12 @@ import {
   type KrogerProduct,
   type KrogerStatus,
 } from "./krogerClient";
+import {
+  forgetMatch,
+  recallMatch,
+  rememberedAsProduct,
+  rememberMatch,
+} from "./krogerMatchMemory";
 
 const ERROR_MESSAGES: Record<string, string> = {
   not_configured: "Kroger isn't set up on the server yet (missing API credentials).",
@@ -29,29 +34,6 @@ const ERROR_MESSAGES: Record<string, string> = {
   access_denied: "You declined access to your Kroger account.",
 };
 
-/** Pull a clean search term out of a combined shopping line ("Name - 2 tbsp" → "Name"). */
-function termFromLine(line: string): string {
-  return line.split(" - ")[0]!.trim();
-}
-
-/** The recipe's needed amount (for the quantity suggestion), derived from a combined line. */
-function needFromItem(it: CombinedShoppingItem): Need | null {
-  if (it.kind === "weight") return { dim: "weight", oz: it.oz };
-  if (it.kind === "volume") return { dim: "volume", tsp: it.tsp };
-  if (it.kind === "count") {
-    // Combined count lines look like "Eggs - 6 each"; only generic counts map to packages.
-    const after = it.line.split(" - ").slice(1).join(" - ");
-    const m = after.match(/^([\d.\/]+)\s+([a-zA-Z]+)/);
-    if (m) {
-      const n = parseNum(m[1]!);
-      const unit = m[2]!.toLowerCase();
-      if (n && n > 0 && (unit === "each" || unit === "ct" || unit === "count")) {
-        return { dim: "count", count: n };
-      }
-    }
-  }
-  return null; // raw / qualitative / non-generic counts → default qty 1
-}
 
 type Row = {
   key: string;
@@ -63,11 +45,34 @@ type Row = {
   quantity: number;
   /** Recipe amount this line needs (drives the suggested quantity); null = no suggestion. */
   need: Need | null;
+  /** The selection came from a previously approved pick, not from this run's search. */
+  remembered: boolean;
 };
 
 function productName(p: KrogerProduct): string {
   // Kroger's `description` already includes the brand, so prepending `brand` doubles it.
   return (p.description || p.brand || p.upc).trim();
+}
+
+/**
+ * Kroger serves the same photo at several renditions under `.../images/<size>/front/<upc>`, and
+ * `_match.js` picks `large` for the card. Ask for the next size up when opening the lightbox —
+ * `large` is sized for a ~132px card and looks soft blown up. Falls back to the original on error,
+ * since the bigger rendition isn't guaranteed to exist for every product.
+ */
+function largerImageUrl(url: string): string {
+  return url.replace("/images/large/", "/images/xlarge/");
+}
+
+/**
+ * The amount half of a combined shopping line ("Chicken stock - ½ cups" → "½ cups").
+ * Null for free-text additional items, which carry no measurement.
+ */
+function measurementFromLine(line: string): string | null {
+  const idx = line.indexOf(" - ");
+  if (idx < 0) return null;
+  const rest = line.slice(idx + 3).trim();
+  return rest || null;
 }
 
 function dedupeByUpc(products: KrogerProduct[]): KrogerProduct[] {
@@ -92,7 +97,6 @@ export function KrogerOrderPage({
 }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const { showToast } = useToast();
-  const { selectedIds, servingsByRecipe, additionalItems, isPurchased } = useShoppingList();
 
   const [status, setStatus] = React.useState<KrogerStatus | null>(null);
   const [statusError, setStatusError] = React.useState<string | null>(null);
@@ -122,36 +126,9 @@ export function KrogerOrderPage({
   }, [refreshStatus]);
 
   // ---- Build the "things to buy" list from the shopping list ------------------
-  const buyItems = React.useMemo(() => {
-    const order: string[] = [];
-    const counts = new Map<string, { recipe: Recipe; count: number }>();
-    for (const id of selectedIds) {
-      const r = recipes.find((x) => x.id === id);
-      if (!r) continue;
-      if (!counts.has(r.id)) {
-        order.push(r.id);
-        counts.set(r.id, { recipe: r, count: 0 });
-      }
-      counts.get(r.id)!.count += 1;
-    }
-    const entries = order.map((id) => {
-      const { recipe } = counts.get(id)!;
-      const base = typeof recipe.servings === "number" && recipe.servings > 0 ? recipe.servings : null;
-      const override = servingsByRecipe[recipe.id];
-      const target = typeof override === "number" && override > 0 ? override : base ?? 1;
-      const scale = base == null ? 1 : target / base;
-      return { recipe, scale };
-    });
-    const { combinedItems } = buildShoppingListData(entries, ingredients);
-
-    const fromRecipes = combinedItems
-      .filter((it) => !isPurchased(it.line))
-      .map((it) => ({ key: it.line, name: termFromLine(it.line), label: it.line, need: needFromItem(it) }));
-    const fromAdditional = additionalItems
-      .filter((t) => !isPurchased(t))
-      .map((t) => ({ key: `additional:${t}`, name: t, label: t, need: null as Need | null }));
-    return [...fromRecipes, ...fromAdditional];
-  }, [selectedIds, recipes, ingredients, servingsByRecipe, additionalItems, isPurchased]);
+  // Shared with the Safeway pages: one definition of what's orderable, including the rule that
+  // staples stay out of an order unless the user pulled them onto this shop.
+  const buyItems = useBuyItems(recipes, ingredients);
 
   // ---- Store picker -----------------------------------------------------------
   const [pickingStore, setPickingStore] = React.useState(false);
@@ -200,6 +177,8 @@ export function KrogerOrderPage({
   const [matchError, setMatchError] = React.useState<string | null>(null);
   /** When set, show the product-picker page for this row key. */
   const [changingKey, setChangingKey] = React.useState<string | null>(null);
+  /** Product photo opened full-size. Card thumbnails are ~132px — too small to tell two cuts apart. */
+  const [zoomedImage, setZoomedImage] = React.useState<{ src: string; label: string } | null>(null);
   /** The option tapped in the picker — pending until the user confirms "Replace item". */
   const [pendingUpc, setPendingUpc] = React.useState<string | null>(null);
   /** locationId the current `rows` were matched against, so a store change re-matches. */
@@ -222,18 +201,34 @@ export function KrogerOrderPage({
         buyItems.map(({ key, name }) => ({ key, name })),
       );
       const byKey = new Map(matches.map((m) => [m.key, m]));
+      const locationId = status?.locationId ?? null;
       const next: Row[] = buyItems.map((it) => {
         const m = byKey.get(it.key);
-        const options = dedupeByUpc([...(m?.best ? [m.best] : []), ...(m?.alternates ?? [])]);
-        const best = options[0] ?? null;
+        const term = m?.term ?? it.name;
+        const searched = dedupeByUpc([...(m?.best ? [m.best] : []), ...(m?.alternates ?? [])]);
+
+        // A previously approved pick wins over this run's best guess — that's the whole point of
+        // remembering it. Kroger's ranking drifts, so the remembered product may be missing from
+        // today's results entirely; rebuild it from memory and put it at the head of the options
+        // so the row can render and the user can still see (and leave) the alternatives.
+        const saved = recallMatch(locationId, term);
+        const options = saved
+          ? dedupeByUpc([
+              searched.find((p) => p.upc === saved.upc) ?? rememberedAsProduct(saved),
+              ...searched,
+            ])
+          : searched;
+        const selected = options[0] ?? null;
+
         return {
           key: it.key,
-          term: m?.term ?? it.name,
+          term,
           label: it.label,
           options,
-          selectedUpc: best?.upc ?? null,
-          quantity: suggestQuantity(it.need, best?.size ?? null),
+          selectedUpc: selected?.upc ?? null,
+          quantity: suggestQuantity(it.need, selected?.size ?? null),
           need: it.need,
+          remembered: Boolean(saved && selected?.upc === saved.upc),
         };
       });
       setRows(next);
@@ -261,6 +256,16 @@ export function KrogerOrderPage({
     setPendingUpc(null);
   }, [changingKey]);
 
+  // Escape closes the enlarged photo, matching the rest of the app's overlays.
+  React.useEffect(() => {
+    if (!zoomedImage) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setZoomedImage(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [zoomedImage]);
+
   // Picker scroll: jump to the top when it opens; restore to the changed item when it closes.
   React.useLayoutEffect(() => {
     if (changingKey) {
@@ -282,25 +287,54 @@ export function KrogerOrderPage({
     setRows((prev) => (prev ? prev.filter((r) => r.key !== key) : prev));
   }, []);
 
-  /** Pick a different product for an item, re-suggesting qty if the package size changes. */
-  const chooseOption = React.useCallback((key: string, upc: string) => {
-    setRows((prev) =>
-      prev
-        ? prev.map((r) => {
-            if (r.key !== key) return r;
-            const newProd = r.options.find((o) => o.upc === upc);
-            const oldProd = r.options.find((o) => o.upc === r.selectedUpc);
-            const quantity =
-              newProd && (!oldProd || oldProd.size !== newProd.size)
-                ? suggestQuantity(r.need, newProd.size)
-                : r.quantity;
-            return { ...r, selectedUpc: upc, quantity };
-          })
-        : prev,
-    );
-    restoreToKeyRef.current = key;
-    setChangingKey(null);
-  }, []);
+  /**
+   * Pick a different product for an item, re-suggesting qty if the package size changes.
+   *
+   * This is also where a pick becomes *approved*: the user opened the alternatives and confirmed
+   * one, so it's remembered for this store and reapplied on every later order. Search results are
+   * deliberately never remembered — only a deliberate choice is.
+   */
+  const chooseOption = React.useCallback(
+    (key: string, upc: string) => {
+      setRows((prev) =>
+        prev
+          ? prev.map((r) => {
+              if (r.key !== key) return r;
+              const newProd = r.options.find((o) => o.upc === upc);
+              const oldProd = r.options.find((o) => o.upc === r.selectedUpc);
+              const quantity =
+                newProd && (!oldProd || oldProd.size !== newProd.size)
+                  ? suggestQuantity(r.need, newProd.size)
+                  : r.quantity;
+              if (newProd) {
+                rememberMatch(status?.locationId ?? null, r.term, newProd);
+              }
+              return { ...r, selectedUpc: upc, quantity, remembered: Boolean(newProd) };
+            })
+          : prev,
+      );
+      restoreToKeyRef.current = key;
+      setChangingKey(null);
+    },
+    [status?.locationId],
+  );
+
+  /** Drop a remembered pick and fall back to whatever this store's search ranks first. */
+  const clearRemembered = React.useCallback(
+    (key: string) => {
+      setRows((prev) =>
+        prev
+          ? prev.map((r) => {
+              if (r.key !== key) return r;
+              forgetMatch(status?.locationId ?? null, r.term);
+              return { ...r, remembered: false };
+            })
+          : prev,
+      );
+      showToast("We'll pick this one fresh next time.");
+    },
+    [status?.locationId, showToast],
+  );
 
   const includedRows = React.useMemo(
     () => (rows ?? []).filter((r) => r.selectedUpc),
@@ -351,6 +385,42 @@ export function KrogerOrderPage({
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
 
+  /**
+   * Enlarged product photo. Built once and rendered by *both* returns below — the picker takes
+   * over the view with an early return, so a lightbox living only in the main return would never
+   * paint for the one screen where comparing products matters most.
+   */
+  const lightbox = zoomedImage ? (
+    <div
+      className="kroger-lightbox"
+      role="dialog"
+      aria-modal="true"
+      aria-label={zoomedImage.label}
+      onClick={() => setZoomedImage(null)}
+    >
+      <button
+        type="button"
+        className="kroger-lightbox-close"
+        aria-label="Close image"
+        onClick={() => setZoomedImage(null)}
+      >
+        ×
+      </button>
+      <img
+        className="kroger-lightbox-img"
+        src={largerImageUrl(zoomedImage.src)}
+        alt={zoomedImage.label}
+        // The xlarge rendition isn't guaranteed to exist; drop back to the card's image
+        // rather than showing a broken frame.
+        onError={(e) => {
+          const img = e.currentTarget;
+          if (img.src !== zoomedImage.src) img.src = zoomedImage.src;
+        }}
+      />
+      <p className="kroger-lightbox-label">{zoomedImage.label}</p>
+    </div>
+  ) : null;
+
   // Product-picker page: takes over the view while swapping an item's product.
   const changingRow = changingKey ? rows?.find((r) => r.key === changingKey) ?? null : null;
   if (changingRow) {
@@ -361,13 +431,26 @@ export function KrogerOrderPage({
             Other options for “{changingRow.term}”
           </h1>
         </div>
+        {/*
+          How much the recipe needs. Without it you're picking a package size blind — the option
+          cards quote "3 × $4.49" totals derived from this amount, and the amount itself was the
+          one number not on the screen.
+        */}
+        {measurementFromLine(changingRow.label) ? (
+          <p className="kroger-change-need">
+            Recipe needs <strong>{measurementFromLine(changingRow.label)}</strong>
+          </p>
+        ) : null}
         <ul className="kroger-review-list">
           {changingRow.options.map((opt) => {
             const isCurrent = opt.upc === changingRow.selectedUpc;
             const isSelected = opt.upc === pendingUpc;
             const optQty = suggestQuantity(changingRow.need, opt.size);
             return (
-              <li key={opt.upc}>
+              // `position: relative` host so the zoom control can sit over the photo while
+              // staying a *sibling* of the card button — the card is itself a button, and
+              // nesting one inside it would be invalid and unreachable by keyboard.
+              <li key={opt.upc} className="kroger-opt-item">
                 <button
                   type="button"
                   className={`kroger-row kroger-opt-card${isSelected ? " kroger-opt-card--selected" : ""}`}
@@ -397,6 +480,33 @@ export function KrogerOrderPage({
                   ) : null}
                   {isCurrent ? <div className="kroger-opt-current">Current pick</div> : null}
                 </button>
+                {opt.image ? (
+                  <button
+                    type="button"
+                    className="kroger-opt-zoom"
+                    aria-label={`View a larger image of ${productName(opt)}`}
+                    onClick={() =>
+                      setZoomedImage({ src: opt.image!, label: productName(opt) })
+                    }
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden
+                    >
+                      <circle cx="11" cy="11" r="7" />
+                      <line x1="16.5" y1="16.5" x2="21" y2="21" />
+                      <line x1="11" y1="8" x2="11" y2="14" />
+                      <line x1="8" y1="11" x2="14" y2="11" />
+                    </svg>
+                  </button>
+                ) : null}
               </li>
             );
           })}
@@ -408,7 +518,7 @@ export function KrogerOrderPage({
             disabled={pendingUpc == null}
             onClick={() => pendingUpc && chooseOption(changingRow.key, pendingUpc)}
           >
-            Change item
+            Use this item
           </button>
           <button
             type="button"
@@ -421,6 +531,7 @@ export function KrogerOrderPage({
             Go back
           </button>
         </div>
+        {lightbox}
       </div>
     );
   }
@@ -428,9 +539,6 @@ export function KrogerOrderPage({
   return (
     <div className="recipe-list-page kroger-page">
       <div className="top-bar">
-        <Link to="/shopping" className="back-btn" aria-label="Go back to shopping list">
-          Go back
-        </Link>
         <h1 className="page-title" style={{ fontSize: "1.25rem" }}>
           Order groceries
         </h1>
@@ -562,17 +670,12 @@ export function KrogerOrderPage({
             >
               Open {banner.label} to check out
             </a>
-            <button
-              type="button"
-              className="btn-secondary btn-compact"
-              onClick={() => {
-                setSentCount(null);
-                matchedForRef.current = null;
-                void runMatch();
-              }}
-            >
-              Back to list
-            </button>
+            {/* One way out, and it goes where you actually want to be. The old "Back to list"
+                returned to the review screen with a live "Send to cart" button, so tapping it
+                twice silently double-added the whole order. */}
+            <Link to="/shopping" className="btn-secondary btn-compact">
+              Done — back to shopping list
+            </Link>
           </div>
         ) : (
           <>
@@ -638,14 +741,26 @@ export function KrogerOrderPage({
                         {/* Title: the recipe item this line calls for. */}
                         <div className="kroger-row-term">{row.label}</div>
 
-                        {/* Big centered product photo. */}
-                        <div className="kroger-row-img" aria-hidden>
-                          {selected?.image ? (
+                        {/* Big centered product photo — tap to see it full size. */}
+                        {selected?.image ? (
+                          <button
+                            type="button"
+                            className="kroger-row-img kroger-row-img--zoomable"
+                            aria-label={`View a larger image of ${productName(selected)}`}
+                            onClick={() =>
+                              setZoomedImage({
+                                src: selected.image!,
+                                label: productName(selected),
+                              })
+                            }
+                          >
                             <img src={selected.image} alt="" loading="lazy" />
-                          ) : (
+                          </button>
+                        ) : (
+                          <div className="kroger-row-img" aria-hidden>
                             <div className="kroger-row-img-empty" />
-                          )}
-                        </div>
+                          </div>
+                        )}
 
                         {noMatch ? (
                           <div className="kroger-row-product">
@@ -667,6 +782,28 @@ export function KrogerOrderPage({
                               {selected ? productName(selected) : "—"}
                               {selected?.size ? `, ${selected.size} per unit` : ""}
                             </div>
+
+                            {row.remembered ? (
+                              <div className="kroger-row-remembered">
+                                <span className="kroger-row-remembered-tag">
+                                  Your usual pick
+                                </span>
+                                <button
+                                  type="button"
+                                  className="kroger-row-forget"
+                                  onClick={() => clearRemembered(row.key)}
+                                >
+                                  Forget this
+                                </button>
+                              </div>
+                            ) : null}
+
+                            {/* Why this quantity: the package-count maths is otherwise invisible. */}
+                            {row.quantity > 1 && selected?.size ? (
+                              <div className="kroger-row-qty-why">
+                                {row.quantity} × {selected.size} to cover {row.label.split(" - ")[1] ?? "this recipe"}
+                              </div>
+                            ) : null}
 
                             {/* Quantity + remove. */}
                             <div className="kroger-row-qty-row">
@@ -759,6 +896,23 @@ export function KrogerOrderPage({
           </>
         )
       ) : null}
+
+      {/*
+        Back lives at the bottom as a secondary action, not as a top-left chrome link. It sits
+        outside every conditional above so it's reachable in each state of this page — not
+        connected, no store chosen, empty list — where the footer with the primary CTA isn't
+        rendered at all. Suppressed only on the success screen, which carries its own single
+        "Done — back to shopping list" (showing both was the doubled-back bug).
+      */}
+      {sentCount === null ? (
+        <div className="kroger-page-back">
+          <Link to="/shopping" className="btn-secondary btn-cta-wide">
+            Go back
+          </Link>
+        </div>
+      ) : null}
+
+      {lightbox}
     </div>
   );
 }

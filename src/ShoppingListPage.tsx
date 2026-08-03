@@ -72,18 +72,22 @@ function SelectedRecipePurchasedCheckbox({
     return null;
   }
 
+  // Wrapped in a label so the tap target is the padded box, not the 22px checkbox itself. The
+  // per-item rows below already get this for free (they're labels); this one was a bare input.
   return (
-    <input
-      type="checkbox"
-      className="selected-recipe-check shopping-check-input"
-      checked={allPurchased}
-      onChange={() => setPurchasedBatch([...lines], !allPurchased)}
-      aria-label={
-        allPurchased
-          ? `Mark ingredients for ${recipeTitle} as not purchased`
-          : `Mark all ingredients for ${recipeTitle} as purchased`
-      }
-    />
+    <label className="selected-recipe-check-hit">
+      <input
+        type="checkbox"
+        className="selected-recipe-check shopping-check-input"
+        checked={allPurchased}
+        onChange={() => setPurchasedBatch([...lines], !allPurchased)}
+        aria-label={
+          allPurchased
+            ? `Mark ingredients for ${recipeTitle} as not purchased`
+            : `Mark all ingredients for ${recipeTitle} as purchased`
+        }
+      />
+    </label>
   );
 }
 

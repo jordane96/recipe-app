@@ -48,7 +48,19 @@ function needFromItem(it: CombinedShoppingItem): Need | null {
 }
 
 export function useBuyItems(recipes: Recipe[], ingredients: IngredientDef[]): BuyItem[] {
-  const { selectedIds, servingsByRecipe, additionalItems, isPurchased } = useShoppingList();
+  const {
+    selectedIds,
+    servingsByRecipe,
+    additionalItems,
+    isPurchased,
+    alwaysHaveIds,
+    needThisTimeIds,
+  } = useShoppingList();
+
+  const ingredientDefById = React.useMemo(
+    () => new Map(ingredients.map((i) => [i.id, i])),
+    [ingredients],
+  );
 
   return React.useMemo(() => {
     const order: string[] = [];
@@ -72,7 +84,53 @@ export function useBuyItems(recipes: Recipe[], ingredients: IngredientDef[]): Bu
     });
     const { combinedItems } = buildShoppingListData(entries, ingredients);
 
+    /**
+     * Staples don't get ordered.
+     *
+     * Salt, oil, flour and most spices are deliberately kept off the shopping list — they live in
+     * the collapsed staples tray because the list should be what you actually need to buy. The
+     * order pages were never taught that rule, so every order re-bought salt, garlic powder,
+     * paprika and olive oil. The exception is the one the tray already models: a staple the user
+     * pulled onto this shop with "+ Add" (`needThisTime`) *is* on the main list, so it ships.
+     *
+     * Same predicate as ShoppingListPage's three-way split — kept in step with it deliberately.
+     */
+    const onMainList = (it: CombinedShoppingItem) => {
+      const id = it.ingredientId;
+      const isStaple = id != null && ingredientDefById.get(id)?.staple === true;
+      if (!isStaple) return true;
+      if (alwaysHaveIds.has(id!)) return false;
+      return needThisTimeIds.has(id!);
+    };
+
+    /**
+     * One product per ingredient.
+     *
+     * `shoppingMerge` deliberately keeps lines in different unit families apart — you can't add
+     * cups to ounces, and on a shopping list "Olive oil - ⅓ cup" and "Olive oil - to taste" are
+     * two useful reminders. An *order* is a different question: both are one bottle, and leaving
+     * them split puts two in the cart.
+     *
+     * Amount-less lines contribute no quantity by definition, so they're dropped whenever a
+     * measured line for the same ingredient exists. When every line is amount-less, the first is
+     * kept so the ingredient is still ordered.
+     */
+    const measuredIngredientIds = new Set(
+      combinedItems.filter((it) => needFromItem(it) != null && it.ingredientId).map((it) => it.ingredientId!),
+    );
+    const seenAmountless = new Set<string>();
+    const dedupedByIngredient = (it: CombinedShoppingItem) => {
+      const id = it.ingredientId;
+      if (!id || needFromItem(it) != null) return true;
+      if (measuredIngredientIds.has(id)) return false;
+      if (seenAmountless.has(id)) return false;
+      seenAmountless.add(id);
+      return true;
+    };
+
     const fromRecipes = combinedItems
+      .filter(onMainList)
+      .filter(dedupedByIngredient)
       .filter((it) => !isPurchased(it.line))
       .map((it) => ({
         key: it.line,
@@ -85,5 +143,15 @@ export function useBuyItems(recipes: Recipe[], ingredients: IngredientDef[]): Bu
       .filter((t) => !isPurchased(t))
       .map((t) => ({ key: `additional:${t}`, name: t, label: t, need: null as Need | null, notes: [] as string[] }));
     return [...fromRecipes, ...fromAdditional];
-  }, [selectedIds, recipes, ingredients, servingsByRecipe, additionalItems, isPurchased]);
+  }, [
+    selectedIds,
+    recipes,
+    ingredients,
+    ingredientDefById,
+    servingsByRecipe,
+    additionalItems,
+    isPurchased,
+    alwaysHaveIds,
+    needThisTimeIds,
+  ]);
 }
