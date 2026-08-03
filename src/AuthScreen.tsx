@@ -1,5 +1,6 @@
 import * as React from "react";
 import { setSessionUser } from "./userSession";
+import { seedStarterPlanIfEmpty } from "./demoSession";
 
 type Mode = "signin" | "signup";
 type SignupStep = "username" | "password";
@@ -115,6 +116,9 @@ export function AuthScreen({ onAuth }: { onAuth: (username: string) => void }) {
       });
       const body = await res.json();
       if (!res.ok) { setError(body.error ?? "Something went wrong."); return; }
+      // A new account lands on an empty "My menu" — the library is public but the plan is
+      // device-local. Give them a starter week before the app mounts. Never blocks signup.
+      await seedStarterPlanIfEmpty(body.username);
       setSessionUser(body.username);
       onAuth(body.username);
     } catch {

@@ -45,6 +45,7 @@ import {
 } from "./addFlowCartSession";
 import { isRecipeDetailPathname, recordNavigation } from "./navHistory";
 import { Onboarding } from "./Onboarding";
+import { isDemoUser } from "./demoSession";
 
 function appChromeSectionTitle(pathname: string): string {
   if (pathname === "/" || pathname === "") {
@@ -305,6 +306,7 @@ function AppLayout({
   // via the menu's "replay tour" item.
   const [onboardingOpen, setOnboardingOpen] = React.useState(false);
 
+  const isDemo = isDemoUser(currentUser);
   const isPlannerHome = pathname === "/" || pathname === "";
   const wide = isPlannerHome || pathname === "/history" || pathname === "/cooking-now";
 
@@ -533,9 +535,22 @@ function AppLayout({
         </button>
         <ChromeTitleTag className={`app-chrome-home${isPlannerHome ? " app-chrome-home--current" : ""}`}>
           {chromeTitle}
-          <span className="app-chrome-user"> — {currentUser}</span>
+          <span className="app-chrome-user"> — {isDemo ? "Demo" : currentUser}</span>
         </ChromeTitleTag>
       </header>
+
+      {isDemo ? (
+        <div className="demo-banner" role="status">
+          <span className="demo-banner-text">You’re in a test account.</span>
+          {/* A button, not an <a>: the sign-in screen has no route of its own — it's what `Root`
+              renders once the session is cleared — so this performs an action, not a navigation. */}
+          {onSignOut ? (
+            <button type="button" className="demo-banner-link" onClick={onSignOut}>
+              Create account or sign in
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       {menuOpen ? (
         <>
