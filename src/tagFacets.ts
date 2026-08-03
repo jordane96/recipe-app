@@ -11,14 +11,37 @@ export type TagFacet = { key: string; label: string; values: readonly string[] }
 
 export const TAG_FACETS: readonly TagFacet[] = [
   { key: "course", label: "Course", values: ["main", "side"] },
-  { key: "protein", label: "Protein", values: ["chicken", "beef", "veggie", "turkey", "pork", "seafood"] },
-  { key: "method", label: "Method", values: ["crock-pot", "air-fryer", "grill", "baked", "stovetop"] },
+  {
+    key: "protein",
+    label: "Protein",
+    values: ["chicken", "beef", "pork", "turkey", "lamb", "seafood", "egg", "veggie"],
+  },
+  {
+    key: "method",
+    label: "Method",
+    values: [
+      "crock-pot", "pressure-cooker", "air-fryer", "grill", "smoker",
+      "baked", "stovetop", "sous-vide", "no-cook",
+    ],
+  },
   {
     key: "cuisine",
     label: "Cuisine",
-    values: ["italian", "mexican", "asian", "indian", "japanese", "greek", "southern", "middle-eastern", "lithuanian"],
+    values: [
+      "italian", "french", "spanish", "greek", "german",
+      "mexican", "caribbean", "american", "southern", "cajun",
+      "indian", "thai", "chinese", "japanese", "korean", "vietnamese", "asian",
+      "middle-eastern", "north-african", "lithuanian",
+    ],
   },
-  { key: "additional", label: "Additional Tags", values: ["keto", "meal-prep"] },
+  {
+    key: "additional",
+    label: "Additional Tags",
+    values: [
+      "quick", "one-pot", "meal-prep", "kid-friendly", "spicy",
+      "vegan", "gluten-free", "dairy-free", "keto", "low-carb", "high-protein",
+    ],
+  },
 ];
 
 /** Facets a user may extend. `course` is excluded — main/side is structural, not descriptive. */

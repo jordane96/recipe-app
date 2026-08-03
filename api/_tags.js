@@ -10,13 +10,21 @@
  */
 
 export const COURSES = ['main', 'side']
-export const PROTEINS = ['chicken', 'beef', 'veggie', 'turkey', 'pork', 'seafood']
-export const METHODS = ['crock-pot', 'air-fryer', 'grill', 'baked', 'stovetop']
-export const CUISINES = [
-  'italian', 'mexican', 'asian', 'indian', 'japanese',
-  'greek', 'southern', 'middle-eastern', 'lithuanian',
+export const PROTEINS = ['chicken', 'beef', 'pork', 'turkey', 'lamb', 'seafood', 'egg', 'veggie']
+export const METHODS = [
+  'crock-pot', 'pressure-cooker', 'air-fryer', 'grill', 'smoker',
+  'baked', 'stovetop', 'sous-vide', 'no-cook',
 ]
-export const ADDITIONAL = ['keto', 'meal-prep']
+export const CUISINES = [
+  'italian', 'french', 'spanish', 'greek', 'german',
+  'mexican', 'caribbean', 'american', 'southern', 'cajun',
+  'indian', 'thai', 'chinese', 'japanese', 'korean', 'vietnamese', 'asian',
+  'middle-eastern', 'north-african', 'lithuanian',
+]
+export const ADDITIONAL = [
+  'quick', 'one-pot', 'meal-prep', 'kid-friendly', 'spicy',
+  'vegan', 'gluten-free', 'dairy-free', 'keto', 'low-carb', 'high-protein',
+]
 
 /** Display order and labels for the faceted filter UI. */
 export const TAG_FACETS = [

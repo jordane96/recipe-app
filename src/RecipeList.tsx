@@ -36,7 +36,8 @@ import { recipeToPlannedMeal, useMealPlan } from "./MealPlanContext";
 import { useToast } from "./ToastContext";
 import { useSavedRecipes } from "./SavedRecipesContext";
 import { addFlowCartSessionKey, setActiveAddFlowSessionKey } from "./addFlowCartSession";
-import { facetKeyOf, groupTagsByFacet, tagLabel } from "./tagFacets";
+import { facetKeyOf, tagLabel } from "./tagFacets";
+import { TagFilterPanel } from "./TagFilterPanel";
 
 /** "main" and "side" are pinned to the front of the chip row; the rest sort alphabetically. */
 const PINNED_TAG_ORDER = ["main", "side"];
@@ -466,7 +467,6 @@ export function RecipeList({
   ]);
 
   const tags = React.useMemo(() => uniqueTags(myRecipes), [myRecipes]);
-  const tagGroups = React.useMemo(() => groupTagsByFacet(tags), [tags]);
   const filtered = React.useMemo(
     () =>
       myRecipes
@@ -664,54 +664,13 @@ export function RecipeList({
             </span>
           </button>
           {filtersOpen ? (
-            <div
+            <TagFilterPanel
               id="recipe-filters-row"
-              className="tag-facets"
-              role="group"
-              aria-label="Filter recipes by tag"
-            >
-              <div className="tag-facet-row tag-facet-row--all">
-                <span className="tag-facet-label" aria-hidden />
-                <div className="tag-row">
-                  <button
-                    type="button"
-                    className="tag-chip"
-                    data-on={selectedTags.size === 0}
-                    onClick={clearTags}
-                  >
-                    All
-                  </button>
-                </div>
-              </div>
-              {tagGroups.map((group) => (
-                <div className="tag-facet-row" key={group.key}>
-                  <span className="tag-facet-label" id={`tag-facet-${group.key}`}>
-                    {group.label}
-                  </span>
-                  <div
-                    className="tag-row"
-                    role="group"
-                    aria-labelledby={`tag-facet-${group.key}`}
-                  >
-                    {group.values.map((t) => {
-                      const on = selectedTags.has(t);
-                      return (
-                        <button
-                          key={t}
-                          type="button"
-                          className="tag-chip"
-                          data-on={on}
-                          aria-pressed={on}
-                          onClick={() => toggleTag(t)}
-                        >
-                          {tagLabel(t)}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
+              tags={tags}
+              selectedTags={selectedTags}
+              onToggleTag={toggleTag}
+              onClear={clearTags}
+            />
           ) : null}
         </>
       ) : null}

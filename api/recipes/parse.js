@@ -224,18 +224,27 @@ OTHER
 • course: "main" for entrees/mains, "side" for sides/salads/appetizers/snacks.
 
 TAGS — each is a closed list. Never invent a value outside it; use null / an empty array instead.
-• protein: chicken | beef | veggie | turkey | pork | seafood. Judge by the substantial protein, not
-  by stock or broth — a pasta side seasoned with chicken stock concentrate is "veggie". Use "veggie"
-  for any dish with no meat. Null only when the recipe leaves it open (e.g. "leftover filling").
-• method: crock-pot | air-fryer | grill | baked | stovetop. Read the INSTRUCTIONS, not the title.
-  Many recipes use two — a crock pot plus a browning step, an air fryer plus boiling pasta. Pick the
-  distinguishing appliance, the one that changes how the cook plans their day, in this priority:
-  crock-pot > grill > air-fryer > baked > stovetop. If an appliance only cooks a garnish or side
-  component, it is NOT the method. Null when nothing is cooked (dips, no-cook salads).
-• cuisine: italian | mexican | asian | indian | japanese | greek | southern | middle-eastern |
-  lithuanian. Only when the dish clearly belongs to one — a single soy-glazed ingredient does not
-  make a dish Asian. Use "asian" for fusion or when the specific country is unclear. Null otherwise.
-• additionalTags: subset of [keto, meal-prep]. Empty array unless clearly applicable.
+• protein: chicken | beef | pork | turkey | lamb | seafood | egg | veggie. Judge by the substantial
+  protein, not by stock or broth — a pasta side seasoned with chicken stock concentrate is "veggie".
+  Use "veggie" for any dish with no meat, including tofu and bean dishes. Null only when the recipe
+  leaves it open (e.g. "leftover filling").
+• method: crock-pot | pressure-cooker | air-fryer | grill | smoker | baked | stovetop | sous-vide |
+  no-cook. Read the INSTRUCTIONS, not the title. Many recipes use two — a crock pot plus a browning
+  step, an air fryer plus boiling pasta. Pick the distinguishing appliance, the one that changes how
+  the cook plans their day, in this priority: crock-pot > pressure-cooker > smoker > grill >
+  sous-vide > air-fryer > baked > stovetop. If an appliance only cooks a garnish or a side
+  component, it is NOT the method. Use "no-cook" for dips, dressings and assembled salads that are
+  never heated — prefer it over null.
+• cuisine: italian | french | spanish | greek | german | mexican | caribbean | american | southern |
+  cajun | indian | thai | chinese | japanese | korean | vietnamese | asian | middle-eastern |
+  north-african | lithuanian. Prefer the specific country over the generic "asian" — use "asian"
+  only for fusion or when the dish genuinely spans several (e.g. Thai curry paste with Japanese
+  mirin). A single soy-glazed ingredient does not make a dish Asian. Null when it belongs to no
+  particular tradition.
+• additionalTags: any of [quick, one-pot, meal-prep, kid-friendly, spicy, vegan, gluten-free,
+  dairy-free, keto, low-carb, high-protein]. Only when clearly true from the recipe itself — do not
+  infer "gluten-free" from the absence of flour, or "quick" from a missing time. "quick" means under
+  about 30 minutes total. Empty array when nothing clearly applies.
 • sourceUrl: only include if a URL appears literally in the input.
 
 The recipe owner will be set automatically by the system — do not include it.
