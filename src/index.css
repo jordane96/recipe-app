@@ -790,9 +790,16 @@ a {
   color: var(--muted);
 }
 
+/* Full-width flex item: forces a line break immediately after its own category button, so the
+   chips render directly under the button that opened them rather than below every category. */
 .tag-facet-values {
-  margin-bottom: 0.75rem;
-  padding-left: 0.15rem;
+  flex: 1 0 100%;
+  width: 100%;
+  margin: 0.1rem 0 0.5rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--accent-soft);
 }
 
 .tag-facet-values[hidden] {

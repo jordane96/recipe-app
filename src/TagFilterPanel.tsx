@@ -29,6 +29,13 @@ export function TagFilterPanel({
 
   return (
     <div id={id} className="tag-facets" role="group" aria-label="Filter recipes by tag">
+      {/*
+        Categories and their values share one wrapping flex container. Each values panel sits
+        immediately after its own category button and takes a full line (flex-basis: 100%), which
+        forces a wrap right there — so the chips always appear directly beneath the button you
+        tapped, even when the categories span several lines. Closed panels are `hidden`, so they
+        are out of flow entirely and don't break the row.
+      */}
       <div className="tag-facet-cats">
         <button
           type="button"
@@ -45,50 +52,47 @@ export function TagFilterPanel({
           const activeCount = group.values.filter((v) => selectedTags.has(v)).length;
           const open = openFacet === group.key;
           return (
-            <button
-              key={group.key}
-              type="button"
-              className="tag-facet-cat"
-              data-open={open}
-              data-active={activeCount > 0}
-              aria-expanded={open}
-              aria-controls={`${id}-${group.key}`}
-              onClick={() => setOpenFacet(open ? null : group.key)}
-            >
-              {group.label}
-              {activeCount > 0 ? <span className="tag-facet-cat-count">{activeCount}</span> : null}
-              <span className="tag-facet-cat-caret" aria-hidden>
-                {open ? "▾" : "▸"}
-              </span>
-            </button>
+            <React.Fragment key={group.key}>
+              <button
+                type="button"
+                className="tag-facet-cat"
+                data-open={open}
+                data-active={activeCount > 0}
+                aria-expanded={open}
+                aria-controls={`${id}-${group.key}`}
+                onClick={() => setOpenFacet(open ? null : group.key)}
+              >
+                {group.label}
+                {activeCount > 0 ? <span className="tag-facet-cat-count">{activeCount}</span> : null}
+                <span className="tag-facet-cat-caret" aria-hidden>
+                  {open ? "▾" : "▸"}
+                </span>
+              </button>
+              <div
+                id={`${id}-${group.key}`}
+                className="tag-row tag-facet-values"
+                hidden={!open}
+              >
+                {group.values.map((t) => {
+                  const on = selectedTags.has(t);
+                  return (
+                    <button
+                      key={t}
+                      type="button"
+                      className="tag-chip"
+                      data-on={on}
+                      aria-pressed={on}
+                      onClick={() => onToggleTag(t)}
+                    >
+                      {tagLabel(t)}
+                    </button>
+                  );
+                })}
+              </div>
+            </React.Fragment>
           );
         })}
       </div>
-
-      {groups.map((group) => (
-        <div
-          key={group.key}
-          id={`${id}-${group.key}`}
-          className="tag-row tag-facet-values"
-          hidden={openFacet !== group.key}
-        >
-          {group.values.map((t) => {
-            const on = selectedTags.has(t);
-            return (
-              <button
-                key={t}
-                type="button"
-                className="tag-chip"
-                data-on={on}
-                aria-pressed={on}
-                onClick={() => onToggleTag(t)}
-              >
-                {tagLabel(t)}
-              </button>
-            );
-          })}
-        </div>
-      ))}
     </div>
   );
 }
