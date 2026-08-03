@@ -2456,6 +2456,27 @@ button.cook-mode-v2-meal-banner--in-chrome,
   margin: 0;
 }
 
+/*
+ * Heading and servings stepper share one line: heading left, stepper right.
+ *
+ * This needs no font or control shrinking — the heading is "Overview" rather than "Recipe
+ * overview" precisely so the row fits at normal sizes. `nowrap` stops the stepper dropping to
+ * its own line (where it reads as a stray control), and `margin-left: auto` pushes it to the
+ * content edge instead of leaving it stranded mid-row next to the heading.
+ */
+.cook-mode-v2-overview-head {
+  flex-wrap: nowrap;
+}
+
+.cook-mode-v2-overview-head .cook-mode-v2-servings {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.cook-mode-v2-overview-head .cook-mode-v2-servings-value {
+  white-space: nowrap;
+}
+
 .cook-mode-v2-servings-btn {
   width: 2rem;
   height: 2rem;

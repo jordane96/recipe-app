@@ -63,8 +63,12 @@ const isolateNestedTouchFromSwipePaneProps = {
 /** Prepended as step 1 in cook mode only (internal step label). */
 const COOK_MODE_INGREDIENTS_CONFIRM_STEP = "Confirm you have all necessary ingredients";
 
-/** Visible heading on the confirm card before "Start cooking". */
-const COOK_MODE_CONFIRM_OVERVIEW_TITLE = "Recipe overview";
+/**
+ * Visible heading on the confirm card before "Start cooking". Deliberately just "Overview" —
+ * "Recipe overview" was wide enough to push the servings stepper onto its own line on a phone,
+ * and the recipe name is already in the teal strip directly above it.
+ */
+const COOK_MODE_CONFIRM_OVERVIEW_TITLE = "Overview";
 
 function formatMSS(totalSeconds: number): string {
   // At >= 1h the M:SS form gets too wide for the timer container (long bakes / braises).
@@ -435,6 +439,30 @@ export function RecipeCookModePanel({
     stopTimerAlert();
     setActiveStepIndex((i) => Math.min(Math.max(0, i + delta), Math.max(0, nSteps - 1)));
   };
+
+  /**
+   * Start each step at the top.
+   *
+   * Changing step is internal state, not a route change, so App.tsx's navigation snap-to-top
+   * never fires here — you'd read down the overview's ingredient list, press "Start cooking",
+   * and land halfway down step 1 at whatever offset you'd scrolled to. Same on every → / ← and
+   * on the step dots.
+   *
+   * `useLayoutEffect` so it lands before paint rather than as a visible jump, and the scroll
+   * containers are reset alongside the window because cook mode's card can be the scroller
+   * depending on viewport (see the same belt-and-braces in App.tsx).
+   */
+  React.useLayoutEffect(() => {
+    if (typeof window === "undefined") return;
+    window.scrollTo(0, 0);
+    if (document.documentElement) document.documentElement.scrollTop = 0;
+    if (document.body) document.body.scrollTop = 0;
+    document
+      .querySelectorAll<HTMLElement>(".app-shell, .cook-mode-v2-cook-main-scroll, .cook-mode-v2-confirm-scroll")
+      .forEach((el) => {
+        if (el.scrollTop !== 0) el.scrollTop = 0;
+      });
+  }, [activeStepIndex]);
 
   const persistClock = (next: StepClockPersist) => {
     saveStepClock(recipe.id, cookDate, cookSlotRef, activeStepIndex, next);
