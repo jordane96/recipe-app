@@ -192,6 +192,106 @@
   background: rgba(128, 128, 128, 0.15);
 }
 
+/* Option row hosts the zoom control as a sibling overlay of the card button. */
+.kroger-opt-item {
+  position: relative;
+}
+
+.kroger-opt-zoom {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--border, rgba(128, 128, 128, 0.3));
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: inherit;
+  cursor: zoom-in;
+}
+
+.kroger-opt-zoom:hover {
+  background: #fff;
+  border-color: currentColor;
+}
+
+.kroger-opt-zoom:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* The photo is a button when there's an image to enlarge — reset the button chrome. */
+.kroger-row-img--zoomable {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: zoom-in;
+  display: block;
+}
+
+.kroger-row-img--zoomable:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
+
+/* Full-size product photo. Backdrop click or Escape closes it. */
+.kroger-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  background: rgba(20, 18, 16, 0.82);
+  cursor: zoom-out;
+}
+
+.kroger-lightbox-img {
+  max-width: min(92vw, 30rem);
+  max-height: 70vh;
+  object-fit: contain;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.kroger-lightbox-label {
+  margin: 0;
+  max-width: min(92vw, 30rem);
+  text-align: center;
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.kroger-lightbox-close {
+  position: absolute;
+  top: max(0.75rem, env(safe-area-inset-top, 0px));
+  right: 0.75rem;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.kroger-lightbox-close:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
 .kroger-row-product {
   display: flex;
   flex-direction: column;
@@ -313,6 +413,83 @@
 .kroger-change-cta button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/*
+ * "Recipe needs ½ cups" above the option list — the amount you're choosing a package size for.
+ *
+ * `.kroger-page` is a flex column with its own 13.6px row gap, so margins here *add* to that
+ * rather than replacing it. Hence a negative top margin, not a positive one: this is a subtitle
+ * to the heading above it and should sit close to it, while the gap alone spaces it off the list.
+ */
+.kroger-change-need {
+  margin: -0.4rem 0 0;
+  font-size: 0.95rem;
+  opacity: 0.75;
+}
+
+/* Drop the header's own bottom margin when the subtitle follows, so they read as one block. */
+.kroger-page .top-bar:has(+ .kroger-change-need) {
+  margin-bottom: 0;
+}
+
+.kroger-change-need strong {
+  opacity: 1;
+  font-weight: 700;
+}
+
+/* Back as a bottom secondary action rather than top-left chrome. */
+.kroger-page-back {
+  margin: 1rem 0 0;
+  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+.kroger-page-back .btn-secondary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: var(--tap);
+  border-radius: 12px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* Remembered pick: a saved ingredient→product choice being reapplied at this store. */
+.kroger-row-remembered {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.6rem;
+  margin-top: 0.3rem;
+}
+
+.kroger-row-remembered-tag {
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.kroger-row-forget {
+  padding: 0.25rem 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 0.8rem;
+  opacity: 0.65;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Why the quantity isn't 1 — the ceil(need / package size) maths, said out loud. */
+.kroger-row-qty-why {
+  margin-top: 0.2rem;
+  font-size: 0.82rem;
+  opacity: 0.65;
 }
 
 .kroger-row-nomatch {
