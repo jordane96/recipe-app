@@ -50,7 +50,16 @@ export function SafewayOrderPage({
   const [mobile] = React.useState(() => isLikelyMobile());
 
   const handoffItems: SafewayHandoffItem[] = React.useMemo(
-    () => buyItems.map((it) => ({ term: it.name, label: it.label, qty: 1, notes: it.notes })),
+    () =>
+      buyItems.map((it) => ({
+        term: it.name,
+        label: it.label,
+        // Starting quantity only. The extension recomputes it from `need` and the matched
+        // product's package size, because that size isn't known until it has searched.
+        qty: 1,
+        need: it.need,
+        notes: it.notes,
+      })),
     [buyItems],
   );
 
