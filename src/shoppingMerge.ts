@@ -316,9 +316,23 @@ export function combinedLinesContributedByRecipe(
 }
 
 /**
- * Extra volume equivalents for the shopping list. Never mixes scale groups
- * (tsp+tbsp vs cup+qt). Parentheses show only the complementary unit, not the primary.
+ * The alternate volume shown in parentheses, for when you don't have the measure the primary
+ * uses. Complementary unit only — never a restatement of the primary.
+ *
+ * The alternate has to be *usable*, which is the whole point of showing one. Two rules:
+ *
+ * - **Quarts only once there's at least a quart.** The cup tier used to convert to quarts
+ *   unconditionally, so a ¼ cup was annotated "0.06 qt" — a number nobody can measure and which
+ *   tells you nothing you didn't know. Below a quart the useful alternate is tablespoons
+ *   ("¼ cup (4 tbsp)"), which is exactly the substitution someone reaches for.
+ * - **Nothing below 1, or above a countable number, of the target unit.** "2 tsp (⅔ tbsp)" is not
+ *   an alternative to anything, and neither is "2 cups (32 tbsp)" — the same uselessness as the
+ *   quart case, just at the other end. If you'd need a fraction of the alternate unit, or more
+ *   of them than anyone would count out, the primary was already the right unit and the
+ *   parenthetical is noise.
  */
+/** Most of an alternate unit worth offering — 12 tbsp is ¾ cup, past which nobody is counting. */
+const MAX_USEFUL_ALT_UNITS = 12;
 export function formatVolumeConversions(
   tsp: number,
   primaryTier: VolumePrimaryTier,
@@ -326,15 +340,19 @@ export function formatVolumeConversions(
   if (!Number.isFinite(tsp) || tsp < 0) {
     return "";
   }
+  const useful = (n: number, unit: string) =>
+    n >= 1 && n <= MAX_USEFUL_ALT_UNITS ? `${fmtQty(n)} ${unit}` : "";
+
   if (primaryTier === "cup") {
-    const qt = tsp / 192; // 4 cups / quart → 192 tsp / quart
-    return `${fmtQty(qt)} qt`;
+    if (tsp >= 192) {
+      return `${fmtQty(tsp / 192)} qt`; // 4 cups / quart → 192 tsp / quart
+    }
+    return useful(tsp / 3, "tbsp");
   }
   if (primaryTier === "tbsp") {
-    return `${fmtQty(tsp)} tsp`;
+    return useful(tsp, "tsp");
   }
-  const tbsp = tsp / 3;
-  return `${fmtQty(tbsp)} tbsp`;
+  return useful(tsp / 3, "tbsp");
 }
 
 /** US weight: complementary unit only (oz primary → lb; lb primary → oz). */
